@@ -1,0 +1,573 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance & Examination Hub{% endblock %}
+{% block header_title %}Attendance & Academic Examinations{% endblock %}
+{% block header_subtitle %}Session attendance tracking, examination scheduling, and continuous grading rubrics{% endblock %}
+
+{% block header_actions %}
+<div style="display: flex; gap: 8px;">
+  <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-exam')">
+    <span>+ Schedule Examination</span>
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Tab Selector -->
+<div style="display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px;">
+  <button id="tab-btn-attendance" class="btn btn-primary" onclick="switchAcademicTab('attendance')">
+    <span>📝 Daily Attendance Register</span>
+  </button>
+  <button id="tab-btn-exams" class="btn btn-secondary" onclick="switchAcademicTab('exams')">
+    <span>🎓 Examination Schedule & Results ({{ exams|length }})</span>
+  </button>
+</div>
+
+<!-- SECTION 1: ATTENDANCE REGISTER -->
+<div id="section-attendance">
+  <div class="card" style="margin-bottom: 24px; padding: 18px 24px;">
+    <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+      <div style="flex: 2; min-width: 240px;">
+        <label class="form-label">Select Course Curriculum Unit</label>
+        <select id="att-course-select" class="form-control" onchange="loadAttendanceRoster()">
+          <option value="">-- Choose Course Section --</option>
+          {% for c in courses %}
+          <option value="{{ c.id }}">{{ c.code }} — {{ c.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="flex: 1; min-width: 180px;">
+        <label class="form-label">Session Date</label>
+        <input type="date" id="att-date-input" class="form-control" value="2026-10-06" onchange="loadAttendanceRoster()">
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-secondary" onclick="markAllPresent()">Mark All Present</button>
+        <button class="btn btn-primary" onclick="saveAttendanceRecords()">Save Attendance</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 id="att-roster-title" style="font-size: 1.05rem; font-weight: 700;">Enrolled Scholars Attendance Roster</h3>
+      <span class="badge-tag badge-info" id="att-count-badge">0 Scholars Loaded</span>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Enrollment No</th>
+            <th>Scholar Name</th>
+            <th style="text-align: center;">Attendance Status</th>
+            <th>Session Remarks</th>
+          </tr>
+        </thead>
+        <tbody id="att-roster-tbody">
+          <tr>
+            <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 36px;">
+              Please select a course unit from the dropdown above to load the enrolled scholar roster.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 2: EXAMS & GRADES HUB -->
+<div id="section-exams" style="display: none;">
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 style="font-size: 1.05rem; font-weight: 700;">Scheduled Examinations & Assessments</h3>
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-exam')">+ New Assessment</button>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Assessment Title</th>
+            <th>Course</th>
+            <th>Type</th>
+            <th>Date</th>
+            <th>Max Marks</th>
+            <th>Grading Progress</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if exams %}
+            {% for e in exams %}
+            <tr>
+              <td><strong style="color: #f8fafc;">{{ e.title }}</strong></td>
+              <td><span class="badge-tag badge-info">{{ e.course_code }}</span></td>
+              <td><span class="badge-tag badge-info">{{ e.exam_type }}</span></td>
+              <td style="color: var(--text-muted);">{{ e.exam_date }}</td>
+              <td>{{ e.max_marks|int }} pts (Pass: {{ e.passing_marks|int }})</td>
+              <td>
+                <span class="badge-tag {% if e.graded_count > 0 %}badge-success{% else %}badge-warning{% endif %}">
+                  {{ e.graded_count }} graded
+                </span>
+              </td>
+              <td style="text-align: right;">
+                <button class="btn btn-secondary btn-sm" onclick="openGradeModal({{ e.id }}, '{{ e.title }}', {{ e.max_marks }}, {{ e.course_id }})">Enter Grades</button>
+                <button class="btn btn-secondary btn-sm" onclick="openResultsModal({{ e.id }})">Dossier</button>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 36px;">
+                No examinations scheduled yet. Use "+ Schedule Examination" to create one.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Schedule Examination -->
+<div class="modal-overlay" id="modal-new-exam">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Schedule Examination / Assessment</h3>
+      <button class="modal-close" onclick="closeModal('modal-new-exam')">&times;</button>
+    </div>
+    <form onsubmit="handleCreateExam(event)">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Course Unit *</label>
+          <select name="course_id" required class="form-control">
+            {% for c in courses %}
+            <option value="{{ c.id }}">{{ c.code }} — {{ c.title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Assessment Title *</label>
+          <input type="text" name="title" required class="form-control" placeholder="Midterm Examination (Theory)">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Assessment Type *</label>
+            <select name="exam_type" required class="form-control">
+              <option value="MIDTERM">Midterm Exam</option>
+              <option value="FINAL">Final Comprehensive</option>
+              <option value="QUIZ">Quiz / Pop Test</option>
+              <option value="LAB_ASSESSMENT">Lab Practical Assessment</option>
+              <option value="ASSIGNMENT">Term Project / Assignment</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Examination Date *</label>
+            <input type="date" name="exam_date" required class="form-control" value="2026-10-25">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Maximum Marks *</label>
+            <input type="number" name="max_marks" required min="1" value="100" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Passing Marks *</label>
+            <input type="number" name="passing_marks" required min="0" value="40" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Weightage % *</label>
+            <input type="number" name="weightage_percent" required min="1" max="100" value="30" class="form-control">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-new-exam')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Schedule Assessment</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Enter Grades -->
+<div class="modal-overlay" id="modal-grade-entry">
+  <div class="modal-card" style="max-width: 700px;">
+    <div class="modal-header">
+      <h3 id="grade-modal-title">Enter Examination Grades</h3>
+      <button class="modal-close" onclick="closeModal('modal-grade-entry')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="grade-roster-container">
+        <p style="color: var(--text-dim);">Loading enrolled scholars...</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-grade-entry')">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="submitGradesBatch()">Save & Publish Grades</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Results Dossier -->
+<div class="modal-overlay" id="modal-exam-results">
+  <div class="modal-card" style="max-width: 750px;">
+    <div class="modal-header">
+      <h3 id="results-modal-title">Examination Results Dossier</h3>
+      <button class="modal-close" onclick="closeModal('modal-exam-results')">&times;</button>
+    </div>
+    <div class="modal-body" id="results-modal-body">
+      <p style="color: var(--text-dim);">Loading results dossier...</p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-exam-results')">Close</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentActiveExamId = null;
+let currentMaxMarks = 100;
+
+function switchAcademicTab(tab) {
+  const secAtt = document.getElementById('section-attendance');
+  const secEx = document.getElementById('section-exams');
+  const btnAtt = document.getElementById('tab-btn-attendance');
+  const btnEx = document.getElementById('tab-btn-exams');
+
+  if (tab === 'attendance') {
+    secAtt.style.display = 'block';
+    secEx.style.display = 'none';
+    btnAtt.className = 'btn btn-primary';
+    btnEx.className = 'btn btn-secondary';
+  } else {
+    secAtt.style.display = 'none';
+    secEx.style.display = 'block';
+    btnAtt.className = 'btn btn-secondary';
+    btnEx.className = 'btn btn-primary';
+  }
+}
+
+async function loadAttendanceRoster() {
+  const courseId = document.getElementById('att-course-select').value;
+  const tbody = document.getElementById('att-roster-tbody');
+  const badge = document.getElementById('att-count-badge');
+  const dateVal = document.getElementById('att-date-input').value;
+
+  if (!courseId) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 36px;">Please select a course unit above.</td></tr>';
+    badge.textContent = '0 Scholars Loaded';
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/courses/${courseId}/students`);
+    if (!res.ok) throw new Error('Failed to load roster');
+    const students = await res.json();
+
+    if (!students || students.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 36px;">No scholars currently enrolled in this course unit.</td></tr>';
+      badge.textContent = '0 Scholars Enrolled';
+      return;
+    }
+
+    badge.textContent = `${students.length} Scholars Enrolled`;
+
+    tbody.innerHTML = students.map(s => `
+      <tr data-student-id="${s.id}">
+        <td style="font-family: monospace; font-weight: 700; color: #818cf8;">${s.enrollment_no}</td>
+        <td style="font-weight: 600;">${s.first_name} ${s.last_name}</td>
+        <td style="text-align: center;">
+          <div style="display: inline-flex; gap: 8px;">
+            <label style="cursor: pointer; padding: 4px 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.78rem;">
+              <input type="radio" name="att-${s.id}" value="PRESENT" checked> Present
+            </label>
+            <label style="cursor: pointer; padding: 4px 8px; border-radius: 4px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); font-size: 0.78rem;">
+              <input type="radio" name="att-${s.id}" value="ABSENT"> Absent
+            </label>
+            <label style="cursor: pointer; padding: 4px 8px; border-radius: 4px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.78rem;">
+              <input type="radio" name="att-${s.id}" value="LATE"> Late
+            </label>
+          </div>
+        </td>
+        <td>
+          <input type="text" class="form-control remarks-input" placeholder="Optional notes" style="padding: 6px 10px; font-size: 0.8rem;">
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function markAllPresent() {
+  const rows = document.querySelectorAll('#att-roster-tbody tr[data-student-id]');
+  rows.forEach(r => {
+    const radio = r.querySelector('input[value="PRESENT"]');
+    if (radio) radio.checked = true;
+  });
+  showToast('All loaded scholars toggled to Present.', 'info');
+}
+
+async function saveAttendanceRecords() {
+  const courseId = document.getElementById('att-course-select').value;
+  const dateVal = document.getElementById('att-date-input').value;
+  if (!courseId) {
+    showToast('Please select a course unit first', 'error');
+    return;
+  }
+
+  const rows = document.querySelectorAll('#att-roster-tbody tr[data-student-id]');
+  if (rows.length === 0) {
+    showToast('No students to mark attendance for', 'error');
+    return;
+  }
+
+  const records = [];
+  rows.forEach(r => {
+    const studentId = parseInt(r.getAttribute('data-student-id'));
+    const statusRadio = r.querySelector(`input[name="att-${studentId}"]:checked`);
+    const status = statusRadio ? statusRadio.value : 'PRESENT';
+    const remarks = r.querySelector('.remarks-input').value || null;
+    records.push({ student_id: studentId, status: status, remarks: remarks });
+  });
+
+  try {
+    const res = await fetch('/api/academics/attendance/mark', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        course_id: parseInt(courseId),
+        attendance_date: dateVal,
+        records: records
+      })
+    });
+    if (!res.ok) throw new Error('Failed to record attendance');
+    const data = await res.json();
+    showToast(`Attendance saved: ${data.records_marked} scholar records logged for ${data.attendance_date}!`, 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function handleCreateExam(e) {
+  e.preventDefault();
+  const form = e.target;
+  const formData = new FormData(form);
+
+  const payload = {
+    course_id: parseInt(formData.get('course_id')),
+    title: formData.get('title'),
+    exam_type: formData.get('exam_type'),
+    exam_date: formData.get('exam_date'),
+    max_marks: parseFloat(formData.get('max_marks')),
+    passing_marks: parseFloat(formData.get('passing_marks')),
+    weightage_percent: parseFloat(formData.get('weightage_percent'))
+  };
+
+  try {
+    const res = await fetch('/api/academics/exams', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Failed to schedule assessment');
+    showToast('Assessment scheduled successfully!', 'success');
+    closeModal('modal-new-exam');
+    setTimeout(() => window.location.reload(), 900);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function openGradeModal(examId, title, maxMarks, courseId) {
+  currentActiveExamId = examId;
+  currentMaxMarks = maxMarks;
+  openModal('modal-grade-entry');
+  document.getElementById('grade-modal-title').textContent = `Enter Grades — ${title} (Max: ${maxMarks} pts)`;
+  const container = document.getElementById('grade-roster-container');
+  container.innerHTML = '<p style="color: var(--text-dim);">Loading roster...</p>';
+
+  try {
+    const res = await fetch(`/api/courses/${courseId}/students`);
+    const students = await res.json();
+    if (!students || students.length === 0) {
+      container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 24px;">No scholars enrolled in this course.</p>';
+      return;
+    }
+
+    let rows = students.map(s => `
+      <tr data-student-id="${s.id}">
+        <td style="font-family: monospace; font-weight: 700; color: #818cf8;">${s.enrollment_no}</td>
+        <td style="font-weight: 600;">${s.first_name} ${s.last_name}</td>
+        <td>
+          <input type="number" step="0.5" min="0" max="${maxMarks}" class="form-control marks-input" style="width: 100px; display: inline-block;" oninput="updateGradeLetter(this, ${maxMarks})">
+          <span class="letter-grade-preview" style="margin-left: 8px; font-weight: 800; font-size: 0.95rem; color: #38bdf8;">--</span>
+        </td>
+        <td>
+          <input type="text" class="form-control grade-remarks" placeholder="Optional comments" style="font-size: 0.8rem;">
+        </td>
+      </tr>
+    `).join('');
+
+    container.innerHTML = `
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Enrollment No</th>
+              <th>Student Name</th>
+              <th>Score (pts)</th>
+              <th>Evaluator Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (err) {
+    container.innerHTML = `<p style="color: var(--color-danger);">${err.message}</p>`;
+  }
+}
+
+function updateGradeLetter(input, maxMarks) {
+  const val = parseFloat(input.value);
+  const span = input.parentElement.querySelector('.letter-grade-preview');
+  if (isNaN(val) || val < 0) {
+    span.textContent = '--';
+    span.style.color = '#94a3b8';
+    return;
+  }
+  const pct = (val / maxMarks) * 100;
+  let grade = 'F';
+  let color = '#ef4444';
+  if (pct >= 90) { grade = 'A+'; color = '#10b981'; }
+  else if (pct >= 80) { grade = 'A'; color = '#34d399'; }
+  else if (pct >= 70) { grade = 'B'; color = '#38bdf8'; }
+  else if (pct >= 60) { grade = 'C'; color = '#f59e0b'; }
+  else if (pct >= 50) { grade = 'D'; color = '#fbbf24'; }
+
+  span.textContent = grade;
+  span.style.color = color;
+}
+
+async function submitGradesBatch() {
+  const rows = document.querySelectorAll('#grade-roster-container tbody tr[data-student-id]');
+  const grades = [];
+  let hasError = false;
+
+  rows.forEach(r => {
+    const studentId = parseInt(r.getAttribute('data-student-id'));
+    const markInput = r.querySelector('.marks-input');
+    const marks = parseFloat(markInput.value);
+    const remarks = r.querySelector('.grade-remarks').value || null;
+
+    if (!isNaN(marks)) {
+      if (marks > currentMaxMarks) {
+        showToast(`Marks for scholar cannot exceed ${currentMaxMarks}`, 'error');
+        hasError = true;
+        return;
+      }
+      grades.push({ student_id: studentId, marks_obtained: marks, remarks: remarks });
+    }
+  });
+
+  if (hasError) return;
+  if (grades.length === 0) {
+    showToast('Please enter marks for at least one scholar', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/academics/exams/${currentActiveExamId}/grades`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grades: grades })
+    });
+    if (!res.ok) throw new Error('Failed to publish grades');
+    showToast('Grades successfully published and registered in student record!', 'success');
+    closeModal('modal-grade-entry');
+    setTimeout(() => window.location.reload(), 900);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function openResultsModal(examId) {
+  openModal('modal-exam-results');
+  const body = document.getElementById('results-modal-body');
+  body.innerHTML = '<p style="color: var(--text-dim);">Loading statistical evaluation...</p>';
+
+  try {
+    const res = await fetch(`/api/academics/exams/${examId}/results`);
+    if (!res.ok) throw new Error('Could not fetch results');
+    const data = await res.json();
+    const stats = data.statistics;
+    const exam = data.examination;
+
+    document.getElementById('results-modal-title').textContent = `${exam.title} — Performance Dossier`;
+
+    let rosterRows = data.roster.map(r => `
+      <tr>
+        <td style="font-family: monospace; font-weight: 700; color: #818cf8;">${r.enrollment_no}</td>
+        <td style="font-weight: 600;">${r.student_name}</td>
+        <td><strong>${r.marks_obtained}</strong> / ${r.max_marks}</td>
+        <td>
+          <span class="badge-tag ${r.grade_letter === 'F' ? 'badge-danger' : 'badge-success'}">
+            ${r.grade_letter}
+          </span>
+        </td>
+      </tr>
+    `).join('');
+
+    body.innerHTML = `
+      <div class="kpi-grid" style="margin-bottom: 20px;">
+        <div class="card kpi-card">
+          <div class="kpi-header"><span>Average Score</span></div>
+          <div class="kpi-value" style="font-size: 1.5rem;">${stats.average_marks} <span style="font-size: 0.8rem; color: var(--text-dim);">pts</span></div>
+        </div>
+        <div class="card kpi-card">
+          <div class="kpi-header"><span>Pass Rate</span></div>
+          <div class="kpi-value" style="font-size: 1.5rem; color: var(--color-success);">${stats.pass_rate}%</div>
+        </div>
+        <div class="card kpi-card">
+          <div class="kpi-header"><span>Top Score</span></div>
+          <div class="kpi-value" style="font-size: 1.5rem;">${stats.highest_marks} <span style="font-size: 0.8rem; color: var(--text-dim);">pts</span></div>
+        </div>
+        <div class="card kpi-card">
+          <div class="kpi-header"><span>Candidates</span></div>
+          <div class="kpi-value" style="font-size: 1.5rem;">${stats.total_candidates}</div>
+        </div>
+      </div>
+
+      <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 12px;">Candidate Grade Sheet</h4>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Enrollment No</th>
+              <th>Student Name</th>
+              <th>Score</th>
+              <th>Grade</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rosterRows || '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 18px;">No candidates evaluated yet.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (err) {
+    body.innerHTML = `<p style="color: var(--color-danger);">${err.message}</p>`;
+  }
+}
+</script>
+{% endblock %}

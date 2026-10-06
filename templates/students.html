@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}Admissions & Student Registry{% endblock %}
+{% block header_title %}Admissions & Student Registry{% endblock %}
+{% block header_subtitle %}Manage student enrollments, academic records, and demographic profiles{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-primary btn-sm" onclick="openModal('modal-new-student')">
+  <span>+ Register Admission</span>
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- Search & Filter Control Bar -->
+<div class="card" style="margin-bottom: 24px; padding: 18px 24px;">
+  <form id="filter-form" method="GET" action="/students" style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+    <div style="flex: 2; min-width: 220px;">
+      <label class="form-label">Search Scholars</label>
+      <input type="text" name="search" id="input-search" class="form-control" placeholder="Name, email, or enrollment no..." value="{{ search or '' }}">
+    </div>
+
+    <div style="flex: 1; min-width: 180px;">
+      <label class="form-label">Department</label>
+      <select name="department_id" id="select-dept" class="form-control">
+        <option value="">All Departments</option>
+        {% for d in departments %}
+        <option value="{{ d.id }}" {% if selected_dept == d.id %}selected{% endif %}>{{ d.code }} - {{ d.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="flex: 1; min-width: 160px;">
+      <label class="form-label">Enrollment Status</label>
+      <select name="status" id="select-status" class="form-control">
+        <option value="">All Statuses</option>
+        <option value="ENROLLED" {% if selected_status == 'ENROLLED' %}selected{% endif %}>Enrolled</option>
+        <option value="PENDING" {% if selected_status == 'PENDING' %}selected{% endif %}>Pending</option>
+        <option value="PROBATION" {% if selected_status == 'PROBATION' %}selected{% endif %}>Probation</option>
+        <option value="GRADUATED" {% if selected_status == 'GRADUATED' %}selected{% endif %}>Graduated</option>
+      </select>
+    </div>
+
+    <div style="display: flex; gap: 8px;">
+      <button type="submit" class="btn btn-primary" id="btn-apply-filter">Filter</button>
+      <a href="/students" class="btn btn-secondary" id="btn-reset-filter">Reset</a>
+    </div>
+  </form>
+</div>
+
+<!-- Student Table Card -->
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <h3 style="font-size: 1.05rem; font-weight: 700;">Student Registry Roster ({{ students|length }} enrolled)</h3>
+    <span class="badge-tag badge-info">Term: 2026-2027</span>
+  </div>
+
+  <div class="table-container">
+    <table id="table-students">
+      <thead>
+        <tr>
+          <th>Enrollment No</th>
+          <th>Student Name</th>
+          <th>Department</th>
+          <th>Semester</th>
+          <th>Contact</th>
+          <th>Admission Date</th>
+          <th>Status</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if students %}
+          {% for s in students %}
+          <tr id="row-student-{{ s.id }}">
+            <td style="font-family: monospace; font-weight: 700; color: #818cf8;">{{ s.enrollment_no }}</td>
+            <td style="font-weight: 600;">{{ s.first_name }} {{ s.last_name }}</td>
+            <td><span class="badge-tag badge-info">{{ s.department_code }}</span></td>
+            <td>Semester {{ s.current_semester }}</td>
+            <td>
+              <div style="font-size: 0.85rem;">{{ s.email }}</div>
+              <div style="font-size: 0.75rem; color: var(--text-dim);">{{ s.phone or 'No phone' }}</div>
+            </td>
+            <td style="color: var(--text-muted);">{{ s.admission_date }}</td>
+            <td>
+              <span class="badge-tag {% if s.status == 'ENROLLED' %}badge-success{% elif s.status == 'PENDING' %}badge-warning{% else %}badge-info{% endif %}">
+                {{ s.status }}
+              </span>
+            </td>
+            <td style="text-align: right;">
+              <button class="btn btn-secondary btn-sm" onclick="viewStudent({{ s.id }})" title="View Details">Profile</button>
+              <button class="btn btn-secondary btn-sm" style="color: var(--color-danger);" onclick="deleteStudent({{ s.id }})" title="Delete Record">✕</button>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 36px;">
+              No student records matched the active filters. Click "+ Register Admission" to enroll a student.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: Register New Student Admission -->
+<div class="modal-overlay" id="modal-new-student">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Register Student Admission</h3>
+      <button class="modal-close" onclick="closeModal('modal-new-student')">&times;</button>
+    </div>
+    <form id="form-admission" onsubmit="handleAdmissionSubmit(event)">
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">First Name *</label>
+            <input type="text" name="first_name" required class="form-control" placeholder="Jane">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Last Name *</label>
+            <input type="text" name="last_name" required class="form-control" placeholder="Doe">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Email Address *</label>
+            <input type="email" name="email" required class="form-control" placeholder="jane.doe@university.edu">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone Number</label>
+            <input type="text" name="phone" class="form-control" placeholder="+1 (555) 019-2834">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Academic Department *</label>
+            <select name="department_id" required class="form-control">
+              {% for d in departments %}
+              <option value="{{ d.id }}">{{ d.code }} - {{ d.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Current Semester *</label>
+            <select name="current_semester" required class="form-control">
+              {% for sem in range(1, 9) %}
+              <option value="{{ sem }}">Semester {{ sem }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Date of Birth</label>
+            <input type="date" name="dob" class="form-control" value="2004-05-15">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gender</label>
+            <select name="gender" class="form-control">
+              <option value="Female">Female</option>
+              <option value="Male">Male</option>
+              <option value="Other">Other</option>
+              <option value="Prefer Not to Say">Prefer Not to Say</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Blood Group</label>
+            <input type="text" name="blood_group" class="form-control" placeholder="O+">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Emergency Contact</label>
+            <input type="text" name="emergency_contact" class="form-control" placeholder="+1 (555) 098-7654 (Parent)">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Residential Address</label>
+          <textarea name="address" class="form-control" rows="2" placeholder="Campus Hall Residence, Block B"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-new-student')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-admission">Save Admission</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Student Profile Details -->
+<div class="modal-overlay" id="modal-view-student">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 id="profile-modal-title">Student Profile</h3>
+      <button class="modal-close" onclick="closeModal('modal-view-student')">&times;</button>
+    </div>
+    <div class="modal-body" id="profile-modal-content">
+      <p style="color: var(--text-dim);">Loading profile...</p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-view-student')">Close</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Check URL params to auto-open admission modal if ?action=new
+window.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('action') === 'new') {
+    openModal('modal-new-student');
+  }
+});
+
+async function handleAdmissionSubmit(event) {
+  event.preventDefault();
+  const form = event.target;
+  const formData = new FormData(form);
+  
+  const payload = {
+    first_name: formData.get('first_name'),
+    last_name: formData.get('last_name'),
+    email: formData.get('email'),
+    phone: formData.get('phone') || null,
+    department_id: parseInt(formData.get('department_id')),
+    current_semester: parseInt(formData.get('current_semester')),
+    dob: formData.get('dob') || null,
+    gender: formData.get('gender') || null,
+    blood_group: formData.get('blood_group') || null,
+    emergency_contact: formData.get('emergency_contact') || null,
+    address: formData.get('address') || null,
+    status: 'ENROLLED'
+  };
+
+  try {
+    const res = await fetch('/api/students', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to register student');
+    }
+
+    const created = await res.json();
+    showToast(`Successfully enrolled ${created.first_name} ${created.last_name} (${created.enrollment_no})`, 'success');
+    closeModal('modal-new-student');
+    form.reset();
+    setTimeout(() => { window.location.reload(); }, 900);
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
+}
+
+async function viewStudent(studentId) {
+  openModal('modal-view-student');
+  const content = document.getElementById('profile-modal-content');
+  content.innerHTML = '<p style="color: var(--text-dim);">Fetching record...</p>';
+
+  try {
+    const res = await fetch(`/api/students/${studentId}`);
+    if (!res.ok) throw new Error('Student profile not found');
+    const s = await res.json();
+
+    document.getElementById('profile-modal-title').textContent = `${s.first_name} ${s.last_name} — Demographic Dossier`;
+    content.innerHTML = `
+      <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-subtle);">
+        <div style="width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #0ea5e9); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800;">
+          ${s.first_name[0]}${s.last_name[0]}
+        </div>
+        <div>
+          <h4 style="font-size: 1.15rem; font-weight: 700;">${s.first_name} ${s.last_name}</h4>
+          <div style="font-family: monospace; color: #818cf8; font-weight: 700;">${s.enrollment_no}</div>
+        </div>
+        <div style="margin-left: auto;">
+          <span class="badge-tag badge-success">${s.status}</span>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; font-size: 0.88rem;">
+        <div><strong>Department:</strong> ${s.department_name} (${s.department_code})</div>
+        <div><strong>Semester:</strong> Semester ${s.current_semester}</div>
+        <div><strong>Email:</strong> ${s.email}</div>
+        <div><strong>Phone:</strong> ${s.phone || 'N/A'}</div>
+        <div><strong>Date of Birth:</strong> ${s.dob || 'N/A'}</div>
+        <div><strong>Gender:</strong> ${s.gender || 'N/A'}</div>
+        <div><strong>Blood Group:</strong> ${s.blood_group || 'N/A'}</div>
+        <div><strong>Admission Date:</strong> ${s.admission_date}</div>
+        <div style="grid-column: span 2;"><strong>Emergency Contact:</strong> ${s.emergency_contact || 'N/A'}</div>
+        <div style="grid-column: span 2;"><strong>Address:</strong> ${s.address || 'N/A'}</div>
+      </div>
+    `;
+  } catch (err) {
+    content.innerHTML = `<p style="color: var(--color-danger);">${err.message}</p>`;
+  }
+}
+
+async function deleteStudent(studentId) {
+  if (!confirm('Are you sure you want to purge this student from the institutional registry?')) return;
+
+  try {
+    const res = await fetch(`/api/students/${studentId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to purge student');
+    showToast('Student record purged from registry.', 'success');
+    const row = document.getElementById(`row-student-` + studentId);
+    if (row) row.remove();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+</script>
+{% endblock %}

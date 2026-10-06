@@ -1,0 +1,543 @@
+{% extends "base.html" %}
+
+{% block title %}Faculty & Course Management{% endblock %}
+{% block header_title %}Faculty & Course Curriculum{% endblock %}
+{% block header_subtitle %}Curriculum catalog planning, faculty assignments, and scholar enrollments{% endblock %}
+
+{% block header_actions %}
+<div style="display: flex; gap: 8px;">
+  <button class="btn btn-secondary btn-sm" onclick="openModal('modal-new-faculty')">
+    <span>+ Add Faculty</span>
+  </button>
+  <button class="btn btn-secondary btn-sm" onclick="openModal('modal-enroll')">
+    <span>+ Enroll Scholar</span>
+  </button>
+  <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-course')">
+    <span>+ New Course</span>
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Tab Navigation Bar -->
+<div style="display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px;">
+  <button id="tab-btn-courses" class="btn btn-primary" onclick="switchTab('courses')">
+    <span>📚 Course Catalog Units ({{ courses|length }})</span>
+  </button>
+  <button id="tab-btn-faculty" class="btn btn-secondary" onclick="switchTab('faculty')">
+    <span>👨‍🏫 Faculty Directory ({{ faculty_members|length }})</span>
+  </button>
+</div>
+
+<!-- SECTION 1: COURSE CATALOG TAB -->
+<div id="section-courses">
+  <!-- Filter Bar -->
+  <div class="card" style="margin-bottom: 24px; padding: 18px 24px;">
+    <form method="GET" action="/courses" style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+      <div style="flex: 2; min-width: 220px;">
+        <label class="form-label">Search Course</label>
+        <input type="text" name="search" class="form-control" placeholder="Code (CS101) or title..." value="{{ search or '' }}">
+      </div>
+
+      <div style="flex: 1; min-width: 180px;">
+        <label class="form-label">Department</label>
+        <select name="department_id" class="form-control">
+          <option value="">All Departments</option>
+          {% for d in departments %}
+          <option value="{{ d.id }}" {% if selected_dept == d.id %}selected{% endif %}>{{ d.code }} - {{ d.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="flex: 1; min-width: 140px;">
+        <label class="form-label">Semester</label>
+        <select name="semester" class="form-control">
+          <option value="">All Semesters</option>
+          {% for sem in range(1, 9) %}
+          <option value="{{ sem }}" {% if selected_sem == sem %}selected{% endif %}>Semester {{ sem }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button type="submit" class="btn btn-primary">Filter</button>
+        <a href="/courses" class="btn btn-secondary">Reset</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Course Table -->
+  <div class="card">
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Course Code</th>
+            <th>Title & Syllabus</th>
+            <th>Department</th>
+            <th>Credits</th>
+            <th>Semester</th>
+            <th>Assigned Faculty</th>
+            <th>Occupancy</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if courses %}
+            {% for c in courses %}
+            <tr id="row-course-{{ c.id }}">
+              <td style="font-family: monospace; font-weight: 700; color: #818cf8; font-size: 0.95rem;">{{ c.code }}</td>
+              <td>
+                <div style="font-weight: 600;">{{ c.title }}</div>
+                <div style="font-size: 0.76rem; color: var(--text-dim);">{{ c.syllabus_summary or 'No syllabus summary' }}</div>
+              </td>
+              <td><span class="badge-tag badge-info">{{ c.department_code }}</span></td>
+              <td><strong>{{ c.credits }}</strong> cr</td>
+              <td>Sem {{ c.semester }}</td>
+              <td>
+                {% if c.instructor_name %}
+                  <span style="color: #a5b4fc; font-weight: 500;">👨‍🏫 {{ c.instructor_name }}</span>
+                {% else %}
+                  <span class="badge-tag badge-warning">Unassigned</span>
+                {% endif %}
+              </td>
+              <td style="min-width: 140px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 3px;">
+                  <span>{{ c.enrolled_count }} / {{ c.capacity }} seats</span>
+                  <span>{{ (c.enrolled_count / c.capacity * 100)|round|int }}%</span>
+                </div>
+                <div style="height: 5px; background: rgba(255, 255, 255, 0.08); border-radius: 4px; overflow: hidden;">
+                  <div style="height: 100%; width: {{ (c.enrolled_count / c.capacity * 100) }}%; background: {% if c.enrolled_count >= c.capacity %}#ef4444{% else %}#10b981{% endif %}; border-radius: 4px;"></div>
+                </div>
+              </td>
+              <td style="text-align: right;">
+                <button class="btn btn-secondary btn-sm" onclick="viewRoster({{ c.id }}, '{{ c.code }}')">Roster</button>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 36px;">
+                No courses found. Use "+ New Course" to add a curriculum unit.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 2: FACULTY DIRECTORY TAB -->
+<div id="section-faculty" style="display: none;">
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 style="font-size: 1.05rem; font-weight: 700;">Academic Faculty Staff</h3>
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-faculty')">+ Add Faculty Member</button>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Faculty ID</th>
+            <th>Name</th>
+            <th>Department</th>
+            <th>Designation</th>
+            <th>Contact</th>
+            <th>Hire Date</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if faculty_members %}
+            {% for f in faculty_members %}
+            <tr>
+              <td style="font-family: monospace; font-weight: 700; color: #a78bfa;">{{ f.faculty_id }}</td>
+              <td style="font-weight: 600;">{{ f.first_name }} {{ f.last_name }}</td>
+              <td><span class="badge-tag badge-info">{{ f.department_code }}</span></td>
+              <td>{{ f.designation }}</td>
+              <td>
+                <div style="font-size: 0.85rem;">{{ f.email }}</div>
+                <div style="font-size: 0.75rem; color: var(--text-dim);">{{ f.phone or 'N/A' }}</div>
+              </td>
+              <td style="color: var(--text-muted);">{{ f.hire_date }}</td>
+              <td>
+                <span class="badge-tag {% if f.status == 'ACTIVE' %}badge-success{% else %}badge-warning{% endif %}">
+                  {{ f.status }}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 36px;">
+                No faculty members registered yet.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: New Course -->
+<div class="modal-overlay" id="modal-new-course">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Add Curriculum Course Unit</h3>
+      <button class="modal-close" onclick="closeModal('modal-new-course')">&times;</button>
+    </div>
+    <form onsubmit="handleCreateCourse(event)">
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Course Code *</label>
+            <input type="text" name="code" required class="form-control" placeholder="CS301" style="text-transform: uppercase;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Course Title *</label>
+            <input type="text" name="title" required class="form-control" placeholder="Distributed Systems & Cloud">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Department *</label>
+            <select name="department_id" required class="form-control">
+              {% for d in departments %}
+              <option value="{{ d.id }}">{{ d.code }} - {{ d.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Semester *</label>
+            <select name="semester" required class="form-control">
+              {% for sem in range(1, 9) %}
+              <option value="{{ sem }}">Semester {{ sem }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Credits *</label>
+            <input type="number" name="credits" required min="1" max="12" value="3" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Max Capacity (Seats) *</label>
+            <input type="number" name="capacity" required min="1" max="500" value="60" class="form-control">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Assigned Instructor</label>
+          <select name="instructor_id" class="form-control">
+            <option value="">-- Select Instructor (Optional) --</option>
+            {% for f in faculty_members %}
+            <option value="{{ f.id }}">{{ f.first_name }} {{ f.last_name }} ({{ f.faculty_id }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Syllabus Summary</label>
+          <textarea name="syllabus_summary" class="form-control" rows="2" placeholder="Microservices, RPC, Consensus Protocols, and Vector Stores"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-new-course')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create Course</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: New Faculty -->
+<div class="modal-overlay" id="modal-new-faculty">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Add Faculty Member</h3>
+      <button class="modal-close" onclick="closeModal('modal-new-faculty')">&times;</button>
+    </div>
+    <form onsubmit="handleCreateFaculty(event)">
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">First Name *</label>
+            <input type="text" name="first_name" required class="form-control" placeholder="Dr. Alan">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Last Name *</label>
+            <input type="text" name="last_name" required class="form-control" placeholder="Turing">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Email Address *</label>
+            <input type="email" name="email" required class="form-control" placeholder="alan.turing@university.edu">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone Number</label>
+            <input type="text" name="phone" class="form-control" placeholder="+1 (555) 392-1082">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Department *</label>
+            <select name="department_id" required class="form-control">
+              {% for d in departments %}
+              <option value="{{ d.id }}">{{ d.code }} - {{ d.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Designation</label>
+            <input type="text" name="designation" class="form-control" value="Associate Professor">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Highest Qualification</label>
+          <input type="text" name="qualification" class="form-control" placeholder="Ph.D. in Computer Science">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-new-faculty')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Faculty</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Enroll Scholar into Course -->
+<div class="modal-overlay" id="modal-enroll">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Enroll Scholar in Course</h3>
+      <button class="modal-close" onclick="closeModal('modal-enroll')">&times;</button>
+    </div>
+    <form onsubmit="handleEnrollStudent(event)">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Select Course *</label>
+          <select name="course_id" required class="form-control">
+            {% for c in courses %}
+            <option value="{{ c.id }}">{{ c.code }} — {{ c.title }} ({{ c.enrolled_count }}/{{ c.capacity }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Student ID *</label>
+          <input type="number" name="student_id" required class="form-control" placeholder="Enter Student Registry ID">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Academic Year</label>
+            <input type="text" name="academic_year" class="form-control" value="2026-2027">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Semester</label>
+            <input type="number" name="semester" class="form-control" value="1" min="1" max="8">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-enroll')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Enroll Scholar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Course Roster -->
+<div class="modal-overlay" id="modal-roster">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 id="roster-title">Course Enrollment Roster</h3>
+      <button class="modal-close" onclick="closeModal('modal-roster')">&times;</button>
+    </div>
+    <div class="modal-body" id="roster-body">
+      <p style="color: var(--text-dim);">Loading roster...</p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-roster')">Close</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function switchTab(tab) {
+  const sectionCourses = document.getElementById('section-courses');
+  const sectionFaculty = document.getElementById('section-faculty');
+  const btnCourses = document.getElementById('tab-btn-courses');
+  const btnFaculty = document.getElementById('tab-btn-faculty');
+
+  if (tab === 'courses') {
+    sectionCourses.style.display = 'block';
+    sectionFaculty.style.display = 'none';
+    btnCourses.className = 'btn btn-primary';
+    btnFaculty.className = 'btn btn-secondary';
+  } else {
+    sectionCourses.style.display = 'none';
+    sectionFaculty.style.display = 'block';
+    btnCourses.className = 'btn btn-secondary';
+    btnFaculty.className = 'btn btn-primary';
+  }
+}
+
+async function handleCreateCourse(e) {
+  e.preventDefault();
+  const form = e.target;
+  const formData = new FormData(form);
+
+  const payload = {
+    code: formData.get('code').toUpperCase(),
+    title: formData.get('title'),
+    department_id: parseInt(formData.get('department_id')),
+    semester: parseInt(formData.get('semester')),
+    credits: parseInt(formData.get('credits')),
+    capacity: parseInt(formData.get('capacity')),
+    instructor_id: formData.get('instructor_id') ? parseInt(formData.get('instructor_id')) : null,
+    syllabus_summary: formData.get('syllabus_summary') || null
+  };
+
+  try {
+    const res = await fetch('/api/courses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to create course');
+    }
+    showToast(`Course ${payload.code} created successfully!`, 'success');
+    closeModal('modal-new-course');
+    setTimeout(() => window.location.reload(), 900);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function handleCreateFaculty(e) {
+  e.preventDefault();
+  const form = e.target;
+  const formData = new FormData(form);
+
+  const payload = {
+    first_name: formData.get('first_name'),
+    last_name: formData.get('last_name'),
+    email: formData.get('email'),
+    phone: formData.get('phone') || null,
+    department_id: parseInt(formData.get('department_id')),
+    designation: formData.get('designation') || 'Assistant Professor',
+    qualification: formData.get('qualification') || null,
+    status: 'ACTIVE'
+  };
+
+  try {
+    const res = await fetch('/api/faculty', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to add faculty');
+    }
+    const created = await res.json();
+    showToast(`Faculty member ${created.first_name} ${created.last_name} (${created.faculty_id}) registered!`, 'success');
+    closeModal('modal-new-faculty');
+    setTimeout(() => window.location.reload(), 900);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function handleEnrollStudent(e) {
+  e.preventDefault();
+  const form = e.target;
+  const formData = new FormData(form);
+
+  const payload = {
+    course_id: parseInt(formData.get('course_id')),
+    student_id: parseInt(formData.get('student_id')),
+    academic_year: formData.get('academic_year'),
+    semester: parseInt(formData.get('semester'))
+  };
+
+  try {
+    const res = await fetch('/api/courses/enroll', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Enrollment failed');
+    }
+    showToast('Scholar successfully enrolled in course!', 'success');
+    closeModal('modal-enroll');
+    setTimeout(() => window.location.reload(), 900);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function viewRoster(courseId, code) {
+  openModal('modal-roster');
+  document.getElementById('roster-title').textContent = `${code} — Enrolled Scholars Roster`;
+  const body = document.getElementById('roster-body');
+  body.innerHTML = '<p style="color: var(--text-dim);">Fetching active roster...</p>';
+
+  try {
+    const res = await fetch(`/api/courses/${courseId}/students`);
+    if (!res.ok) throw new Error('Could not fetch roster');
+    const students = await res.json();
+
+    if (!students || students.length === 0) {
+      body.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 24px;">No scholars enrolled in this course section yet.</p>';
+      return;
+    }
+
+    let rowsHtml = students.map(s => `
+      <tr>
+        <td style="font-family: monospace; font-weight: 700; color: #818cf8;">${s.enrollment_no}</td>
+        <td style="font-weight: 600;">${s.first_name} ${s.last_name}</td>
+        <td>${s.email}</td>
+        <td><span class="badge-tag badge-success">${s.status}</span></td>
+      </tr>
+    `).join('');
+
+    body.innerHTML = `
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Enrollment No</th>
+              <th>Student Name</th>
+              <th>Email</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (err) {
+    body.innerHTML = `<p style="color: var(--color-danger);">${err.message}</p>`;
+  }
+}
+</script>
+{% endblock %}

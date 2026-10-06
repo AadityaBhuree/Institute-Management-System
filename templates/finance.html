@@ -1,0 +1,671 @@
+{% extends "base.html" %}
+
+{% block title %}Fee Invoicing & Financial Audit{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2 class="page-title">Institutional Bursar & Audit Ledger</h2>
+    <p class="page-subtitle">Standard fee structures, student invoice issuance, payment processing, and transaction audits.</p>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-secondary" onclick="openModal('modal-create-structure')">
+      <span>📐</span> Set Fee Structure
+    </button>
+    <button class="btn btn-primary" onclick="openModal('modal-generate-invoice')">
+      <span>➕</span> Issue Invoice
+    </button>
+  </div>
+</div>
+
+<!-- Financial Performance KPI Grid -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-header">
+      <span class="stat-title">Total Billed</span>
+      <div class="stat-icon icon-primary">💳</div>
+    </div>
+    <div class="stat-value">${{ "%.2f"|format(summary.total_billed) }}</div>
+    <div class="stat-desc">Across {{ summary.total_invoices }} institutional invoices</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-header">
+      <span class="stat-title">Total Revenue Realized</span>
+      <div class="stat-icon icon-emerald">💰</div>
+    </div>
+    <div class="stat-value text-emerald">${{ "%.2f"|format(summary.total_collected) }}</div>
+    <div class="stat-desc">{{ summary.paid_count }} fully settled, {{ summary.partial_count }} partial</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-header">
+      <span class="stat-title">Outstanding Receivable</span>
+      <div class="stat-icon icon-amber">⏳</div>
+    </div>
+    <div class="stat-value text-amber">${{ "%.2f"|format(summary.total_outstanding) }}</div>
+    <div class="stat-desc">{{ summary.overdue_count }} overdue, {{ summary.unpaid_count }} pending</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-header">
+      <span class="stat-title">Realized Recovery Rate</span>
+      <div class="stat-icon icon-blue">📈</div>
+    </div>
+    <div class="stat-value">{{ summary.collection_rate }}%</div>
+    <div class="progress-bar-bg" style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-top: 8px;">
+      <div style="height: 100%; width: {{ summary.collection_rate }}%; background: #10b981; border-radius: 4px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabs Navigation -->
+<div style="display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px;">
+  <button id="tab-btn-invoices" class="btn btn-primary btn-sm" onclick="switchFinanceTab('invoices')">
+    📄 Student Invoices ({{ invoices|length }})
+  </button>
+  <button id="tab-btn-structures" class="btn btn-secondary btn-sm" onclick="switchFinanceTab('structures')">
+    📐 Fee Structures ({{ structures|length }})
+  </button>
+  <button id="tab-btn-ledger" class="btn btn-secondary btn-sm" onclick="switchFinanceTab('ledger')">
+    🧾 Audit Ledger ({{ payments|length }})
+  </button>
+</div>
+
+<!-- SECTION 1: INVOICES -->
+<div id="section-invoices">
+  <div class="filter-bar">
+    <form method="GET" action="/finance" style="display: flex; gap: 12px; flex-wrap: wrap; width: 100%; align-items: center;">
+      <div style="flex: 1; min-width: 200px;">
+        <input type="text" name="search" class="form-control" placeholder="Search by Invoice #, Student Name, Enrollment..." value="{{ search or '' }}">
+      </div>
+      <div style="width: 170px;">
+        <select name="status" class="form-control" onchange="this.form.submit()">
+          <option value="">All Statuses</option>
+          <option value="PAID" {% if selected_status == 'PAID' %}selected{% endif %}>PAID</option>
+          <option value="PARTIAL" {% if selected_status == 'PARTIAL' %}selected{% endif %}>PARTIAL</option>
+          <option value="UNPAID" {% if selected_status == 'UNPAID' %}selected{% endif %}>UNPAID</option>
+          <option value="OVERDUE" {% if selected_status == 'OVERDUE' %}selected{% endif %}>OVERDUE</option>
+        </select>
+      </div>
+      <div style="width: 200px;">
+        <select name="department_id" class="form-control" onchange="this.form.submit()">
+          <option value="">All Departments</option>
+          {% for d in departments %}
+          <option value="{{ d.id }}" {% if selected_dept == d.id %}selected{% endif %}>{{ d.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+      {% if search or selected_status or selected_dept %}
+      <a href="/finance" class="btn btn-secondary btn-sm">Reset</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Fee Invoices Roster</h3>
+      <span class="badge-tag badge-info">{{ invoices|length }} Invoices</span>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Invoice #</th>
+            <th>Scholar</th>
+            <th>Term / Title</th>
+            <th>Total Amount</th>
+            <th>Collected</th>
+            <th>Balance</th>
+            <th>Status</th>
+            <th>Due Date</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if invoices %}
+            {% for inv in invoices %}
+            <tr>
+              <td>
+                <span style="font-family: monospace; font-weight: 700; color: var(--accent-primary);">
+                  {{ inv.invoice_no }}
+                </span>
+              </td>
+              <td>
+                <div style="font-weight: 600;">{{ inv.student_name }}</div>
+                <div style="font-size: 0.76rem; color: var(--text-dim);">{{ inv.enrollment_no }} • {{ inv.department_name }}</div>
+              </td>
+              <td>
+                <div>{{ inv.term_name }}</div>
+                <div style="font-size: 0.76rem; color: var(--text-dim);">{{ inv.title }}</div>
+              </td>
+              <td style="font-weight: 600;">${{ "%.2f"|format(inv.total_amount) }}</td>
+              <td style="color: var(--color-success); font-weight: 600;">${{ "%.2f"|format(inv.paid_amount) }}</td>
+              <td style="color: {% if inv.balance_amount > 0 %}var(--color-danger){% else %}var(--text-muted){% endif %}; font-weight: 600;">
+                ${{ "%.2f"|format(inv.balance_amount) }}
+              </td>
+              <td>
+                <span class="badge-tag {% if inv.status == 'PAID' %}badge-success{% elif inv.status == 'PARTIAL' %}badge-info{% elif inv.status == 'OVERDUE' %}badge-danger{% else %}badge-warning{% endif %}">
+                  {{ inv.status }}
+                </span>
+              </td>
+              <td style="font-size: 0.82rem; color: var(--text-muted);">{{ inv.due_date }}</td>
+              <td style="text-align: right;">
+                <div style="display: inline-flex; gap: 6px;">
+                  <button class="btn btn-secondary btn-sm" onclick="viewInvoiceDossier({{ inv.id }})">
+                    🔍 Detail
+                  </button>
+                  {% if inv.status != 'PAID' %}
+                  <button class="btn btn-primary btn-sm" onclick="openPaymentModal({{ inv.id }}, '{{ inv.invoice_no }}', '{{ inv.student_name|replace("'", "\\'") }}', {{ inv.balance_amount }})">
+                    💵 Pay
+                  </button>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="9" style="text-align: center; padding: 48px; color: var(--text-dim);">
+                No invoices found matching criteria. Click "Issue Invoice" above to generate a new fee billing.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 2: FEE STRUCTURES -->
+<div id="section-structures" style="display: none;">
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Institutional Standard Fee Schedules</h3>
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-create-structure')">
+        ➕ Add Structure
+      </button>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Department</th>
+            <th>Semester</th>
+            <th>Fee Type</th>
+            <th>Standard Fee Amount</th>
+            <th>Academic Year</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if structures %}
+            {% for fs in structures %}
+            <tr>
+              <td>#{{ fs.id }}</td>
+              <td style="font-weight: 600;">{{ fs.department_name }}</td>
+              <td><span class="badge-tag badge-info">Sem {{ fs.semester }}</span></td>
+              <td>{{ fs.fee_type }}</td>
+              <td style="font-weight: 700; color: var(--color-success);">${{ "%.2f"|format(fs.amount) }}</td>
+              <td style="color: var(--text-muted);">{{ fs.academic_year }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-dim);">
+                No departmental fee structures configured yet.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 3: AUDIT LEDGER -->
+<div id="section-ledger" style="display: none;">
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Real-Time Bursar Payment Audit Ledger</h3>
+      <span class="badge-tag badge-success">{{ payments|length }} Receipts Issued</span>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Receipt #</th>
+            <th>Invoice #</th>
+            <th>Scholar</th>
+            <th>Amount Paid</th>
+            <th>Method</th>
+            <th>Reference / Notes</th>
+            <th>Received By</th>
+            <th>Recorded At</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if payments %}
+            {% for p in payments %}
+            <tr>
+              <td>
+                <span style="font-family: monospace; font-weight: 700; color: #10b981;">
+                  {{ p.payment_no }}
+                </span>
+              </td>
+              <td>
+                <span style="font-family: monospace; color: var(--accent-primary);">
+                  {{ p.invoice_no }}
+                </span>
+              </td>
+              <td style="font-weight: 600;">
+                {{ p.student_name }}
+                <div style="font-size: 0.74rem; color: var(--text-dim);">{{ p.enrollment_no }}</div>
+              </td>
+              <td style="font-weight: 700; color: var(--color-success);">${{ "%.2f"|format(p.amount) }}</td>
+              <td><span class="badge-tag badge-info">{{ p.payment_method }}</span></td>
+              <td style="font-size: 0.82rem; color: var(--text-muted);">
+                {{ p.transaction_ref or 'Direct Payment' }}
+                {% if p.notes %}<div><em>{{ p.notes }}</em></div>{% endif %}
+              </td>
+              <td style="color: var(--text-muted);">{{ p.received_by }}</td>
+              <td style="font-size: 0.82rem; color: var(--text-dim);">{{ p.payment_date[:16].replace('T', ' ') }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-dim);">
+                No payment transactions recorded in ledger yet.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ISSUE NEW INVOICE -->
+<div class="modal-overlay" id="modal-generate-invoice">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Issue Student Fee Invoice</h3>
+      <button class="modal-close" onclick="closeModal('modal-generate-invoice')">&times;</button>
+    </div>
+    <form id="form-create-invoice" onsubmit="handleCreateInvoice(event)">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Student Recipient *</label>
+          <select name="student_id" id="inv-student-id" class="form-control" required>
+            <option value="">Select Enrolled Student...</option>
+            {% for s in students %}
+            <option value="{{ s.id }}">
+              {{ s.first_name }} {{ s.last_name }} ({{ s.enrollment_no }} - {{ s.department_code }})
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Academic Term *</label>
+            <input type="text" name="term_name" class="form-control" value="Fall 2026" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Total Amount ($) *</label>
+            <input type="number" step="0.01" min="1" name="total_amount" class="form-control" placeholder="1500.00" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Invoice Title / Description *</label>
+          <input type="text" name="title" class="form-control" value="Semester Tuition & Academic Services" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Payment Due Date *</label>
+          <input type="date" name="due_date" id="inv-due-date" class="form-control" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-generate-invoice')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Generate Invoice</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: RECORD PAYMENT -->
+<div class="modal-overlay" id="modal-record-payment">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Record Fee Payment</h3>
+      <button class="modal-close" onclick="closeModal('modal-record-payment')">&times;</button>
+    </div>
+    <form id="form-record-payment" onsubmit="handleRecordPayment(event)">
+      <div class="modal-body">
+        <input type="hidden" name="invoice_id" id="pay-invoice-id">
+
+        <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: var(--radius-md); padding: 14px; margin-bottom: 18px;">
+          <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--accent-primary); font-weight: 700;">Invoice Reference</div>
+          <div id="pay-invoice-info" style="font-weight: 600; font-size: 1.05rem; margin-top: 4px;">-</div>
+          <div style="margin-top: 6px; font-size: 0.88rem; color: var(--text-muted);">
+            Outstanding Balance: <span id="pay-balance-display" style="font-weight: 700; color: var(--color-danger);">$0.00</span>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Amount to Collect ($) *</label>
+            <input type="number" step="0.01" min="0.01" name="amount" id="pay-amount-input" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Payment Method *</label>
+            <select name="payment_method" class="form-control" required>
+              <option value="ONLINE">ONLINE (Card / Gateway)</option>
+              <option value="UPI">UPI / Instant Pay</option>
+              <option value="BANK_TRANSFER">Bank Wire / Transfer</option>
+              <option value="CASH">Cash at Counter</option>
+              <option value="CHEQUE">Bank Cheque / DD</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Transaction Reference #</label>
+          <input type="text" name="transaction_ref" class="form-control" placeholder="TXN-99882244 or Cheque #">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notes / Remarks</label>
+          <input type="text" name="notes" class="form-control" placeholder="Bursar notes, installment plan remark...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-record-payment')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Process Payment Receipt</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: DEFINE FEE STRUCTURE -->
+<div class="modal-overlay" id="modal-create-structure">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Define Department Fee Schedule</h3>
+      <button class="modal-close" onclick="closeModal('modal-create-structure')">&times;</button>
+    </div>
+    <form id="form-create-structure" onsubmit="handleCreateStructure(event)">
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Department *</label>
+            <select name="department_id" class="form-control" required>
+              <option value="">Select Department...</option>
+              {% for d in departments %}
+              <option value="{{ d.id }}">{{ d.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Semester *</label>
+            <select name="semester" class="form-control" required>
+              {% for s in range(1, 9) %}
+              <option value="{{ s }}">Semester {{ s }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Fee Classification *</label>
+            <input type="text" name="fee_type" class="form-control" placeholder="Tuition, Lab Fee, Campus Services" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Scheduled Amount ($) *</label>
+            <input type="number" step="0.01" min="0" name="amount" class="form-control" placeholder="1200.00" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Academic Year *</label>
+          <input type="text" name="academic_year" class="form-control" value="2026-2027" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-create-structure')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Fee Schedule</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: INVOICE DOSSIER & RECEIPT AUDIT -->
+<div class="modal-overlay" id="modal-invoice-detail">
+  <div class="modal-card" style="max-width: 680px;">
+    <div class="modal-header">
+      <h3 id="dossier-title">Invoice Dossier</h3>
+      <button class="modal-close" onclick="closeModal('modal-invoice-detail')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="dossier-body">
+        <p style="text-align: center; color: var(--text-dim);">Loading dossier details...</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-invoice-detail')">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Set default due date to 30 days in future
+  document.addEventListener('DOMContentLoaded', () => {
+    const dueInput = document.getElementById('inv-due-date');
+    if (dueInput) {
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      dueInput.value = d.toISOString().split('T')[0];
+    }
+  });
+
+  function switchFinanceTab(tabName) {
+    document.getElementById('section-invoices').style.display = tabName === 'invoices' ? 'block' : 'none';
+    document.getElementById('section-structures').style.display = tabName === 'structures' ? 'block' : 'none';
+    document.getElementById('section-ledger').style.display = tabName === 'ledger' ? 'block' : 'none';
+
+    document.getElementById('tab-btn-invoices').className = tabName === 'invoices' ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm';
+    document.getElementById('tab-btn-structures').className = tabName === 'structures' ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm';
+    document.getElementById('tab-btn-ledger').className = tabName === 'ledger' ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm';
+  }
+
+  function openPaymentModal(invoiceId, invoiceNo, studentName, balance) {
+    document.getElementById('pay-invoice-id').value = invoiceId;
+    document.getElementById('pay-invoice-info').textContent = `${invoiceNo} • ${studentName}`;
+    document.getElementById('pay-balance-display').textContent = `$${balance.toFixed(2)}`;
+    document.getElementById('pay-amount-input').value = balance.toFixed(2);
+    document.getElementById('pay-amount-input').max = balance.toFixed(2);
+    openModal('modal-record-payment');
+  }
+
+  async function handleCreateInvoice(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+
+    const payload = {
+      student_id: parseInt(formData.get('student_id')),
+      title: formData.get('title'),
+      term_name: formData.get('term_name'),
+      total_amount: parseFloat(formData.get('total_amount')),
+      due_date: formData.get('due_date')
+    };
+
+    try {
+      const res = await fetch('/api/finance/invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.detail || 'Failed to issue invoice.', 'error');
+        return;
+      }
+      showToast(`Invoice ${data.invoice_no} issued successfully!`, 'success');
+      closeModal('modal-generate-invoice');
+      setTimeout(() => window.location.reload(), 700);
+    } catch (err) {
+      showToast('Network error while creating invoice.', 'error');
+    }
+  }
+
+  async function handleRecordPayment(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+
+    const payload = {
+      invoice_id: parseInt(formData.get('invoice_id')),
+      amount: parseFloat(formData.get('amount')),
+      payment_method: formData.get('payment_method'),
+      transaction_ref: formData.get('transaction_ref') || null,
+      notes: formData.get('notes') || null
+    };
+
+    try {
+      const res = await fetch('/api/finance/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.detail || 'Payment could not be recorded.', 'error');
+        return;
+      }
+      showToast(`Receipt ${data.payment_no} generated! Payment recorded.`, 'success');
+      closeModal('modal-record-payment');
+      setTimeout(() => window.location.reload(), 700);
+    } catch (err) {
+      showToast('Network error while processing payment.', 'error');
+    }
+  }
+
+  async function handleCreateStructure(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+
+    const payload = {
+      department_id: parseInt(formData.get('department_id')),
+      semester: parseInt(formData.get('semester')),
+      fee_type: formData.get('fee_type'),
+      amount: parseFloat(formData.get('amount')),
+      academic_year: formData.get('academic_year')
+    };
+
+    try {
+      const res = await fetch('/api/finance/fee-structures', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.detail || 'Failed to create fee schedule.', 'error');
+        return;
+      }
+      showToast('Fee schedule saved successfully!', 'success');
+      closeModal('modal-create-structure');
+      setTimeout(() => window.location.reload(), 700);
+    } catch (err) {
+      showToast('Network error while saving fee schedule.', 'error');
+    }
+  }
+
+  async function viewInvoiceDossier(invoiceId) {
+    const container = document.getElementById('dossier-body');
+    container.innerHTML = '<p style="text-align: center; color: var(--text-dim); padding: 24px;">Loading dossier details...</p>';
+    openModal('modal-invoice-detail');
+
+    try {
+      const res = await fetch(`/api/finance/invoices/${invoiceId}`);
+      if (!res.ok) {
+        container.innerHTML = '<p style="color: var(--color-danger); text-align: center;">Failed to load invoice dossier.</p>';
+        return;
+      }
+      const inv = await res.json();
+      document.getElementById('dossier-title').textContent = `Dossier: ${inv.invoice_no}`;
+
+      let paymentRows = '';
+      if (inv.payments && inv.payments.length > 0) {
+        paymentRows = inv.payments.map(p => `
+          <tr>
+            <td style="font-family: monospace; font-weight: 700; color: #10b981;">${p.payment_no}</td>
+            <td style="font-weight: 600;">$${p.amount.toFixed(2)}</td>
+            <td><span class="badge-tag badge-info">${p.payment_method}</span></td>
+            <td style="font-size: 0.8rem; color: var(--text-muted);">${p.payment_date ? p.payment_date.substring(0, 16).replace('T', ' ') : ''}</td>
+          </tr>
+        `).join('');
+      } else {
+        paymentRows = '<tr><td colspan="4" style="text-align: center; color: var(--text-dim); padding: 18px;">No payments recorded against this invoice yet.</td></tr>';
+      }
+
+      container.innerHTML = `
+        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 18px; margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <div style="font-size: 1.25rem; font-weight: 700; color: var(--accent-primary);">${inv.invoice_no}</div>
+              <div style="font-weight: 600; margin-top: 4px;">${inv.student_name} (${inv.enrollment_no || 'ID: ' + inv.student_id})</div>
+              <div style="font-size: 0.82rem; color: var(--text-muted);">${inv.department_name || ''}</div>
+            </div>
+            <div>
+              <span class="badge-tag ${inv.status === 'PAID' ? 'badge-success' : (inv.status === 'OVERDUE' ? 'badge-danger' : 'badge-warning')}">${inv.status}</span>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; border-top: 1px solid var(--border-subtle); padding-top: 14px;">
+            <div>
+              <div style="font-size: 0.74rem; color: var(--text-dim); text-transform: uppercase;">Total Billed</div>
+              <div style="font-size: 1.1rem; font-weight: 700;">$${inv.total_amount.toFixed(2)}</div>
+            </div>
+            <div>
+              <div style="font-size: 0.74rem; color: var(--text-dim); text-transform: uppercase;">Paid to Date</div>
+              <div style="font-size: 1.1rem; font-weight: 700; color: #10b981;">$${inv.paid_amount.toFixed(2)}</div>
+            </div>
+            <div>
+              <div style="font-size: 0.74rem; color: var(--text-dim); text-transform: uppercase;">Balance Due</div>
+              <div style="font-size: 1.1rem; font-weight: 700; color: ${inv.balance_amount > 0 ? '#ef4444' : 'var(--text-muted)'};">$${inv.balance_amount.toFixed(2)}</div>
+            </div>
+          </div>
+          <div style="margin-top: 12px; font-size: 0.82rem; color: var(--text-muted);">
+            Due Date: <strong>${inv.due_date}</strong> • Issued: ${inv.issued_date}
+          </div>
+        </div>
+
+        <h4 style="font-size: 0.95rem; margin-bottom: 10px;">Payment Receipts (${inv.payments ? inv.payments.length : 0})</h4>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Receipt #</th>
+                <th>Amount</th>
+                <th>Method</th>
+                <th>Recorded At</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${paymentRows}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } catch (err) {
+      container.innerHTML = '<p style="color: var(--color-danger); text-align: center;">Error fetching invoice dossier.</p>';
+    }
+  }
+</script>
+{% endblock %}

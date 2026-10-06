@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=65.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "institute-management-system"
+version = "1.0.0"
+description = "Modular Educational Enterprise Management, Admissions, Academic Schedules & Financial Audit Platform"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Aaditya Bhure" }]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]
+ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*" = ["E402"]
+

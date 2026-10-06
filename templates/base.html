@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Institute Management System{% endblock %} | IMS Portal</title>
+  <meta name="description" content="Next-Generation Educational Administration, Admissions & Academic Operations Platform">
+  <link rel="stylesheet" href="/static/css/style.css">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="app-sidebar">
+      <div class="brand-section">
+        <div class="brand-logo">🏛️</div>
+        <div class="brand-text">
+          <h1>IMS Enterprise</h1>
+          <p>Academic Portal</p>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <div class="nav-label">Core Operations</div>
+        <a href="/" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}" id="nav-dashboard">
+          <span class="nav-icon">📊</span>
+          <span>Overview Dashboard</span>
+        </a>
+        <a href="/students" class="nav-item {% if active_page == 'students' %}active{% endif %}" id="nav-students">
+          <span class="nav-icon">🎓</span>
+          <span>Admissions & Registry</span>
+        </a>
+        <a href="/courses" class="nav-item {% if active_page == 'courses' %}active{% endif %}" id="nav-courses">
+          <span class="nav-icon">📚</span>
+          <span>Faculty & Courses</span>
+        </a>
+
+        <div class="nav-label">Academic Evaluation</div>
+        <a href="/academics" class="nav-item {% if active_page == 'academics' %}active{% endif %}" id="nav-academics">
+          <span class="nav-icon">📝</span>
+          <span>Attendance & Exams</span>
+        </a>
+
+        <div class="nav-label">Administration</div>
+        <a href="/finance" class="nav-item {% if active_page == 'finance' %}active{% endif %}" id="nav-finance">
+          <span class="nav-icon">💳</span>
+          <span>Fee Invoicing & Audit</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="system-status">
+          <span class="status-dot"></span>
+          <span>System Healthy • v1.0</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Stream -->
+    <div class="app-main">
+      <header class="app-header">
+        <div class="header-left">
+          <h2>{% block header_title %}Overview Dashboard{% endblock %}</h2>
+          <p>{% block header_subtitle %}Real-time administrative telemetry and key operations{% endblock %}</p>
+        </div>
+        <div class="header-right">
+          <span class="badge-tag badge-success">● Term: 2026-27</span>
+          {% block header_actions %}{% endblock %}
+        </div>
+      </header>
+
+      <main class="content-wrapper">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="/static/js/app.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

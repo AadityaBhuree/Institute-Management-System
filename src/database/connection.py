@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator
 
-import src.core.config as config
+import src.core.config as config  # pyright: ignore[reportMissingImports] # type: ignore
 
 
 def get_connection(db_path: Path | str | None = None) -> sqlite3.Connection:

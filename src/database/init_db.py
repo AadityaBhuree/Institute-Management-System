@@ -4,8 +4,11 @@ Executes the schema and inserts baseline institutional departments if not presen
 
 from pathlib import Path
 
-from src.core.config import DB_PATH
-from src.database.connection import get_connection, transaction
+from src.core.config import DB_PATH  # pyright: ignore[reportMissingImports] # type: ignore
+from src.database.connection import (  # pyright: ignore[reportMissingImports] # type: ignore
+    get_connection,
+    transaction,
+)
 
 SCHEMA_FILE = Path(__file__).parent / "schema.sql"
 

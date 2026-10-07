@@ -187,4 +187,9 @@ data/
 *.db-shm
 *.sqlite
 *.sqlite3
-*.sqlite3-journal
+*.sqlite3-journal
+
+# Virtual Environments
+.venv/
+venv/
+env/

@@ -6,7 +6,7 @@ import sqlite3
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Optional
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -27,6 +27,7 @@ from src.core.config import (
 )
 from src.database.connection import get_db
 from src.database.init_db import init_database
+from src.models.department import DepartmentCreate
 from src.services.academics_service import AcademicsService
 from src.services.course_service import CourseService
 from src.services.dashboard_service import DashboardService
@@ -35,6 +36,8 @@ from src.services.faculty_service import FacultyService
 from src.services.finance_service import FinanceService
 from src.services.reports_service import ReportsService
 from src.services.student_service import StudentService
+from src.services.system_service import SystemService
+
 
 
 @asynccontextmanager
@@ -89,6 +92,34 @@ def health_check(conn: sqlite3.Connection = Depends(get_db)) -> dict:
 def list_departments(conn: sqlite3.Connection = Depends(get_db)):
     """Retrieve all academic departments."""
     return DepartmentService.list_all(conn)
+
+
+@app.post("/api/departments", status_code=status.HTTP_201_CREATED, tags=["Departments"])
+def create_department(dept_in: DepartmentCreate, conn: sqlite3.Connection = Depends(get_db)):
+    """Create a new academic department."""
+    try:
+        return DepartmentService.create(conn, dept_in)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+
+@app.get("/api/system/telemetry", tags=["System"])
+def get_system_telemetry(conn: sqlite3.Connection = Depends(get_db)):
+    """Retrieve system diagnostics, database size, and table telemetry."""
+    return SystemService.get_system_telemetry(conn)
+
+
+@app.post("/api/system/backup", tags=["System"])
+def create_system_backup(conn: sqlite3.Connection = Depends(get_db)):
+    """Perform hot online SQLite database backup snapshot."""
+    return SystemService.create_backup(conn)
+
+
+@app.get("/api/system/backups", tags=["System"])
+def list_system_backups():
+    """List all available database snapshots in data/backups/."""
+    return SystemService.list_backups()
+
 
 
 @app.get("/api/dashboard/stats", tags=["Dashboard"])
@@ -323,5 +354,25 @@ def view_reports_page(
             "selected_dept": department_id,
         },
     )
+
+
+@app.get("/settings", response_class=HTMLResponse, tags=["Web"])
+def view_settings_page(
+    request: Request,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Render administrative settings, department configuration, and database backup engine."""
+    telemetry = SystemService.get_system_telemetry(conn)
+    departments = DepartmentService.list_all(conn)
+    return templates.TemplateResponse(
+        request=request,
+        name="settings.html",
+        context={
+            "active_page": "settings",
+            "telemetry": telemetry,
+            "departments": departments,
+        },
+    )
+
 
 

@@ -133,3 +133,59 @@ def test_view_reports_html_page(client):
     assert "Attendance Risk Sentinel" in html
     assert "Department Matrix" in html
 
+
+def test_create_department_api(client):
+    """Verify creating a new department via REST API."""
+    payload = {
+        "code": "AIDS",
+        "name": "Artificial Intelligence & Data Science",
+        "description": "Next-gen machine learning and big data systems",
+    }
+    response = client.post("/api/departments", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["code"] == "AIDS"
+    assert data["name"] == "Artificial Intelligence & Data Science"
+
+
+def test_system_telemetry_api(client):
+    """Verify system diagnostics and telemetry endpoint."""
+    response = client.get("/api/system/telemetry")
+    assert response.status_code == 200
+    data = response.json()
+    assert "app_name" in data
+    assert "app_version" in data
+    assert "db_size_kb" in data
+    assert "integrity_status" in data
+    assert "table_stats" in data
+    assert "students" in data["table_stats"]
+
+
+def test_system_database_backup_flow(client):
+    """Verify hot online database backup generation and retrieval."""
+    backup_res = client.post("/api/system/backup")
+    assert backup_res.status_code == 200
+    backup_data = backup_res.json()
+    assert backup_data["status"] == "SUCCESS"
+    assert backup_data["filename"].startswith("ims_backup_")
+    assert backup_data["size_kb"] > 0
+
+    list_res = client.get("/api/system/backups")
+    assert list_res.status_code == 200
+    snapshots = list_res.json()
+    assert len(snapshots) >= 1
+    assert any(s["filename"] == backup_data["filename"] for s in snapshots)
+
+
+def test_view_settings_html_page(client):
+    """Verify HTML rendering of system settings and backup page."""
+    response = client.get("/settings")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    html = response.text
+    assert "System Settings & Diagnostics" in html
+    assert "Database Backup Engine" in html
+    assert "Academic Departments" in html
+    assert "Relational Schema Telemetry" in html
+
+

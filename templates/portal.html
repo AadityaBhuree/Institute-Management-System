@@ -1,0 +1,369 @@
+{% extends "base.html" %}
+
+{% block title %}Student Self-Service Portal{% endblock %}
+{% block header_title %}Student Academic Portal{% endblock %}
+{% block header_subtitle %}Scholar self-service dossier, attendance tracking, examination grades, and fee ledger{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-secondary btn-sm" onclick="window.print()" id="btn-print-dossier">
+  <span>🖨️ Print Dossier</span>
+</button>
+<a href="/students" class="btn btn-primary btn-sm">
+  <span>🎓 Student Registry</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Scholar Switcher Bar -->
+<div class="card" style="margin-bottom: 24px; padding: 18px 24px;">
+  <form method="GET" action="/portal" style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+    <div style="flex: 2; min-width: 260px;">
+      <label class="form-label">Select Active Scholar</label>
+      <select name="student_id" id="select-portal-student" class="form-control" onchange="this.form.submit()">
+        {% for s in all_students %}
+        <option value="{{ s.id }}" {% if selected_student_id == s.id %}selected{% endif %}>
+          {{ s.enrollment_no }} — {{ s.first_name }} {{ s.last_name }} ({{ s.department_code }}, Sem {{ s.current_semester }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="flex: 1; min-width: 200px;">
+      <label class="form-label">Or Search by Name / ID</label>
+      <input type="text" name="search" id="input-portal-search" class="form-control" placeholder="Search enrollment or name..." value="{{ search }}">
+    </div>
+
+    <div>
+      <button type="submit" class="btn btn-primary" id="btn-load-scholar">Load Scholar</button>
+    </div>
+  </form>
+</div>
+
+{% if dossier and dossier.student %}
+{% set s = dossier.student %}
+{% set att = dossier.attendance %}
+{% set acad = dossier.academics %}
+{% set fin = dossier.finance %}
+
+<!-- Scholar Identity Banner -->
+<div class="card" style="margin-bottom: 24px; padding: 24px; background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%);">
+  <div style="display: flex; gap: 24px; align-items: center; flex-wrap: wrap;">
+    <div style="width: 76px; height: 76px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-primary) 0%, #0ea5e9 100%); display: flex; align-items: center; justify-content: center; font-size: 2.2rem; box-shadow: var(--shadow-glow);">
+      🎓
+    </div>
+    <div style="flex: 1; min-width: 260px;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--text-main);">{{ s.first_name }} {{ s.last_name }}</h2>
+        <span class="badge-tag {% if s.status == 'ENROLLED' %}badge-success{% elif s.status == 'PROBATION' %}badge-danger{% else %}badge-info{% endif %}">
+          {{ s.status }}
+        </span>
+      </div>
+      <div style="display: flex; gap: 18px; flex-wrap: wrap; color: var(--text-muted); font-size: 0.9rem;">
+        <span><strong>ID:</strong> <code style="color: var(--accent-primary);">{{ s.enrollment_no }}</code></span>
+        <span><strong>Dept:</strong> {{ s.department_name }} ({{ s.department_code }})</span>
+        <span><strong>Semester:</strong> Term {{ s.current_semester }}</span>
+        <span><strong>Email:</strong> {{ s.email }}</span>
+        {% if s.phone %}<span><strong>Phone:</strong> {{ s.phone }}</span>{% endif %}
+      </div>
+    </div>
+    <div>
+      <span class="badge-tag badge-info" style="font-size: 0.85rem; padding: 6px 14px;">
+        Admitted: {{ s.admission_date }}
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- 4 Key Telemetry Metrics -->
+<div class="metrics-grid" style="margin-bottom: 24px;">
+  <!-- Attendance Metric -->
+  <div class="metric-card {% if att.is_low_attendance %}card-border-danger{% endif %}">
+    <div class="metric-header">
+      <span class="metric-title">Overall Attendance</span>
+      <span class="metric-icon">📅</span>
+    </div>
+    <div class="metric-value" style="color: {% if att.attendance_pct >= 85 %}var(--color-success){% elif att.attendance_pct >= 75 %}var(--color-warning){% else %}var(--color-danger){% endif %};">
+      {{ att.attendance_pct }}%
+    </div>
+    <div class="metric-footer">
+      <span>{{ att.present_count + att.late_count }} / {{ att.total_sessions }} sessions present</span>
+      {% if att.is_low_attendance %}
+      <span class="badge-tag badge-danger">⚠️ Risk &lt; 75%</span>
+      {% else %}
+      <span class="badge-tag badge-success">Good Standing</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Course Credits Metric -->
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Enrolled Courses</span>
+      <span class="metric-icon">📚</span>
+    </div>
+    <div class="metric-value">{{ dossier.enrollments|length }}</div>
+    <div class="metric-footer">
+      <span>Total Academic Credits:</span>
+      <span class="badge-tag badge-info">{{ dossier.total_credits }} Credits</span>
+    </div>
+  </div>
+
+  <!-- Exam Performance Metric -->
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Exam Evaluation</span>
+      <span class="metric-icon">📝</span>
+    </div>
+    <div class="metric-value">{{ acad.average_grade_pct }}%</div>
+    <div class="metric-footer">
+      <span>{{ acad.exams_taken }} examinations recorded</span>
+      <span class="badge-tag badge-success">Evaluated</span>
+    </div>
+  </div>
+
+  <!-- Fee Clearance Metric -->
+  <div class="metric-card {% if not fin.is_settled %}card-border-warning{% endif %}">
+    <div class="metric-header">
+      <span class="metric-title">Outstanding Fee Balance</span>
+      <span class="metric-icon">💳</span>
+    </div>
+    <div class="metric-value" style="color: {% if fin.is_settled %}var(--color-success){% else %}var(--color-warning){% endif %};">
+      ${{ "%.2f"|format(fin.balance_outstanding) }}
+    </div>
+    <div class="metric-footer">
+      <span>Billed: ${{ "%.2f"|format(fin.total_invoiced) }} | Paid: ${{ "%.2f"|format(fin.total_paid) }}</span>
+      {% if fin.is_settled %}
+      <span class="badge-tag badge-success">Settled</span>
+      {% else %}
+      <span class="badge-tag badge-warning">Dues Pending</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Tabs for Structured Dossier Sections -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 24px; margin-bottom: 24px;">
+  <!-- Course Enrollments Table -->
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 style="font-size: 1.05rem; font-weight: 700;">📖 Registered Curriculum ({{ dossier.enrollments|length }})</h3>
+      <span class="badge-tag badge-info">{{ dossier.total_credits }} Total Credits</span>
+    </div>
+
+    {% if dossier.enrollments %}
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Course Code</th>
+            <th>Title</th>
+            <th>Credits</th>
+            <th>Instructor</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in dossier.enrollments %}
+          <tr>
+            <td><code>{{ c.course_code }}</code></td>
+            <td style="font-weight: 600;">{{ c.course_title }}</td>
+            <td><span class="badge-tag badge-info">{{ c.credits }} Cr</span></td>
+            <td style="color: var(--text-muted);">
+              {% if c.instructor_first %}
+              Prof. {{ c.instructor_first }} {{ c.instructor_last }}
+              {% else %}
+              <span style="color: var(--text-dim);">TBA</span>
+              {% endif %}
+            </td>
+            <td><span class="badge-tag badge-success">{{ c.enrollment_status }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p style="color: var(--text-muted); padding: 18px 0; text-align: center;">No course enrollments registered for this semester.</p>
+    {% endif %}
+  </div>
+
+  <!-- Examination Results & Grade Card -->
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 style="font-size: 1.05rem; font-weight: 700;">🏅 Examination Grade Card</h3>
+      <span class="badge-tag badge-success">Avg: {{ acad.average_grade_pct }}%</span>
+    </div>
+
+    {% if acad.exam_results %}
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Exam Title</th>
+            <th>Course</th>
+            <th>Marks</th>
+            <th>Grade</th>
+            <th>Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in acad.exam_results %}
+          <tr>
+            <td>
+              <div style="font-weight: 600;">{{ r.exam_title }}</div>
+              <div style="font-size: 0.75rem; color: var(--text-dim);">{{ r.exam_type }} • {{ r.exam_date }}</div>
+            </td>
+            <td><code>{{ r.course_code }}</code></td>
+            <td>
+              <strong>{{ r.marks_obtained }}</strong> / {{ r.max_marks }}
+              <span style="font-size: 0.8rem; color: var(--text-muted);">({{ r.percentage }}%)</span>
+            </td>
+            <td>
+              <span class="badge-tag {% if r.letter_grade in ['A+', 'A'] %}badge-success{% elif r.letter_grade in ['B', 'C'] %}badge-info{% elif r.letter_grade == 'D' %}badge-warning{% else %}badge-danger{% endif %}" style="font-weight: 800;">
+                {{ r.letter_grade }}
+              </span>
+            </td>
+            <td style="color: var(--text-muted); font-size: 0.85rem;">{{ r.remarks or 'Satisfactory' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p style="color: var(--text-muted); padding: 18px 0; text-align: center;">No examination scores evaluated yet.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Attendance Breakdown & Financial Statements -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 24px;">
+  <!-- Attendance History & Status Counts -->
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 style="font-size: 1.05rem; font-weight: 700;">⏱️ Attendance Registry Logs</h3>
+      <span class="badge-tag {% if att.attendance_pct >= 75 %}badge-success{% else %}badge-danger{% endif %}">{{ att.attendance_pct }}% Rate</span>
+    </div>
+
+    <!-- Attendance Breakdown Pills -->
+    <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+      <span class="badge-tag badge-success">Present: {{ att.present_count }}</span>
+      <span class="badge-tag badge-warning">Late: {{ att.late_count }}</span>
+      <span class="badge-tag badge-danger">Absent: {{ att.absent_count }}</span>
+      <span class="badge-tag badge-info">Excused: {{ att.excused_count }}</span>
+    </div>
+
+    {% if att.recent_logs %}
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Course</th>
+            <th>Session Status</th>
+            <th>Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in att.recent_logs %}
+          <tr>
+            <td>{{ a.date }}</td>
+            <td><code>{{ a.course_code }}</code></td>
+            <td>
+              <span class="badge-tag {% if a.status == 'PRESENT' %}badge-success{% elif a.status == 'LATE' %}badge-warning{% elif a.status == 'EXCUSED' %}badge-info{% else %}badge-danger{% endif %}">
+                {{ a.status }}
+              </span>
+            </td>
+            <td style="color: var(--text-muted); font-size: 0.85rem;">{{ a.remarks or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p style="color: var(--text-muted); padding: 18px 0; text-align: center;">No daily attendance records found.</p>
+    {% endif %}
+  </div>
+
+  <!-- Financial Invoices & Payment Receipts -->
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 style="font-size: 1.05rem; font-weight: 700;">💳 Fee Invoicing & Receipts</h3>
+      <span class="badge-tag {% if fin.is_settled %}badge-success{% else %}badge-warning{% endif %}">
+        {% if fin.is_settled %}All Settled{% else %}Due: ${{ "%.2f"|format(fin.balance_outstanding) }}{% endif %}
+      </span>
+    </div>
+
+    {% if fin.invoices %}
+    <div class="table-container" style="margin-bottom: 16px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Invoice No</th>
+            <th>Total</th>
+            <th>Paid</th>
+            <th>Balance</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inv in fin.invoices %}
+          <tr>
+            <td><code>{{ inv.invoice_no }}</code></td>
+            <td>${{ "%.2f"|format(inv.total_amount) }}</td>
+            <td style="color: var(--color-success);">${{ "%.2f"|format(inv.paid_amount) }}</td>
+            <td style="color: {% if inv.balance_amount > 0 %}var(--color-danger){% else %}var(--color-success){% endif %}; font-weight: 700;">
+              ${{ "%.2f"|format(inv.balance_amount) }}
+            </td>
+            <td>
+              <span class="badge-tag {% if inv.status == 'PAID' %}badge-success{% elif inv.status == 'PARTIAL' %}badge-warning{% else %}badge-danger{% endif %}">
+                {{ inv.status }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if fin.payments %}
+    <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 8px; color: var(--text-muted);">Payment Receipts Ledger</h4>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Receipt No</th>
+            <th>Amount</th>
+            <th>Method</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in fin.payments %}
+          <tr>
+            <td><code style="color: var(--color-success);">{{ p.receipt_no }}</code></td>
+            <td style="font-weight: 700;">${{ "%.2f"|format(p.amount_paid) }}</td>
+            <td><span class="badge-tag badge-info">{{ p.payment_method }}</span></td>
+            <td style="color: var(--text-muted); font-size: 0.85rem;">{{ p.payment_date }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <p style="color: var(--text-muted); padding: 18px 0; text-align: center;">No fee invoices issued for this scholar.</p>
+    {% endif %}
+  </div>
+</div>
+
+{% else %}
+<div class="card" style="text-align: center; padding: 48px 24px;">
+  <span style="font-size: 3rem;">🔍</span>
+  <h3 style="margin-top: 16px; font-weight: 700;">No Scholar Selected</h3>
+  <p style="color: var(--text-muted); max-width: 450px; margin: 8px auto 20px;">
+    Please select a registered scholar from the switcher above or search by enrollment number to inspect the academic self-service portal.
+  </p>
+  <a href="/students" class="btn btn-primary">Go to Admissions Registry</a>
+</div>
+{% endif %}
+{% endblock %}

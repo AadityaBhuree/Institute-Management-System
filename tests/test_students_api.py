@@ -165,3 +165,37 @@ def test_view_students_html_page(client):
     assert "Admissions & Student Registry" in html
     assert "Register Admission" in html
     assert "IMS-2026-" in html
+
+
+def test_student_portal_dossier_api(client):
+    """Verify student portal dossier API aggregation."""
+    search_res = client.get("/api/students?search=Aarav")
+    student_id = search_res.json()[0]["id"]
+
+    res = client.get(f"/api/students/{student_id}/portal-dossier")
+    assert res.status_code == 200
+    data = res.json()
+    assert "student" in data
+    assert data["student"]["id"] == student_id
+    assert "enrollments" in data
+    assert "attendance" in data
+    assert "academics" in data
+    assert "finance" in data
+    assert "attendance_pct" in data["attendance"]
+    assert "average_grade_pct" in data["academics"]
+
+    # Nonexistent student
+    res_404 = client.get("/api/students/999999/portal-dossier")
+    assert res_404.status_code == 404
+
+
+def test_view_student_portal_html_page(client):
+    """Verify HTML rendering of student self-service portal."""
+    response = client.get("/portal")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    html = response.text
+    assert "Student Academic Portal" in html
+    assert "Overall Attendance" in html
+    assert "Registered Curriculum" in html
+

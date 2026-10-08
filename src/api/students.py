@@ -95,3 +95,19 @@ def delete_student(
             detail=f"Student with ID {student_id} not found.",
         )
     return {"message": "Student record successfully purged from registry.", "id": student_id}
+
+
+@router.get("/{student_id}/portal-dossier")
+def get_student_portal_dossier(
+    student_id: int,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Retrieve comprehensive academic, attendance, and fee dossier for scholar portal."""
+    dossier = StudentService.get_student_portal_dossier(conn, student_id)
+    if not dossier:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Student with ID {student_id} not found.",
+        )
+    return dossier
+

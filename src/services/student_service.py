@@ -177,3 +177,172 @@ class StudentService:
         status_counts = {r["status"]: r["count"] for r in cursor.fetchall()}
         cursor.close()
         return status_counts
+
+    @staticmethod
+    def get_student_portal_dossier(
+        conn: sqlite3.Connection, student_id: int
+    ) -> Optional[Dict[str, Any]]:
+        """Aggregate comprehensive scholar self-service portal dossier."""
+        student = StudentService.get_by_id(conn, student_id)
+        if not student:
+            return None
+
+        cursor = conn.cursor()
+
+        # 1. Enrolled Courses
+        cursor.execute(
+            """
+            SELECT
+                ce.id AS enrollment_id, ce.enrolled_at AS enrollment_date, ce.status AS enrollment_status,
+                c.id AS course_id, c.code AS course_code, c.title AS course_title,
+                c.credits, c.semester,
+                f.first_name AS instructor_first, f.last_name AS instructor_last,
+                f.designation AS instructor_role
+            FROM course_enrollments ce
+            JOIN courses c ON ce.course_id = c.id
+            LEFT JOIN faculty f ON c.instructor_id = f.id
+            WHERE ce.student_id = ?
+            ORDER BY c.semester ASC, c.code ASC;
+            """,
+            (student_id,),
+        )
+        enrollments = [dict(r) for r in cursor.fetchall()]
+        total_credits = sum(e["credits"] for e in enrollments)
+
+        # 2. Attendance Summary & Recent Logs
+        cursor.execute(
+            """
+            SELECT
+                status, COUNT(*) AS count
+            FROM attendance_records
+            WHERE student_id = ?
+            GROUP BY status;
+            """,
+            (student_id,),
+        )
+        att_counts = {r["status"]: r["count"] for r in cursor.fetchall()}
+        total_sessions = sum(att_counts.values())
+        present_count = att_counts.get("PRESENT", 0)
+        late_count = att_counts.get("LATE", 0)
+        absent_count = att_counts.get("ABSENT", 0)
+        excused_count = att_counts.get("EXCUSED", 0)
+
+        effective_present = present_count + late_count
+        attendance_pct = (
+            round((effective_present / total_sessions) * 100, 1)
+            if total_sessions > 0
+            else 100.0
+        )
+
+        cursor.execute(
+            """
+            SELECT
+                ar.id, ar.attendance_date AS date, ar.status, ar.remarks,
+                c.code AS course_code, c.title AS course_title
+            FROM attendance_records ar
+            JOIN courses c ON ar.course_id = c.id
+            WHERE ar.student_id = ?
+            ORDER BY ar.attendance_date DESC
+            LIMIT 10;
+            """,
+            (student_id,),
+        )
+        recent_attendance = [dict(r) for r in cursor.fetchall()]
+
+        # 3. Examination Results & Grades
+        cursor.execute(
+            """
+            SELECT
+                er.id, er.marks_obtained, er.grade_letter AS letter_grade, er.remarks,
+                e.title AS exam_title, e.exam_type, e.max_marks, e.exam_date AS exam_date,
+                c.code AS course_code, c.title AS course_title
+            FROM exam_results er
+            JOIN examinations e ON er.exam_id = e.id
+            JOIN courses c ON e.course_id = c.id
+            WHERE er.student_id = ?
+            ORDER BY e.exam_date DESC;
+            """,
+            (student_id,),
+        )
+        exam_results = []
+        total_marks_obtained = 0.0
+        total_max_marks = 0.0
+        for r in cursor.fetchall():
+            res_dict = dict(r)
+            marks_ob = float(res_dict["marks_obtained"])
+            max_m = float(res_dict["max_marks"])
+            pct = round((marks_ob / max_m) * 100, 1) if max_m > 0 else 0.0
+            res_dict["percentage"] = pct
+            total_marks_obtained += marks_ob
+            total_max_marks += max_m
+            exam_results.append(res_dict)
+
+        average_grade_pct = (
+            round((total_marks_obtained / total_max_marks) * 100, 1)
+            if total_max_marks > 0
+            else 0.0
+        )
+
+        # 4. Fee Account & Payments
+        cursor.execute(
+            """
+            SELECT
+                id, invoice_no, title, term_name, total_amount, paid_amount, balance_amount,
+                due_date, status, created_at
+            FROM fee_invoices
+            WHERE student_id = ?
+            ORDER BY created_at DESC;
+            """,
+            (student_id,),
+        )
+        invoices = [dict(r) for r in cursor.fetchall()]
+        total_invoiced = sum(float(i["total_amount"]) for i in invoices)
+        total_paid = sum(float(i["paid_amount"]) for i in invoices)
+        balance_outstanding = sum(float(i["balance_amount"]) for i in invoices)
+
+        cursor.execute(
+            """
+            SELECT
+                fp.id, fp.payment_no AS receipt_no, fp.amount AS amount_paid, fp.payment_method,
+                fp.transaction_ref AS transaction_reference, fp.payment_date,
+                fi.invoice_no
+            FROM fee_payments fp
+            JOIN fee_invoices fi ON fp.invoice_id = fi.id
+            WHERE fi.student_id = ?
+            ORDER BY fp.payment_date DESC;
+            """,
+            (student_id,),
+        )
+        payments = [dict(r) for r in cursor.fetchall()]
+
+        cursor.close()
+
+        return {
+            "student": student,
+            "enrollments": enrollments,
+            "total_credits": total_credits,
+            "attendance": {
+                "total_sessions": total_sessions,
+                "present_count": present_count,
+                "late_count": late_count,
+                "absent_count": absent_count,
+                "excused_count": excused_count,
+                "attendance_pct": attendance_pct,
+                "is_low_attendance": attendance_pct < 75.0,
+                "recent_logs": recent_attendance,
+            },
+            "academics": {
+                "exam_results": exam_results,
+                "exams_taken": len(exam_results),
+                "average_grade_pct": average_grade_pct,
+            },
+            "finance": {
+                "invoices": invoices,
+                "payments": payments,
+                "total_invoiced": total_invoiced,
+                "total_paid": total_paid,
+                "balance_outstanding": balance_outstanding,
+                "is_settled": balance_outstanding <= 0.0,
+            },
+        }
+

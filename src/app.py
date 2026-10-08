@@ -138,6 +138,42 @@ def view_students_page(
     )
 
 
+@app.get("/portal", response_class=HTMLResponse, tags=["Web"])
+def view_student_portal_page(
+    request: Request,
+    student_id: Optional[int] = None,
+    search: Optional[str] = None,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Render the student self-service academic portal and personal dossier."""
+    all_students = StudentService.list_students(conn, limit=100)
+
+    selected_id = student_id
+    if not selected_id and search:
+        matching = StudentService.list_students(conn, search=search, limit=1)
+        if matching:
+            selected_id = matching[0]["id"]
+
+    if not selected_id and all_students:
+        selected_id = all_students[0]["id"]
+
+    dossier = None
+    if selected_id:
+        dossier = StudentService.get_student_portal_dossier(conn, selected_id)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="portal.html",
+        context={
+            "active_page": "portal",
+            "dossier": dossier,
+            "all_students": all_students,
+            "selected_student_id": selected_id,
+            "search": search or "",
+        },
+    )
+
+
 @app.get("/courses", response_class=HTMLResponse, tags=["Web"])
 def view_courses_page(
     request: Request,

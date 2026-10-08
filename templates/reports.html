@@ -1,0 +1,424 @@
+{% extends "base.html" %}
+
+{% block title %}Institutional Reports & Analytics Hub{% endblock %}
+{% block header_title %}Reports & Analytics Hub{% endblock %}
+{% block header_subtitle %}Institutional intelligence, attendance risk sentinel, academic performance, and fiscal audits{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-secondary btn-sm" onclick="window.print()" id="btn-print-reports">
+  <span>🖨️ Export PDF / Print</span>
+</button>
+<a href="/finance" class="btn btn-primary btn-sm">
+  <span>💳 Finance Ledger</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Analytics Filter Toolbar -->
+<div class="card" style="margin-bottom: 24px; padding: 18px 24px;">
+  <form method="GET" action="/reports" style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+    <div style="flex: 2; min-width: 260px;">
+      <label class="form-label">Filter Department Domain</label>
+      <select name="department_id" id="select-reports-dept" class="form-control" onchange="this.form.submit()">
+        <option value="">All Academic Departments (Institutional Overview)</option>
+        {% for d in departments %}
+        <option value="{{ d.id }}" {% if selected_dept == d.id %}selected{% endif %}>
+          {{ d.code }} — {{ d.name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <a href="/reports" class="btn btn-secondary" id="btn-clear-reports-filter">Reset Filter</a>
+    </div>
+  </form>
+</div>
+
+<!-- 4 Executive Telemetry Metrics -->
+<div class="metrics-grid" style="margin-bottom: 24px;">
+  <!-- Overall Attendance -->
+  <div class="metric-card {% if summary.overall_attendance_pct < 75 %}card-border-danger{% endif %}">
+    <div class="metric-header">
+      <span class="metric-title">Institutional Attendance Rate</span>
+      <span class="metric-icon">📅</span>
+    </div>
+    <div class="metric-value" style="color: {% if summary.overall_attendance_pct >= 85 %}var(--color-success){% elif summary.overall_attendance_pct >= 75 %}var(--color-warning){% else %}var(--color-danger){% endif %};" id="stat-attendance-rate">
+      {{ summary.overall_attendance_pct }}%
+    </div>
+    <div class="metric-footer">
+      <span>{{ summary.total_attendance_sessions }} verified class sessions</span>
+      {% if summary.overall_attendance_pct >= 75 %}
+      <span class="badge-tag badge-success">Target Met</span>
+      {% else %}
+      <span class="badge-tag badge-danger">Below 75% Target</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Attendance Risk Sentinel -->
+  <div class="metric-card {% if summary.at_risk_students_count > 0 %}card-border-danger{% endif %}">
+    <div class="metric-header">
+      <span class="metric-title">At-Risk Attendance Scholars</span>
+      <span class="metric-icon">⚠️</span>
+    </div>
+    <div class="metric-value" style="color: {% if summary.at_risk_students_count == 0 %}var(--color-success){% else %}var(--color-danger){% endif %};" id="stat-at-risk-count">
+      {{ summary.at_risk_students_count }}
+    </div>
+    <div class="metric-footer">
+      <span>Scholars below 75% threshold</span>
+      {% if summary.at_risk_students_count > 0 %}
+      <span class="badge-tag badge-danger">Action Required</span>
+      {% else %}
+      <span class="badge-tag badge-success">Zero At-Risk</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Fee Recovery Efficiency -->
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Fee Recovery Rate</span>
+      <span class="metric-icon">💳</span>
+    </div>
+    <div class="metric-value" style="color: var(--accent-primary);" id="stat-recovery-rate">
+      {{ summary.collection_rate_pct }}%
+    </div>
+    <div class="metric-footer">
+      <span>${{ "{:,.2f}".format(summary.total_collected) }} collected</span>
+      <span class="badge-tag {% if summary.collection_rate_pct >= 80 %}badge-success{% else %}badge-warning{% endif %}">
+        ${{ "{:,.2f}".format(summary.total_outstanding) }} Due
+      </span>
+    </div>
+  </div>
+
+  <!-- Academic Average Score -->
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Exam Performance Index</span>
+      <span class="metric-icon">🎯</span>
+    </div>
+    <div class="metric-value" style="color: var(--accent-secondary);" id="stat-avg-score">
+      {{ summary.avg_score_pct }}%
+    </div>
+    <div class="metric-footer">
+      <span>Average score across exams</span>
+      <span class="badge-tag badge-info">{{ summary.total_evaluations }} graded</span>
+    </div>
+  </div>
+</div>
+
+<!-- Navigation Tabs for Analytics Hub -->
+<div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; flex-wrap: wrap;">
+  <button class="btn btn-primary btn-sm tab-btn active" onclick="switchReportsTab('tab-sentinel', this)" id="tab-btn-sentinel">
+    ⚠️ Attendance Risk Sentinel ({{ summary.at_risk_students_count }})
+  </button>
+  <button class="btn btn-secondary btn-sm tab-btn" onclick="switchReportsTab('tab-departments', this)" id="tab-btn-departments">
+    🏛️ Departmental Breakdown
+  </button>
+  <button class="btn btn-secondary btn-sm tab-btn" onclick="switchReportsTab('tab-grades', this)" id="tab-btn-grades">
+    📊 Grade Distribution & Exams
+  </button>
+  <button class="btn btn-secondary btn-sm tab-btn" onclick="switchReportsTab('tab-finance', this)" id="tab-btn-finance">
+    💰 Fiscal Recovery Audit
+  </button>
+</div>
+
+<!-- TAB 1: Attendance Risk Sentinel -->
+<div id="tab-sentinel" class="reports-tab-panel">
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <h3 class="card-title">Low Attendance Risk Sentinel (&lt; 75% Threshold)</h3>
+        <p class="card-subtitle">Active alerts for students facing institutional debarment or academic probation</p>
+      </div>
+      <div>
+        <span class="badge-tag badge-danger">{{ summary.at_risk_students_count }} Scholars Flagged</span>
+      </div>
+    </div>
+
+    {% if summary.at_risk_scholars %}
+    <div class="table-container">
+      <table class="data-table" id="table-at-risk-scholars">
+        <thead>
+          <tr>
+            <th>Enrollment No</th>
+            <th>Scholar Name</th>
+            <th>Department</th>
+            <th>Term</th>
+            <th>Attended / Total</th>
+            <th>Attendance %</th>
+            <th>Risk Level</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in summary.at_risk_scholars %}
+          <tr>
+            <td><strong><code>{{ r.enrollment_no }}</code></strong></td>
+            <td>
+              <div style="font-weight: 600;">{{ r.first_name }} {{ r.last_name }}</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);"><a href="mailto:{{ r.email }}" style="color: inherit; text-decoration: none;">{{ r.email }}</a></div>
+            </td>
+            <td><span class="badge-tag badge-info">{{ r.department_code }}</span></td>
+            <td>Sem {{ r.current_semester }}</td>
+            <td>{{ r.attended_sessions }} / {{ r.total_sessions }}</td>
+            <td>
+              <strong style="color: {% if r.attendance_pct < 60 %}var(--color-danger){% else %}var(--color-warning){% endif %}; font-size: 1.05rem;">
+                {{ r.attendance_pct }}%
+              </strong>
+            </td>
+            <td>
+              {% if r.risk_level == 'CRITICAL' %}
+              <span class="badge-tag badge-danger">🚨 CRITICAL (&lt; 60%)</span>
+              {% else %}
+              <span class="badge-tag badge-warning">⚠️ WARNING (&lt; 75%)</span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="/portal?student_id={{ r.student_id }}" class="btn btn-secondary btn-sm" title="View Student Portal Dossier">
+                👤 Dossier
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 48px; color: var(--text-muted);">
+      <div style="font-size: 2.5rem; margin-bottom: 12px;">✅</div>
+      <p style="font-size: 1.1rem; color: var(--color-success); font-weight: 600;">All Scholars Meet Attendance Standards</p>
+      <p style="font-size: 0.85rem;">No student is currently below the institutional 75% minimum threshold.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- TAB 2: Departmental Breakdown -->
+<div id="tab-departments" class="reports-tab-panel" style="display: none;">
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+      <h3 class="card-title">Institutional Department Matrix</h3>
+      <p class="card-subtitle">Comparative registry sizes, faculty staffing, and fee collection efficiency</p>
+    </div>
+
+    <div class="table-container">
+      <table class="data-table" id="table-dept-breakdown">
+        <thead>
+          <tr>
+            <th>Dept Code</th>
+            <th>Department Name</th>
+            <th>Enrolled Scholars</th>
+            <th>Courses</th>
+            <th>Faculty Staff</th>
+            <th>Invoiced Billed</th>
+            <th>Fees Collected</th>
+            <th>Outstanding</th>
+            <th>Recovery Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in summary.department_metrics %}
+          <tr>
+            <td><strong><code>{{ d.department_code }}</code></strong></td>
+            <td><strong>{{ d.department_name }}</strong></td>
+            <td>{{ d.students_count }} Scholars</td>
+            <td>{{ d.courses_count }}</td>
+            <td>{{ d.faculty_count }}</td>
+            <td>${{ "{:,.2f}".format(d.invoiced) }}</td>
+            <td style="color: var(--color-success); font-weight: 600;">${{ "{:,.2f}".format(d.collected) }}</td>
+            <td style="color: {% if d.balance > 0 %}var(--color-danger){% else %}var(--text-muted){% endif %};">
+              ${{ "{:,.2f}".format(d.balance) }}
+            </td>
+            <td style="min-width: 140px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="flex: 1; background: rgba(255,255,255,0.08); height: 8px; border-radius: 4px; overflow: hidden;">
+                  <div style="width: {{ [d.recovery_rate_pct, 100]|min }}%; height: 100%; background: {% if d.recovery_rate_pct >= 80 %}var(--color-success){% elif d.recovery_rate_pct >= 50 %}var(--color-warning){% else %}var(--color-danger){% endif %};"></div>
+                </div>
+                <span style="font-size: 0.8rem; font-weight: 700;">{{ d.recovery_rate_pct }}%</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: Grade Distribution & Exams -->
+<div id="tab-grades" class="reports-tab-panel" style="display: none;">
+  <div class="grid grid-2" style="margin-bottom: 24px;">
+    <!-- Grade Distribution Card -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Academic Letter Grade Distribution</h3>
+        <p class="card-subtitle">Aggregate marks distribution across evaluated examinations</p>
+      </div>
+
+      <div style="padding: 16px 0;">
+        {% set total_grades = summary.total_evaluations if summary.total_evaluations > 0 else 1 %}
+        {% for grade in ['A+', 'A', 'B', 'C', 'D', 'F'] %}
+        {% set cnt = summary.grade_distribution.get(grade, 0) %}
+        {% set pct = ((cnt / total_grades) * 100)|round|int %}
+        <div style="margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.85rem;">
+            <span>
+              <strong style="color: {% if grade in ['A+', 'A'] %}var(--color-success){% elif grade in ['B', 'C'] %}var(--accent-primary){% elif grade == 'D' %}var(--color-warning){% else %}var(--color-danger){% endif %};">
+                Grade {{ grade }}
+              </strong>
+            </span>
+            <span style="color: var(--text-muted);">{{ cnt }} evaluations ({{ pct }}%)</span>
+          </div>
+          <div style="background: rgba(255,255,255,0.08); height: 10px; border-radius: 5px; overflow: hidden;">
+            <div style="width: {{ [pct, 100]|min }}%; height: 100%; background: {% if grade in ['A+', 'A'] %}var(--color-success){% elif grade in ['B', 'C'] %}var(--accent-primary){% elif grade == 'D' %}var(--color-warning){% else %}var(--color-danger){% endif %};"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Exam Performance Overview -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Key Performance Indicators</h3>
+        <p class="card-subtitle">Examination pass rates and evaluation completion metrics</p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 16px; padding: 12px 0;">
+        <div style="padding: 16px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">Average Examination Score</div>
+            <div style="font-size: 1.4rem; font-weight: 700; color: var(--accent-secondary);">{{ summary.avg_score_pct }}%</div>
+          </div>
+          <div style="font-size: 2rem;">📈</div>
+        </div>
+
+        <div style="padding: 16px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">Total Graded Submissions</div>
+            <div style="font-size: 1.4rem; font-weight: 700; color: var(--accent-primary);">{{ summary.total_evaluations }}</div>
+          </div>
+          <div style="font-size: 2rem;">📝</div>
+        </div>
+
+        <div style="padding: 16px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">Institutional Status</div>
+            <div style="font-size: 1rem; font-weight: 600; color: var(--color-success);">Accreditation Ready</div>
+          </div>
+          <div style="font-size: 2rem;">🏆</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Examinations Table -->
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+      <h3 class="card-title">Recent Examination Performance Breakdown</h3>
+      <p class="card-subtitle">Pass rates, average marks, and assessment cohorts</p>
+    </div>
+
+    {% if summary.exam_performance %}
+    <div class="table-container">
+      <table class="data-table" id="table-exam-performance">
+        <thead>
+          <tr>
+            <th>Assessment Title</th>
+            <th>Course</th>
+            <th>Type</th>
+            <th>Date</th>
+            <th>Evaluated</th>
+            <th>Average Marks</th>
+            <th>Pass Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ep in summary.exam_performance %}
+          <tr>
+            <td><strong>{{ ep.title }}</strong></td>
+            <td><span class="badge-tag badge-info">{{ ep.course_code }}</span> {{ ep.course_title }}</td>
+            <td><span class="badge-tag badge-warning">{{ ep.exam_type }}</span></td>
+            <td>{{ ep.exam_date }}</td>
+            <td><strong>{{ ep.evaluated_count }}</strong> students</td>
+            <td>{{ ep.avg_marks }} / {{ ep.max_marks }}</td>
+            <td>
+              <span class="badge-tag {% if ep.pass_rate_pct >= 75 %}badge-success{% elif ep.pass_rate_pct >= 50 %}badge-warning{% else %}badge-danger{% endif %}">
+                {{ ep.pass_rate_pct }}% Pass
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 36px; color: var(--text-muted);">
+      <p>No examinations found for this criteria.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- TAB 4: Fiscal Recovery Audit -->
+<div id="tab-finance" class="reports-tab-panel" style="display: none;">
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+      <h3 class="card-title">Institutional Bursar & Fiscal Summary</h3>
+      <p class="card-subtitle">Comprehensive collection performance, outstanding tuition debt, and overdue aging</p>
+    </div>
+
+    <div class="metrics-grid" style="margin-bottom: 20px;">
+      <div class="metric-card">
+        <div class="metric-title">Gross Invoiced Billed</div>
+        <div class="metric-value" style="color: var(--text-main); font-size: 1.5rem;">
+          ${{ "{:,.2f}".format(summary.total_invoiced) }}
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Total Fees Collected</div>
+        <div class="metric-value" style="color: var(--color-success); font-size: 1.5rem;">
+          ${{ "{:,.2f}".format(summary.total_collected) }}
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Outstanding Tuition Due</div>
+        <div class="metric-value" style="color: var(--color-danger); font-size: 1.5rem;">
+          ${{ "{:,.2f}".format(summary.total_outstanding) }}
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Overdue Invoices</div>
+        <div class="metric-value" style="color: var(--color-warning); font-size: 1.5rem;">
+          {{ summary.overdue_invoices_count }}
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 12px;">
+      <a href="/finance" class="btn btn-primary btn-sm">Open Bursar Ledger</a>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchReportsTab(tabId, btn) {
+  document.querySelectorAll('.reports-tab-panel').forEach(function(el) {
+    el.style.display = 'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach(function(el) {
+    el.classList.remove('btn-primary', 'active');
+    el.classList.add('btn-secondary');
+  });
+
+  const target = document.getElementById(tabId);
+  if (target) {
+    target.style.display = 'block';
+  }
+  btn.classList.remove('btn-secondary');
+  btn.classList.add('btn-primary', 'active');
+}
+</script>
+{% endblock %}

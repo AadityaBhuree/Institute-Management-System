@@ -15,6 +15,7 @@ from src.api.academics import router as academics_router
 from src.api.courses import router as courses_router
 from src.api.faculty import router as faculty_router
 from src.api.finance import router as finance_router
+from src.api.reports import router as reports_router
 from src.api.students import router as students_router
 from src.core.config import (
     APP_DESCRIPTION,
@@ -32,6 +33,7 @@ from src.services.dashboard_service import DashboardService
 from src.services.department_service import DepartmentService
 from src.services.faculty_service import FacultyService
 from src.services.finance_service import FinanceService
+from src.services.reports_service import ReportsService
 from src.services.student_service import StudentService
 
 
@@ -56,6 +58,8 @@ app.include_router(courses_router)
 app.include_router(faculty_router)
 app.include_router(academics_router)
 app.include_router(finance_router)
+app.include_router(reports_router)
+
 
 # Ensure directories exist and mount static assets
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
@@ -298,4 +302,26 @@ def view_finance_page(
             "search": search,
         },
     )
+
+
+@app.get("/reports", response_class=HTMLResponse, tags=["Web"])
+def view_reports_page(
+    request: Request,
+    department_id: Optional[int] = None,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Render institutional analytics, attendance risk sentinel, and financial recovery hub."""
+    summary = ReportsService.get_analytics_summary(conn, department_id=department_id)
+    departments = DepartmentService.list_all(conn)
+    return templates.TemplateResponse(
+        request=request,
+        name="reports.html",
+        context={
+            "active_page": "reports",
+            "summary": summary,
+            "departments": departments,
+            "selected_dept": department_id,
+        },
+    )
+
 

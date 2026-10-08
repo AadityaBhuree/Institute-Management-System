@@ -92,3 +92,44 @@ def test_dashboard_html_view(client):
     assert "Executive Overview" in html
     assert "IMS Enterprise" in html
     assert "Department Enrollment Distribution" in html
+
+
+def test_reports_analytics_summary_api(client):
+    """Verify institutional reports analytics REST API summary."""
+    response = client.get("/api/reports/analytics-summary")
+    assert response.status_code == 200
+    data = response.json()
+
+    assert "total_students" in data
+    assert "overall_attendance_pct" in data
+    assert "at_risk_students_count" in data
+    assert "at_risk_scholars" in data
+    assert "grade_distribution" in data
+    assert "total_invoiced" in data
+    assert "total_collected" in data
+    assert "collection_rate_pct" in data
+    assert "department_metrics" in data
+    assert "exam_performance" in data
+    assert len(data["department_metrics"]) >= 5
+
+
+def test_reports_analytics_filtered_by_department(client):
+    """Verify filtering reports analytics by department ID."""
+    response = client.get("/api/reports/analytics-summary?department_id=1")
+    assert response.status_code == 200
+    data = response.json()
+    assert "total_students" in data
+    assert "overall_attendance_pct" in data
+
+
+def test_view_reports_html_page(client):
+    """Verify HTML rendering of institutional reports and analytics page."""
+    response = client.get("/reports")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    html = response.text
+    assert "Reports & Analytics Hub" in html
+    assert "Institutional Attendance Rate" in html
+    assert "Attendance Risk Sentinel" in html
+    assert "Department Matrix" in html
+

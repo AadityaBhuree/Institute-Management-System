@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: institute-management-system
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: oregon
+    healthCheckPath: /api/health
+    disk:
+      name: ims-sqlite-data
+      mountPath: /app/data
+      sizeGB: 1
+    envVars:
+      - key: IMS_DB_PATH
+        value: /app/data/ims.db
+      - key: DEBUG
+        value: "false"

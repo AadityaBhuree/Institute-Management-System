@@ -4,6 +4,8 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-WAL%20Mode-003B57.svg?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
 [![Tests](https://img.shields.io/badge/Pytest-45%2F45%20Passing-success.svg)](tests/)
+[![CI](https://github.com/AadityaBhuree/Institute-Management-System/actions/workflows/ci.yml/badge.svg)](https://github.com/AadityaBhuree/Institute-Management-System/actions/workflows/ci.yml)
+[![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED.svg?logo=docker&logoColor=white)](Dockerfile)
 [![Code Style](https://img.shields.io/badge/Linter-Ruff%20Clean-black.svg)](pyproject.toml)
 [![Architecture](https://img.shields.io/badge/Architecture-Clean%20%2F%20Layered-indigo.svg)](src/)
 
@@ -180,16 +182,28 @@ pip install -r requirements.txt
 python scripts/seed_demo_data.py
 ```
 
-### 5. Launch Application Server
+### 5. Launch Application Server (Local)
 ```bash
 python -m uvicorn src.app:app --reload --port 8000
 ```
+
+### 6. Run with Docker / Container (Production)
+```bash
+# 1-Click Launch with Docker Compose (mounts ./data with persistent SQLite WAL storage)
+docker compose up -d
+
+# Or build and run standalone container
+docker build -t ims-enterprise .
+docker run -d -p 8000:8000 -v $(pwd)/data:/app/data --name ims_app ims-enterprise
+```
+
 Open **[http://localhost:8000](http://localhost:8000)** in your browser:
 * **Overview Dashboard:** `http://localhost:8000/`
 * **Student Registry:** `http://localhost:8000/students`
 * **Courses & Faculty:** `http://localhost:8000/courses`
 * **Attendance & Exams:** `http://localhost:8000/academics`
 * **Fee Invoicing & Audit:** `http://localhost:8000/finance`
+* **Health Endpoint:** `http://localhost:8000/api/health`
 * **Interactive OpenAPI Docs:** `http://localhost:8000/docs`
 
 ---

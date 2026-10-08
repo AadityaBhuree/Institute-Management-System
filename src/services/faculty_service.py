@@ -158,3 +158,126 @@ class FacultyService:
             cursor.execute("DELETE FROM faculty WHERE id = ?;", (faculty_id,))
             deleted = cursor.rowcount > 0
         return deleted
+
+    @staticmethod
+    def get_faculty_portal_data(
+        conn: sqlite3.Connection, faculty_id: int
+    ) -> Optional[Dict[str, Any]]:
+        """Compile comprehensive workbench data for a faculty instructor."""
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT
+                f.id, f.faculty_id, f.first_name, f.last_name, f.email, f.phone,
+                f.department_id, f.designation, f.qualification, f.hire_date,
+                f.status, f.created_at,
+                d.name AS department_name, d.code AS department_code
+            FROM faculty f
+            JOIN departments d ON f.department_id = d.id
+            WHERE f.id = ?;
+            """,
+            (faculty_id,),
+        )
+        faculty_row = cursor.fetchone()
+        if not faculty_row:
+            cursor.close()
+            return None
+
+        faculty_profile = dict(faculty_row)
+
+        cursor.execute(
+            """
+            SELECT
+                c.id, c.code, c.title, c.credits, c.semester, c.capacity,
+                c.syllabus_summary, d.name AS department_name, d.code AS department_code,
+                COUNT(ce.id) AS enrolled_count
+            FROM courses c
+            JOIN departments d ON c.department_id = d.id
+            LEFT JOIN course_enrollments ce ON c.id = ce.course_id AND ce.status = 'ACTIVE'
+            WHERE c.instructor_id = ?
+            GROUP BY c.id
+            ORDER BY c.semester ASC, c.code ASC;
+            """,
+            (faculty_id,),
+        )
+        courses = [dict(r) for r in cursor.fetchall()]
+
+        course_ids = [c["id"] for c in courses]
+        students: List[Dict[str, Any]] = []
+        exams: List[Dict[str, Any]] = []
+        attendance_logs: List[Dict[str, Any]] = []
+
+        if course_ids:
+            placeholders = ",".join("?" for _ in course_ids)
+
+            cursor.execute(
+                f"""
+                SELECT
+                    ce.id AS enrollment_id, ce.course_id, ce.academic_year, ce.semester AS enrollment_semester,
+                    ce.status AS enrollment_status, ce.enrolled_at,
+                    c.code AS course_code, c.title AS course_title,
+                    s.id AS student_id, s.enrollment_no, s.first_name, s.last_name,
+                    s.email, s.phone, s.current_semester,
+                    d.name AS department_name
+                FROM course_enrollments ce
+                JOIN courses c ON ce.course_id = c.id
+                JOIN students s ON ce.student_id = s.id
+                JOIN departments d ON s.department_id = d.id
+                WHERE ce.course_id IN ({placeholders})
+                ORDER BY c.code ASC, s.last_name ASC, s.first_name ASC;
+                """,
+                course_ids,
+            )
+            students = [dict(r) for r in cursor.fetchall()]
+
+            cursor.execute(
+                f"""
+                SELECT
+                    e.id, e.course_id, e.title, e.exam_type, e.exam_date,
+                    e.max_marks, e.passing_marks, e.weightage_percent,
+                    c.code AS course_code, c.title AS course_title,
+                    COUNT(er.id) AS evaluated_count
+                FROM examinations e
+                JOIN courses c ON e.course_id = c.id
+                LEFT JOIN exam_results er ON e.id = er.exam_id
+                WHERE e.course_id IN ({placeholders})
+                GROUP BY e.id
+                ORDER BY e.exam_date DESC;
+                """,
+                course_ids,
+            )
+            exams = [dict(r) for r in cursor.fetchall()]
+
+            cursor.execute(
+                f"""
+                SELECT
+                    ar.id, ar.course_id, ar.student_id, ar.attendance_date, ar.status, ar.remarks,
+                    c.code AS course_code, c.title AS course_title,
+                    s.enrollment_no, s.first_name, s.last_name
+                FROM attendance_records ar
+                JOIN courses c ON ar.course_id = c.id
+                JOIN students s ON ar.student_id = s.id
+                WHERE ar.course_id IN ({placeholders})
+                ORDER BY ar.attendance_date DESC, ar.id DESC
+                LIMIT 50;
+                """,
+                course_ids,
+            )
+            attendance_logs = [dict(r) for r in cursor.fetchall()]
+
+        cursor.close()
+
+        total_unique_students = len({s["student_id"] for s in students})
+
+        return {
+            "faculty": faculty_profile,
+            "courses": courses,
+            "students": students,
+            "exams": exams,
+            "attendance_logs": attendance_logs,
+            "total_courses": len(courses),
+            "total_students": total_unique_students,
+            "total_exams": len(exams),
+            "total_attendance_records": len(attendance_logs),
+        }
+

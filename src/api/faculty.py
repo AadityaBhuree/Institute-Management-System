@@ -84,3 +84,19 @@ def delete_faculty(
             detail=f"Faculty member ID {faculty_id} not found.",
         )
     return {"message": "Faculty member removed from directory.", "id": faculty_id}
+
+
+@router.get("/{faculty_id}/portal-data")
+def get_faculty_portal_data(
+    faculty_id: int,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Retrieve full workbench dossier for a faculty instructor."""
+    data = FacultyService.get_faculty_portal_data(conn, faculty_id)
+    if not data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Faculty member ID {faculty_id} not found.",
+        )
+    return data
+

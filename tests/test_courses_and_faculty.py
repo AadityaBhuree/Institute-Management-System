@@ -240,3 +240,52 @@ def test_view_courses_html_page(client):
     assert "Faculty & Course Curriculum" in html
     assert "CS101" in html
     assert "Ada Lovelace" in html
+
+
+def test_faculty_portal_data_api(client):
+    """Verify fetching faculty workbench dossier via REST API."""
+    fac_res = client.get("/api/faculty?search=Ada")
+    assert fac_res.status_code == 200
+    fac_list = fac_res.json()
+    assert len(fac_list) >= 1
+    faculty_id = fac_list[0]["id"]
+
+    portal_res = client.get(f"/api/faculty/{faculty_id}/portal-data")
+    assert portal_res.status_code == 200
+    data = portal_res.json()
+
+    assert "faculty" in data
+    assert data["faculty"]["first_name"] == "Ada"
+    assert "courses" in data
+    assert "students" in data
+    assert "exams" in data
+    assert "attendance_logs" in data
+    assert data["total_courses"] >= 1
+    assert any(c["code"] == "CS101" for c in data["courses"])
+
+    # Non-existent faculty returns 404
+    missing_res = client.get("/api/faculty/999999/portal-data")
+    assert missing_res.status_code == 404
+
+
+def test_view_faculty_portal_html_page(client):
+    """Verify HTML rendering of faculty instructor portal page."""
+    # Default view (selects first faculty)
+    response = client.get("/faculty-portal")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    html = response.text
+    assert "Faculty Instructor Portal" in html
+    assert "Assigned Courses" in html
+    assert "Student Roster" in html
+
+    # With explicit instructor query
+    fac_res = client.get("/api/faculty?search=Ada")
+    faculty_id = fac_res.json()[0]["id"]
+
+    res_spec = client.get(f"/faculty-portal?faculty_id={faculty_id}")
+    assert res_spec.status_code == 200
+    spec_html = res_spec.text
+    assert "Ada Lovelace" in spec_html
+    assert "CS101" in spec_html
+

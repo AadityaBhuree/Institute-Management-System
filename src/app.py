@@ -174,6 +174,43 @@ def view_student_portal_page(
     )
 
 
+@app.get("/faculty-portal", response_class=HTMLResponse, tags=["Web"])
+def view_faculty_portal_page(
+    request: Request,
+    faculty_id: Optional[int] = None,
+    search: Optional[str] = None,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Render the faculty instructor portal and teaching workbench."""
+    all_faculty = FacultyService.list_faculty(conn)
+
+    selected_id = faculty_id
+    if not selected_id and search:
+        matching = FacultyService.list_faculty(conn, search=search)
+        if matching:
+            selected_id = matching[0]["id"]
+
+    if not selected_id and all_faculty:
+        selected_id = all_faculty[0]["id"]
+
+    dossier = None
+    if selected_id:
+        dossier = FacultyService.get_faculty_portal_data(conn, selected_id)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="faculty_portal.html",
+        context={
+            "active_page": "faculty_portal",
+            "dossier": dossier,
+            "all_faculty": all_faculty,
+            "selected_faculty_id": selected_id,
+            "search": search or "",
+        },
+    )
+
+
+
 @app.get("/courses", response_class=HTMLResponse, tags=["Web"])
 def view_courses_page(
     request: Request,

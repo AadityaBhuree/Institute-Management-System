@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Academic Timetable & Lecture Scheduling{% endblock %}
+{% block header_title %}Academic Lecture Timetable{% endblock %}
+{% block header_subtitle %}Weekly class schedules, room allocations, instructor slot matrices, and conflict detection{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-primary" onclick="openModal('modal-schedule-slot')" id="btn-open-slot-modal">
+  <span>🗓️ Schedule Lecture Slot</span>
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- Department Filter & View Switcher -->
+<div class="card" style="margin-bottom: 24px; padding: 18px 24px;">
+  <form method="GET" action="/timetable" style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+    <div style="flex: 2; min-width: 240px;">
+      <label class="form-label">Filter Department</label>
+      <select name="department_id" class="form-control" onchange="this.form.submit()" id="select-timetable-dept">
+        <option value="">All Academic Departments (Campus Wide)</option>
+        {% for d in departments %}
+        <option value="{{ d.id }}" {% if selected_dept == d.id %}selected{% endif %}>
+          {{ d.code }} — {{ d.name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <a href="/timetable" class="btn btn-outline">Reset Filter</a>
+    </div>
+  </form>
+</div>
+
+<!-- Weekly Schedule Matrix (Monday to Saturday) -->
+<div style="display: flex; flex-direction: column; gap: 24px;">
+  {% set days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] %}
+  {% for day in days %}
+  {% set day_slots = matrix.get(day, []) %}
+  <div class="card" style="padding: 20px 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 12px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 1.25rem;">📅</span>
+        <h3 style="font-size: 1.15rem; font-weight: 600; color: #f8fafc;">{{ day }}</h3>
+      </div>
+      <span class="badge-tag" style="background: rgba(99, 102, 241, 0.15); color: #818cf8;">
+        {{ day_slots|length }} Lecture{{ 's' if day_slots|length != 1 else '' }}
+      </span>
+    </div>
+
+    {% if day_slots %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;">
+      {% for slot in day_slots %}
+      <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+        <div>
+          <!-- Time & Room -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span class="badge-tag badge-primary" style="font-size: 0.82rem;">
+              ⏰ {{ slot.start_time }} – {{ slot.end_time }}
+            </span>
+            <span class="badge-tag" style="background: rgba(16, 185, 129, 0.15); color: #34d399; font-size: 0.78rem;">
+              🏛️ {{ slot.room_number }}
+            </span>
+          </div>
+
+          <!-- Course Info -->
+          <div style="font-weight: 600; color: #f8fafc; font-size: 1.05rem; margin-bottom: 4px;">
+            {{ slot.course_code }}: {{ slot.course_title }}
+          </div>
+
+          <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 12px;">
+            {{ slot.department_name }}
+          </div>
+
+          <!-- Instructor & Location -->
+          <div style="font-size: 0.82rem; color: #cbd5e1; display: flex; flex-direction: column; gap: 4px;">
+            <div>👨‍🏫 <strong>Instructor:</strong> {{ slot.instructor_name or 'Unassigned' }}</div>
+            <div>📍 <strong>Facility:</strong> {{ slot.building }}</div>
+          </div>
+        </div>
+
+        <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.06); display: flex; justify-content: flex-end;">
+          <button class="btn btn-danger btn-sm" onclick="deleteSlot({{ slot.id }})" title="Remove lecture slot">
+            🗑️ Remove
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="padding: 16px; text-align: center; color: #64748b; font-size: 0.9rem;">
+      No lectures scheduled for {{ day }}.
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Schedule Lecture Modal -->
+<div id="modal-schedule-slot" class="modal-backdrop" style="display: none;">
+  <div class="modal-card" style="max-width: 600px;">
+    <div class="modal-header">
+      <h3 style="color: #f8fafc; font-size: 1.25rem;">🗓️ Schedule Lecture Slot</h3>
+      <button class="modal-close" onclick="closeModal('modal-schedule-slot')">✕</button>
+    </div>
+    <form id="form-schedule-slot" onsubmit="submitTimetableSlot(event)">
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+        <div>
+          <label class="form-label">Course Module *</label>
+          <select name="course_id" required class="form-control" id="modal-slot-course">
+            {% for c in courses %}
+            <option value="{{ c.id }}">
+              {{ c.code }} — {{ c.title }} (Sem {{ c.semester }}, {{ c.credits }} credits)
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <label class="form-label">Day of Week *</label>
+            <select name="day_of_week" required class="form-control" id="modal-slot-day">
+              <option value="Monday">Monday</option>
+              <option value="Tuesday">Tuesday</option>
+              <option value="Wednesday">Wednesday</option>
+              <option value="Thursday">Thursday</option>
+              <option value="Friday">Friday</option>
+              <option value="Saturday">Saturday</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Room Number *</label>
+            <input type="text" name="room_number" required placeholder="e.g. LH-101 or Lab-203" class="form-control" id="modal-slot-room">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <label class="form-label">Start Time (HH:MM) *</label>
+            <input type="time" name="start_time" required value="09:00" class="form-control" id="modal-slot-start">
+          </div>
+          <div>
+            <label class="form-label">End Time (HH:MM) *</label>
+            <input type="time" name="end_time" required value="10:30" class="form-control" id="modal-slot-end">
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label">Academic Building / Complex</label>
+          <input type="text" name="building" value="Main Academic Block" class="form-control" id="modal-slot-building">
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-schedule-slot')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-slot">Save Slot</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+async function submitTimetableSlot(e) {
+  e.preventDefault();
+  const form = e.target;
+  const formData = new FormData(form);
+  const payload = {
+    course_id: parseInt(formData.get('course_id')),
+    day_of_week: formData.get('day_of_week'),
+    start_time: formData.get('start_time'),
+    end_time: formData.get('end_time'),
+    room_number: formData.get('room_number'),
+    building: formData.get('building') || 'Main Academic Block'
+  };
+
+  try {
+    const res = await fetch('/api/timetable', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to schedule timetable slot');
+    }
+    showToast('Lecture slot scheduled successfully!', 'success');
+    closeModal('modal-schedule-slot');
+    setTimeout(() => window.location.reload(), 500);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function deleteSlot(id) {
+  if (!confirm('Remove this lecture slot from the timetable?')) return;
+  try {
+    const res = await fetch(`/api/timetable/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete slot');
+    showToast('Lecture slot removed', 'success');
+    setTimeout(() => window.location.reload(), 400);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+</script>
+{% endblock %}

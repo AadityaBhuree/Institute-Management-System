@@ -19,6 +19,7 @@ from src.api.finance import router as finance_router
 from src.api.leaves import router as leaves_router
 from src.api.reports import router as reports_router
 from src.api.students import router as students_router
+from src.api.timetable import router as timetable_router
 from src.core.config import (
     APP_DESCRIPTION,
     APP_NAME,
@@ -41,6 +42,7 @@ from src.services.leave_service import LeaveService
 from src.services.reports_service import ReportsService
 from src.services.student_service import StudentService
 from src.services.system_service import SystemService
+from src.services.timetable_service import TimetableService
 
 
 
@@ -68,6 +70,7 @@ app.include_router(finance_router)
 app.include_router(reports_router)
 app.include_router(announcements_router)
 app.include_router(leaves_router)
+app.include_router(timetable_router)
 
 
 # Ensure directories exist and mount static assets
@@ -439,6 +442,29 @@ def view_leaves_page(
             "selected_status": status,
             "selected_type": applicant_type,
             "search": search or "",
+        },
+    )
+
+
+@app.get("/timetable", response_class=HTMLResponse, tags=["Web"])
+def view_timetable_page(
+    request: Request,
+    department_id: Optional[int] = None,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Render the academic lecture timetable and weekly schedule matrix."""
+    matrix = TimetableService.get_weekly_matrix(conn, department_id=department_id)
+    departments = DepartmentService.list_all(conn)
+    courses = CourseService.list_courses(conn, department_id=department_id)
+    return templates.TemplateResponse(
+        request=request,
+        name="timetable.html",
+        context={
+            "active_page": "timetable",
+            "matrix": matrix,
+            "departments": departments,
+            "courses": courses,
+            "selected_dept": department_id,
         },
     )
 

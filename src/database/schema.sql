@@ -204,3 +204,20 @@ CREATE TABLE IF NOT EXISTS leave_requests (
 
 CREATE INDEX IF NOT EXISTS idx_leaves_applicant ON leave_requests(applicant_type, applicant_id);
 CREATE INDEX IF NOT EXISTS idx_leaves_status ON leave_requests(status);
+
+-- 14. Academic Timetable & Lecture Scheduling
+CREATE TABLE IF NOT EXISTS timetable_slots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    day_of_week TEXT NOT NULL CHECK(day_of_week IN ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')),
+    start_time TEXT NOT NULL,
+    end_time TEXT NOT NULL,
+    room_number TEXT NOT NULL,
+    building TEXT DEFAULT 'Main Academic Block',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(day_of_week, start_time, room_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_timetable_course ON timetable_slots(course_id);
+CREATE INDEX IF NOT EXISTS idx_timetable_day ON timetable_slots(day_of_week);
+CREATE INDEX IF NOT EXISTS idx_timetable_room ON timetable_slots(room_number);

@@ -8,6 +8,7 @@ from src.api.finance import router as finance_router
 from src.api.leaves import router as leaves_router
 from src.api.reports import router as reports_router
 from src.api.students import router as students_router
+from src.api.timetable import router as timetable_router
 
 __all__ = [
     "students_router",
@@ -18,5 +19,6 @@ __all__ = [
     "reports_router",
     "announcements_router",
     "leaves_router",
+    "timetable_router",
 ]
 

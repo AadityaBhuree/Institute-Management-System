@@ -25,15 +25,21 @@ from src.models.academics import (
     SingleAttendance,
     SingleGrade,
 )
+from src.models.announcement import AnnouncementCreate
 from src.models.course import CourseCreate, EnrollmentCreate
 from src.models.faculty import FacultyCreate
 from src.models.finance import FeeInvoiceCreate, FeeStructureCreate, PaymentCreate
+from src.models.leave import LeaveRequestCreate, LeaveStatusUpdate
 from src.models.student import StudentCreate
+from src.models.timetable import TimetableSlotCreate
 from src.services.academics_service import AcademicsService
+from src.services.announcement_service import AnnouncementService
 from src.services.course_service import CourseService
 from src.services.faculty_service import FacultyService
 from src.services.finance_service import FinanceService
+from src.services.leave_service import LeaveService
 from src.services.student_service import StudentService
+from src.services.timetable_service import TimetableService
 
 
 def seed():
@@ -45,9 +51,11 @@ def seed():
     # 1. Initialize schema
     init_database()
     conn = get_connection()
+    today = datetime.date.today()
 
     # 2. Seed or Load Faculty Members
     existing_faculty = FacultyService.list_faculty(conn)
+    faculty_records = existing_faculty
     faculty_ids = [f["id"] for f in existing_faculty]
 
     if not faculty_ids:
@@ -498,6 +506,160 @@ def seed():
         print("   * Student invoices and payment transactions populated.")
     else:
         print(f"\n[INFO] {inv_count} fee invoices already in ledger.")
+
+    # 10. Seed Campus Announcements
+    existing_notices = AnnouncementService.list_announcements(conn)
+    if not existing_notices:
+        print("\n[+] Seeding Campus Announcements & Bulletins...")
+        sample_notices = [
+            (
+                "Fall 2026 End-Semester Examination Schedule Released",
+                "The official schedule for midterms and final examinations has been posted. Please review course examination timings in your Scholar Portal.",
+                "EXAM",
+                "STUDENTS",
+                "HIGH",
+                "Office of the Controller of Examinations",
+            ),
+            (
+                "Bursar Office: Semester Tuition Clearance Deadline",
+                "All enrolled students must clear outstanding term invoices or submit installment requests before the 30th of the month.",
+                "FEES",
+                "STUDENTS",
+                "HIGH",
+                "University Bursar Office",
+            ),
+            (
+                "Annual National Robotics & AI Symposium 2026",
+                "The Department of Computer Science & Engineering invites all scholars and faculty to submit research abstracts for the upcoming symposium.",
+                "EVENT",
+                "ALL",
+                "NORMAL",
+                "Department of Computer Science",
+            ),
+            (
+                "Faculty Curriculum Senate: Board of Studies Meeting",
+                "Quarterly review meeting regarding syllabus updates, elective course credits, and lab accreditation.",
+                "ACADEMIC",
+                "FACULTY",
+                "NORMAL",
+                "Dean of Academic Affairs",
+            ),
+        ]
+        for title, content, cat, aud, prio, author in sample_notices:
+            AnnouncementService.create(
+                conn,
+                AnnouncementCreate(
+                    title=title,
+                    content=content,
+                    category=cat,
+                    target_audience=aud,
+                    priority=prio,
+                    author_name=author,
+                ),
+            )
+        print("   * Campus bulletins and notices populated.")
+
+    # 11. Seed Lecture Timetable Slots
+    existing_slots = TimetableService.list_slots(conn)
+    if not existing_slots and course_ids:
+        print("\n[+] Seeding Weekly Academic Lecture Timetable...")
+        schedule_templates = [
+            ("Monday", "09:00", "10:30", "LH-101", "Main Academic Block"),
+            ("Monday", "11:00", "12:30", "LH-102", "Main Academic Block"),
+            ("Tuesday", "09:00", "10:30", "LH-101", "Main Academic Block"),
+            ("Tuesday", "14:00", "15:30", "Lab-201", "Turing Computing Wing"),
+            ("Wednesday", "10:00", "11:30", "LH-103", "Main Academic Block"),
+            ("Thursday", "09:00", "10:30", "LH-102", "Main Academic Block"),
+            ("Friday", "11:00", "12:30", "LH-101", "Main Academic Block"),
+        ]
+        for idx, (day, start, end, room, bld) in enumerate(schedule_templates):
+            c_id = course_ids[idx % len(course_ids)]
+            try:
+                TimetableService.create_slot(
+                    conn,
+                    TimetableSlotCreate(
+                        course_id=c_id,
+                        day_of_week=day,
+                        start_time=start,
+                        end_time=end,
+                        room_number=room,
+                        building=bld,
+                    ),
+                )
+            except Exception:
+                pass
+        print("   * Weekly lecture matrix populated.")
+
+    # 12. Seed Institutional Leave Requests
+    existing_leaves = LeaveService.list_leaves(conn)
+    student_records = StudentService.list_students(conn)
+    if not existing_leaves and student_records:
+        print("\n[+] Seeding Institutional Leave & Absence Records...")
+        s1 = student_records[0]
+        s2 = student_records[1] if len(student_records) > 1 else student_records[0]
+
+        leave_samples = [
+            (
+                "STUDENT",
+                s1["id"],
+                f"{s1['first_name']} {s1['last_name']}",
+                "SICK",
+                (today - datetime.timedelta(days=10)).isoformat(),
+                (today - datetime.timedelta(days=7)).isoformat(),
+                "Recovering from seasonal viral flu under physician care.",
+                "APPROVED",
+                "Medical certificate verified and approved.",
+            ),
+            (
+                "STUDENT",
+                s2["id"],
+                f"{s2['first_name']} {s2['last_name']}",
+                "CASUAL",
+                (today + datetime.timedelta(days=3)).isoformat(),
+                (today + datetime.timedelta(days=5)).isoformat(),
+                "Attending elder sister's wedding ceremony.",
+                "PENDING",
+                None,
+            ),
+        ]
+        if faculty_records:
+            f1 = faculty_records[0]
+            leave_samples.append((
+                "FACULTY",
+                f1["id"],
+                f"{f1['first_name']} {f1['last_name']}",
+                "ACADEMIC",
+                (today + datetime.timedelta(days=12)).isoformat(),
+                (today + datetime.timedelta(days=15)).isoformat(),
+                "Presenting peer-reviewed paper at IEEE International Computing Conference.",
+                "APPROVED",
+                "Duty leave sanctioned. Substitute instructor arranged.",
+            ))
+
+        for app_type, app_id, name, l_type, s_date, e_date, rsn, st, rem in leave_samples:
+            created = LeaveService.submit_leave(
+                conn,
+                LeaveRequestCreate(
+                    applicant_type=app_type,
+                    applicant_id=app_id,
+                    applicant_name=name,
+                    leave_type=l_type,
+                    start_date=s_date,
+                    end_date=e_date,
+                    reason=rsn,
+                ),
+            )
+            if st != "PENDING":
+                LeaveService.update_status(
+                    conn,
+                    created["id"],
+                    LeaveStatusUpdate(
+                        status=st,
+                        review_remarks=rem,
+                        reviewed_by="Academic Dean",
+                    ),
+                )
+        print("   * Student and faculty leave petitions populated.")
 
     conn.close()
     print("\n" + "=" * 60)

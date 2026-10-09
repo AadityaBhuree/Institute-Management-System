@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}Campus Notice Board & Announcements Hub{% endblock %}
+{% block header_title %}Campus Announcements & Bulletin Board{% endblock %}
+{% block header_subtitle %}Institutional broadcasts, academic circulars, exam schedules, and urgent notifications{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-primary" onclick="openModal('modal-new-announcement')" id="btn-open-announcement-modal">
+  <span>📢 Post New Bulletin</span>
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- Filter & Search Toolbar -->
+<div class="card" style="margin-bottom: 24px; padding: 18px 24px;">
+  <form method="GET" action="/announcements" style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+    <div style="flex: 2; min-width: 200px;">
+      <label class="form-label">Search Notice</label>
+      <input type="text" name="search" class="form-control" placeholder="Search keywords..." value="{{ search }}" id="input-search-announcement">
+    </div>
+
+    <div style="flex: 1; min-width: 170px;">
+      <label class="form-label">Category</label>
+      <select name="category" class="form-control" onchange="this.form.submit()" id="select-category">
+        <option value="">All Categories</option>
+        <option value="URGENT" {% if selected_category == 'URGENT' %}selected{% endif %}>🚨 Urgent Alert</option>
+        <option value="ACADEMIC" {% if selected_category == 'ACADEMIC' %}selected{% endif %}>📚 Academic</option>
+        <option value="EXAM" {% if selected_category == 'EXAM' %}selected{% endif %}>📝 Examination</option>
+        <option value="FEES" {% if selected_category == 'FEES' %}selected{% endif %}>💳 Bursar & Fees</option>
+        <option value="EVENT" {% if selected_category == 'EVENT' %}selected{% endif %}>🎉 Campus Event</option>
+        <option value="GENERAL" {% if selected_category == 'GENERAL' %}selected{% endif %}>ℹ️ General Notice</option>
+      </select>
+    </div>
+
+    <div style="flex: 1; min-width: 170px;">
+      <label class="form-label">Target Audience</label>
+      <select name="audience" class="form-control" onchange="this.form.submit()" id="select-audience">
+        <option value="">All Audiences</option>
+        <option value="ALL" {% if selected_audience == 'ALL' %}selected{% endif %}>👥 Everyone</option>
+        <option value="STUDENTS" {% if selected_audience == 'STUDENTS' %}selected{% endif %}>🎓 Students</option>
+        <option value="FACULTY" {% if selected_audience == 'FACULTY' %}selected{% endif %}>👨‍🏫 Faculty</option>
+      </select>
+    </div>
+
+    <div>
+      <button type="submit" class="btn btn-secondary" id="btn-submit-filter">Filter</button>
+      <a href="/announcements" class="btn btn-outline" style="margin-left: 8px;">Reset</a>
+    </div>
+  </form>
+</div>
+
+<!-- Announcements Bulletin Grid -->
+{% if announcements %}
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px;">
+  {% for item in announcements %}
+  <div class="card" style="padding: 24px; display: flex; flex-direction: column; justify-content: space-between; position: relative; border-left: 4px solid {% if item.priority == 'HIGH' %}var(--color-danger){% elif item.priority == 'NORMAL' %}var(--color-primary){% else %}var(--color-text-muted){% endif %};">
+    <div>
+      <!-- Badges Header -->
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 8px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 8px; align-items: center;">
+          {% if item.priority == 'HIGH' %}
+          <span class="badge-tag badge-danger">🔥 High Priority</span>
+          {% elif item.priority == 'NORMAL' %}
+          <span class="badge-tag badge-primary">📌 Normal</span>
+          {% else %}
+          <span class="badge-tag" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8;">Low</span>
+          {% endif %}
+
+          <span class="badge-tag" style="background: rgba(99, 102, 241, 0.15); color: #818cf8;">
+            {{ item.category }}
+          </span>
+        </div>
+
+        <span class="badge-tag" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">
+          {% if item.target_audience == 'STUDENTS' %}🎓 Students
+          {% elif item.target_audience == 'FACULTY' %}👨‍🏫 Faculty
+          {% else %}👥 Campus Wide{% endif %}
+        </span>
+      </div>
+
+      <!-- Title & Meta -->
+      <h3 style="font-size: 1.15rem; font-weight: 600; color: #f8fafc; margin-bottom: 8px; line-height: 1.4;">
+        {{ item.title }}
+      </h3>
+
+      <div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 14px; display: flex; gap: 12px; flex-wrap: wrap;">
+        <span>✍️ {{ item.author_name }}</span>
+        <span>🕒 {{ item.created_at[:16] }}</span>
+        {% if item.expires_at %}
+        <span>⏳ Exp: {{ item.expires_at }}</span>
+        {% endif %}
+      </div>
+
+      <!-- Content -->
+      <p style="color: #cbd5e1; font-size: 0.92rem; line-height: 1.6; white-space: pre-line; margin-bottom: 18px;">
+        {{ item.content }}
+      </p>
+    </div>
+
+    <!-- Actions Footer -->
+    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 14px;">
+      <div>
+        {% if item.is_active %}
+        <span style="font-size: 0.8rem; color: #10b981;">● Active Notice</span>
+        {% else %}
+        <span style="font-size: 0.8rem; color: #64748b;">○ Archived</span>
+        {% endif %}
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-outline btn-sm" onclick="toggleNoticeActive({{ item.id }}, {{ 0 if item.is_active else 1 }})">
+          {{ 'Archive' if item.is_active else 'Activate' }}
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="deleteNotice({{ item.id }})">
+          🗑️
+        </button>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="padding: 48px; text-align: center;">
+  <div style="font-size: 3rem; margin-bottom: 12px;">📭</div>
+  <h3 style="color: #f8fafc; margin-bottom: 8px;">No Campus Bulletins Found</h3>
+  <p style="color: #94a3b8; max-width: 480px; margin: 0 auto 20px;">
+    No notices match the selected criteria. Post a new broadcast or reset filters.
+  </p>
+  <button class="btn btn-primary" onclick="openModal('modal-new-announcement')">Post New Notice</button>
+</div>
+{% endif %}
+
+<!-- Post Announcement Modal -->
+<div id="modal-new-announcement" class="modal-backdrop" style="display: none;">
+  <div class="modal-card" style="max-width: 600px;">
+    <div class="modal-header">
+      <h3 style="color: #f8fafc; font-size: 1.25rem;">📢 Post Campus Notice</h3>
+      <button class="modal-close" onclick="closeModal('modal-new-announcement')">✕</button>
+    </div>
+    <form id="form-new-announcement" onsubmit="submitNewAnnouncement(event)">
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+        <div>
+          <label class="form-label">Notice Headline *</label>
+          <input type="text" name="title" required class="form-control" placeholder="e.g. End-Semester Examination Schedules Released" id="modal-announcement-title">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <label class="form-label">Category *</label>
+            <select name="category" required class="form-control" id="modal-announcement-category">
+              <option value="GENERAL">General Notice</option>
+              <option value="ACADEMIC">Academic Circular</option>
+              <option value="EXAM">Examination</option>
+              <option value="FEES">Bursar & Fees</option>
+              <option value="EVENT">Campus Event</option>
+              <option value="URGENT">Urgent Alert</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Target Audience *</label>
+            <select name="target_audience" required class="form-control" id="modal-announcement-audience">
+              <option value="ALL">Everyone (Campus Wide)</option>
+              <option value="STUDENTS">Students Only</option>
+              <option value="FACULTY">Faculty Only</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <label class="form-label">Priority *</label>
+            <select name="priority" required class="form-control" id="modal-announcement-priority">
+              <option value="NORMAL">Normal Priority</option>
+              <option value="HIGH">High Priority (Urgent)</option>
+              <option value="LOW">Low Priority</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Issuing Authority</label>
+            <input type="text" name="author_name" value="Office of Academic Affairs" class="form-control" id="modal-announcement-author">
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label">Notice Content *</label>
+          <textarea name="content" required rows="5" class="form-control" placeholder="Enter full announcement details, deadlines, and instructions..." id="modal-announcement-content"></textarea>
+        </div>
+
+        <div>
+          <label class="form-label">Expiry Date (Optional)</label>
+          <input type="date" name="expires_at" class="form-control" id="modal-announcement-expiry">
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-new-announcement')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-announcement">Publish Notice</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+async function submitNewAnnouncement(e) {
+  e.preventDefault();
+  const form = e.target;
+  const formData = new FormData(form);
+  const payload = {
+    title: formData.get('title'),
+    category: formData.get('category'),
+    target_audience: formData.get('target_audience'),
+    priority: formData.get('priority'),
+    author_name: formData.get('author_name') || 'Office of Academic Affairs',
+    content: formData.get('content'),
+    expires_at: formData.get('expires_at') || null
+  };
+
+  try {
+    const res = await fetch('/api/announcements', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to publish announcement');
+    }
+    showToast('Notice published successfully!', 'success');
+    closeModal('modal-new-announcement');
+    setTimeout(() => window.location.reload(), 600);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function toggleNoticeActive(id, newStatus) {
+  try {
+    const res = await fetch(`/api/announcements/${id}/toggle-active?is_active=${newStatus}`, {
+      method: 'PUT'
+    });
+    if (!res.ok) throw new Error('Failed to update status');
+    showToast('Notice status updated', 'success');
+    setTimeout(() => window.location.reload(), 400);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function deleteNotice(id) {
+  if (!confirm('Are you sure you want to permanently delete this notice?')) return;
+  try {
+    const res = await fetch(`/api/announcements/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete notice');
+    showToast('Notice removed', 'success');
+    setTimeout(() => window.location.reload(), 400);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+</script>
+{% endblock %}

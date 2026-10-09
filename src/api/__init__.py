@@ -1,6 +1,7 @@
 """API routers package."""
 
 from src.api.academics import router as academics_router
+from src.api.announcements import router as announcements_router
 from src.api.courses import router as courses_router
 from src.api.faculty import router as faculty_router
 from src.api.finance import router as finance_router
@@ -14,5 +15,6 @@ __all__ = [
     "academics_router",
     "finance_router",
     "reports_router",
+    "announcements_router",
 ]
 

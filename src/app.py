@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from src.api.academics import router as academics_router
+from src.api.announcements import router as announcements_router
 from src.api.courses import router as courses_router
 from src.api.faculty import router as faculty_router
 from src.api.finance import router as finance_router
@@ -29,6 +30,7 @@ from src.database.connection import get_db
 from src.database.init_db import init_database
 from src.models.department import DepartmentCreate
 from src.services.academics_service import AcademicsService
+from src.services.announcement_service import AnnouncementService
 from src.services.course_service import CourseService
 from src.services.dashboard_service import DashboardService
 from src.services.department_service import DepartmentService
@@ -62,6 +64,7 @@ app.include_router(faculty_router)
 app.include_router(academics_router)
 app.include_router(finance_router)
 app.include_router(reports_router)
+app.include_router(announcements_router)
 
 
 # Ensure directories exist and mount static assets
@@ -371,6 +374,34 @@ def view_settings_page(
             "active_page": "settings",
             "telemetry": telemetry,
             "departments": departments,
+        },
+    )
+
+
+@app.get("/announcements", response_class=HTMLResponse, tags=["Web"])
+def view_announcements_page(
+    request: Request,
+    category: Optional[str] = None,
+    audience: Optional[str] = None,
+    search: Optional[str] = None,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Render the campus notice board and announcements hub."""
+    bulletins = AnnouncementService.list_announcements(
+        conn,
+        category=category,
+        target_audience=audience,
+        search=search,
+    )
+    return templates.TemplateResponse(
+        request=request,
+        name="announcements.html",
+        context={
+            "active_page": "announcements",
+            "announcements": bulletins,
+            "selected_category": category,
+            "selected_audience": audience,
+            "search": search or "",
         },
     )
 

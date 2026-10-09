@@ -167,3 +167,21 @@ CREATE INDEX IF NOT EXISTS idx_exam_results_exam ON exam_results(exam_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_student ON fee_invoices(student_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_status ON fee_invoices(status);
 CREATE INDEX IF NOT EXISTS idx_payments_invoice ON fee_payments(invoice_id);
+
+-- 12. Campus Announcements Bulletin Board
+CREATE TABLE IF NOT EXISTS announcements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    category TEXT NOT NULL CHECK(category IN ('ACADEMIC', 'EXAM', 'FEES', 'EVENT', 'URGENT', 'GENERAL')),
+    target_audience TEXT NOT NULL DEFAULT 'ALL' CHECK(target_audience IN ('ALL', 'STUDENTS', 'FACULTY')),
+    priority TEXT NOT NULL DEFAULT 'NORMAL' CHECK(priority IN ('HIGH', 'NORMAL', 'LOW')),
+    author_name TEXT NOT NULL DEFAULT 'Office of Academic Affairs',
+    is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0, 1)),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATE
+);
+
+CREATE INDEX IF NOT EXISTS idx_announcements_active ON announcements(is_active);
+CREATE INDEX IF NOT EXISTS idx_announcements_category ON announcements(category);
+CREATE INDEX IF NOT EXISTS idx_announcements_target ON announcements(target_audience);

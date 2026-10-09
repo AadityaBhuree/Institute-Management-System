@@ -5,6 +5,7 @@ from src.api.announcements import router as announcements_router
 from src.api.courses import router as courses_router
 from src.api.faculty import router as faculty_router
 from src.api.finance import router as finance_router
+from src.api.leaves import router as leaves_router
 from src.api.reports import router as reports_router
 from src.api.students import router as students_router
 
@@ -16,5 +17,6 @@ __all__ = [
     "finance_router",
     "reports_router",
     "announcements_router",
+    "leaves_router",
 ]
 

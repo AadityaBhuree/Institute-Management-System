@@ -185,3 +185,22 @@ CREATE TABLE IF NOT EXISTS announcements (
 CREATE INDEX IF NOT EXISTS idx_announcements_active ON announcements(is_active);
 CREATE INDEX IF NOT EXISTS idx_announcements_category ON announcements(category);
 CREATE INDEX IF NOT EXISTS idx_announcements_target ON announcements(target_audience);
+
+-- 13. Institutional Leave & Absence Management
+CREATE TABLE IF NOT EXISTS leave_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    applicant_type TEXT NOT NULL CHECK(applicant_type IN ('STUDENT', 'FACULTY')),
+    applicant_id INTEGER NOT NULL,
+    applicant_name TEXT NOT NULL,
+    leave_type TEXT NOT NULL CHECK(leave_type IN ('SICK', 'CASUAL', 'ACADEMIC', 'EMERGENCY', 'MATERNITY', 'DUTY')),
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    reason TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING', 'APPROVED', 'REJECTED')),
+    review_remarks TEXT,
+    reviewed_by TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_leaves_applicant ON leave_requests(applicant_type, applicant_id);
+CREATE INDEX IF NOT EXISTS idx_leaves_status ON leave_requests(status);

@@ -16,6 +16,7 @@ from src.api.announcements import router as announcements_router
 from src.api.courses import router as courses_router
 from src.api.faculty import router as faculty_router
 from src.api.finance import router as finance_router
+from src.api.leaves import router as leaves_router
 from src.api.reports import router as reports_router
 from src.api.students import router as students_router
 from src.core.config import (
@@ -36,6 +37,7 @@ from src.services.dashboard_service import DashboardService
 from src.services.department_service import DepartmentService
 from src.services.faculty_service import FacultyService
 from src.services.finance_service import FinanceService
+from src.services.leave_service import LeaveService
 from src.services.reports_service import ReportsService
 from src.services.student_service import StudentService
 from src.services.system_service import SystemService
@@ -65,6 +67,7 @@ app.include_router(academics_router)
 app.include_router(finance_router)
 app.include_router(reports_router)
 app.include_router(announcements_router)
+app.include_router(leaves_router)
 
 
 # Ensure directories exist and mount static assets
@@ -401,6 +404,40 @@ def view_announcements_page(
             "announcements": bulletins,
             "selected_category": category,
             "selected_audience": audience,
+            "search": search or "",
+        },
+    )
+
+
+@app.get("/leaves", response_class=HTMLResponse, tags=["Web"])
+def view_leaves_page(
+    request: Request,
+    status: Optional[str] = None,
+    applicant_type: Optional[str] = None,
+    search: Optional[str] = None,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Render the institutional leave application and approval workflow portal."""
+    leaves = LeaveService.list_leaves(
+        conn,
+        status=status,
+        applicant_type=applicant_type,
+        search=search,
+    )
+    stats = LeaveService.get_leave_stats(conn)
+    students = StudentService.list_students(conn, limit=100)
+    faculty = FacultyService.list_faculty(conn)
+    return templates.TemplateResponse(
+        request=request,
+        name="leaves.html",
+        context={
+            "active_page": "leaves",
+            "leaves": leaves,
+            "stats": stats,
+            "students": students,
+            "faculty": faculty,
+            "selected_status": status,
+            "selected_type": applicant_type,
             "search": search or "",
         },
     )

@@ -5,8 +5,13 @@
 {% block header_subtitle %}Scholar self-service dossier, attendance tracking, examination grades, and fee ledger{% endblock %}
 
 {% block header_actions %}
-<button class="btn btn-secondary btn-sm" onclick="window.print()" id="btn-print-dossier">
-  <span>🖨️ Print Dossier</span>
+{% if dossier and dossier.student %}
+<a href="/portal/transcript/{{ dossier.student.id }}/print" target="_blank" class="btn btn-secondary btn-sm" id="btn-print-transcript">
+  <span>📜 Official Transcript</span>
+</a>
+{% endif %}
+<button class="btn btn-outline btn-sm" onclick="window.print()" id="btn-print-dossier">
+  <span>🖨️ Quick Print</span>
 </button>
 <a href="/students" class="btn btn-primary btn-sm">
   <span>🎓 Student Registry</span>

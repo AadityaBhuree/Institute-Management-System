@@ -469,4 +469,44 @@ def view_timetable_page(
     )
 
 
+@app.get("/finance/invoices/{id}/print", response_class=HTMLResponse, tags=["Web"])
+def view_print_receipt_page(
+    id: int,
+    request: Request,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Render official printable fee receipt and settlement statement."""
+    invoice = FinanceService.get_invoice_by_id(conn, id)
+    if not invoice:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Invoice #{id} not found")
+    payments = FinanceService.list_payments(conn, invoice_id=id)
+    return templates.TemplateResponse(
+        request=request,
+        name="print_receipt.html",
+        context={
+            "invoice": invoice,
+            "payments": payments,
+        },
+    )
+
+
+@app.get("/portal/transcript/{student_id}/print", response_class=HTMLResponse, tags=["Web"])
+def view_print_transcript_page(
+    student_id: int,
+    request: Request,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Render official printable academic transcript dossier."""
+    dossier = StudentService.get_student_portal_dossier(conn, student_id)
+    if not dossier or not dossier.get("student"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Student #{student_id} not found")
+    return templates.TemplateResponse(
+        request=request,
+        name="print_transcript.html",
+        context={
+            "dossier": dossier,
+        },
+    )
+
+
 

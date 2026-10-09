@@ -257,3 +257,17 @@ def test_view_finance_html_page(client):
     assert "Institutional Bursar & Audit Ledger" in res.text
     assert "Fee Invoices Roster" in res.text
     assert "Audit Ledger" in res.text
+
+
+def test_view_print_receipt_page(client):
+    """Verify rendering of printable official fee receipt."""
+    # Fetch first available invoice ID
+    invoices = client.get("/api/finance/invoices").json()
+    assert len(invoices) >= 1
+    inv_id = invoices[0]["id"]
+
+    res = client.get(f"/finance/invoices/{inv_id}/print")
+    assert res.status_code == 200
+    assert "text/html" in res.headers["content-type"]
+    assert "FEE RECEIPT" in res.text
+    assert "INSTITUTE MANAGEMENT SYSTEM" in res.text

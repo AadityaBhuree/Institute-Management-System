@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fee Receipt - {{ invoice.invoice_no }} | IMS Enterprise</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    body {
+      background: #090d16;
+      color: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      padding: 40px 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .receipt-container {
+      background: #ffffff;
+      color: #1e293b;
+      max-width: 820px;
+      width: 100%;
+      border-radius: 12px;
+      padding: 48px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+      position: relative;
+    }
+
+    .no-print {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .receipt-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 24px;
+      margin-bottom: 30px;
+    }
+
+    .inst-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+    }
+
+    .inst-sub {
+      font-size: 0.9rem;
+      color: #475569;
+      margin-top: 4px;
+    }
+
+    .receipt-badge {
+      text-align: right;
+    }
+
+    .receipt-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #4338ca;
+    }
+
+    .meta-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      background: #f8fafc;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .meta-group label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: #64748b;
+      letter-spacing: 0.05em;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .meta-group div {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .table-receipt {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 30px;
+    }
+
+    .table-receipt th {
+      background: #0f172a;
+      color: #ffffff;
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .table-receipt td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 0.95rem;
+      color: #334155;
+    }
+
+    .status-stamp {
+      display: inline-block;
+      padding: 6px 16px;
+      border: 3px solid;
+      border-radius: 6px;
+      font-weight: 800;
+      font-size: 1.1rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .stamp-paid {
+      color: #15803d;
+      border-color: #15803d;
+      background: #dcfce7;
+    }
+
+    .stamp-partial {
+      color: #b45309;
+      border-color: #b45309;
+      background: #fef3c7;
+    }
+
+    .stamp-unpaid {
+      color: #b91c1c;
+      border-color: #b91c1c;
+      background: #fee2e2;
+    }
+
+    .sign-section {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 60px;
+      padding-top: 20px;
+      border-top: 1px dashed #cbd5e1;
+    }
+
+    .sign-box {
+      text-align: center;
+      width: 220px;
+    }
+
+    .sign-line {
+      border-top: 1px solid #475569;
+      margin-top: 40px;
+      padding-top: 8px;
+      font-size: 0.85rem;
+      color: #475569;
+      font-weight: 600;
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+        padding: 0;
+      }
+      .receipt-container {
+        box-shadow: none;
+        padding: 20px 0;
+        max-width: 100%;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt-container">
+    <!-- Non-printing toolbar -->
+    <div class="no-print">
+      <a href="/finance" class="btn btn-secondary">← Back to Finance</a>
+      <button onclick="window.print()" class="btn btn-primary">🖨️ Print Official Receipt</button>
+    </div>
+
+    <!-- Official Header -->
+    <div class="receipt-header">
+      <div>
+        <div class="inst-title">🏛️ INSTITUTE MANAGEMENT SYSTEM</div>
+        <div class="inst-sub">Office of the Bursar & Academic Financial Affairs</div>
+        <div class="inst-sub">University Campus, Administrative Block, Wing C</div>
+      </div>
+      <div class="receipt-badge">
+        <div class="receipt-title">FEE RECEIPT</div>
+        <div style="font-weight: 700; color: #0f172a; margin-top: 4px;">{{ invoice.invoice_no }}</div>
+        <div style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">Issued: {{ invoice.issued_date }}</div>
+      </div>
+    </div>
+
+    <!-- Meta Grid -->
+    <div class="meta-box">
+      <div>
+        <div class="meta-group" style="margin-bottom: 12px;">
+          <label>Scholar Name</label>
+          <div>{{ invoice.student_name }}</div>
+        </div>
+        <div class="meta-group">
+          <label>Enrollment Code</label>
+          <div>{{ invoice.enrollment_no }}</div>
+        </div>
+      </div>
+      <div>
+        <div class="meta-group" style="margin-bottom: 12px;">
+          <label>Department & Term</label>
+          <div>{{ invoice.department_name }} • {{ invoice.term_name }}</div>
+        </div>
+        <div class="meta-group">
+          <label>Billing Title</label>
+          <div>{{ invoice.title }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Financial Ledger Summary -->
+    <table class="table-receipt">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th style="text-align: right;">Total Assessed</th>
+          <th style="text-align: right;">Amount Paid</th>
+          <th style="text-align: right;">Outstanding Balance</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <strong>{{ invoice.title }}</strong><br>
+            <span style="font-size: 0.8rem; color: #64748b;">Due Date: {{ invoice.due_date }}</span>
+          </td>
+          <td style="text-align: right; font-weight: 700;">${{ "%.2f"|format(invoice.total_amount) }}</td>
+          <td style="text-align: right; font-weight: 700; color: #15803d;">${{ "%.2f"|format(invoice.paid_amount) }}</td>
+          <td style="text-align: right; font-weight: 700; color: {% if invoice.balance_amount > 0 %}#b91c1c{% else %}#15803d{% endif %};">
+            ${{ "%.2f"|format(invoice.balance_amount) }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Payment Transactions History -->
+    {% if payments %}
+    <h4 style="font-size: 1rem; color: #0f172a; margin-bottom: 12px; font-weight: 700;">Recorded Transactions & Receipts</h4>
+    <table class="table-receipt" style="margin-bottom: 24px;">
+      <thead>
+        <tr style="background: #334155;">
+          <th>Receipt No</th>
+          <th>Payment Date</th>
+          <th>Method</th>
+          <th>Received By</th>
+          <th style="text-align: right;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in payments %}
+        <tr>
+          <td style="font-weight: 700;">{{ p.payment_no }}</td>
+          <td>{{ p.payment_date[:16] }}</td>
+          <td><span style="font-weight: 600;">{{ p.payment_method }}</span></td>
+          <td>{{ p.received_by or 'Bursar Office' }}</td>
+          <td style="text-align: right; font-weight: 700; color: #15803d;">+${{ "%.2f"|format(p.amount) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    <!-- Settlement Status & Signature -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px;">
+      <div>
+        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 6px; font-weight: 600;">SETTLEMENT STATUS</div>
+        {% if invoice.status == 'PAID' %}
+        <span class="status-stamp stamp-paid">PAID IN FULL</span>
+        {% elif invoice.status == 'PARTIAL' %}
+        <span class="status-stamp stamp-partial">PARTIALLY SETTLED</span>
+        {% else %}
+        <span class="status-stamp stamp-unpaid">UNPAID / OVERDUE</span>
+        {% endif %}
+      </div>
+
+      <div style="text-align: right; font-size: 0.85rem; color: #64748b;">
+        <div>Electronic Verification Token:</div>
+        <div style="font-family: monospace; font-size: 0.95rem; color: #0f172a; font-weight: 700;">IMS-{{ invoice.invoice_no }}-VERIFIED</div>
+      </div>
+    </div>
+
+    <!-- Signatures -->
+    <div class="sign-section">
+      <div class="sign-box">
+        <div class="sign-line">Student Signature</div>
+      </div>
+      <div class="sign-box">
+        <div class="sign-line">Authorized Bursar Sign & Seal</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

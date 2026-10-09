@@ -153,6 +153,9 @@
               <td style="font-size: 0.82rem; color: var(--text-muted);">{{ inv.due_date }}</td>
               <td style="text-align: right;">
                 <div style="display: inline-flex; gap: 6px;">
+                  <a href="/finance/invoices/{{ inv.id }}/print" target="_blank" class="btn btn-outline btn-sm" title="Print Official Receipt">
+                    🖨️
+                  </a>
                   <button class="btn btn-secondary btn-sm" onclick="viewInvoiceDossier({{ inv.id }})">
                     🔍 Detail
                   </button>

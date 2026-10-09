@@ -43,13 +43,25 @@
           <span>Faculty & Courses</span>
         </a>
 
-        <div class="nav-label">Academic Evaluation</div>
+        <div class="nav-label">Academic Operations</div>
         <a href="/academics" class="nav-item {% if active_page == 'academics' %}active{% endif %}" id="nav-academics">
           <span class="nav-icon">📝</span>
           <span>Attendance & Exams</span>
         </a>
+        <a href="/timetable" class="nav-item {% if active_page == 'timetable' %}active{% endif %}" id="nav-timetable">
+          <span class="nav-icon">🗓️</span>
+          <span>Lecture Timetable</span>
+        </a>
+        <a href="/announcements" class="nav-item {% if active_page == 'announcements' %}active{% endif %}" id="nav-announcements">
+          <span class="nav-icon">📢</span>
+          <span>Campus Notices</span>
+        </a>
 
-        <div class="nav-label">Administration</div>
+        <div class="nav-label">Administration & Governance</div>
+        <a href="/leaves" class="nav-item {% if active_page == 'leaves' %}active{% endif %}" id="nav-leaves">
+          <span class="nav-icon">📋</span>
+          <span>Leave Management</span>
+        </a>
         <a href="/finance" class="nav-item {% if active_page == 'finance' %}active{% endif %}" id="nav-finance">
           <span class="nav-icon">💳</span>
           <span>Fee Invoicing & Audit</span>

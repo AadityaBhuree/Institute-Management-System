@@ -199,3 +199,16 @@ def test_view_student_portal_html_page(client):
     assert "Overall Attendance" in html
     assert "Registered Curriculum" in html
 
+
+def test_view_print_transcript_page(client):
+    """Verify HTML rendering of official printable academic transcript."""
+    students = client.get("/api/students").json()
+    assert len(students) >= 1
+    student_id = students[0]["id"]
+
+    res = client.get(f"/portal/transcript/{student_id}/print")
+    assert res.status_code == 200
+    assert "text/html" in res.headers["content-type"]
+    assert "Official Transcript" in res.text
+    assert "INSTITUTE MANAGEMENT SYSTEM" in res.text
+

@@ -17,6 +17,7 @@ from src.api.courses import router as courses_router
 from src.api.faculty import router as faculty_router
 from src.api.finance import router as finance_router
 from src.api.leaves import router as leaves_router
+from src.api.library import router as library_router
 from src.api.reports import router as reports_router
 from src.api.students import router as students_router
 from src.api.timetable import router as timetable_router
@@ -39,6 +40,7 @@ from src.services.department_service import DepartmentService
 from src.services.faculty_service import FacultyService
 from src.services.finance_service import FinanceService
 from src.services.leave_service import LeaveService
+from src.services.library_service import LibraryService
 from src.services.reports_service import ReportsService
 from src.services.student_service import StudentService
 from src.services.system_service import SystemService
@@ -71,6 +73,7 @@ app.include_router(reports_router)
 app.include_router(announcements_router)
 app.include_router(leaves_router)
 app.include_router(timetable_router)
+app.include_router(library_router)
 
 
 # Ensure directories exist and mount static assets
@@ -507,6 +510,34 @@ def view_print_transcript_page(
             "dossier": dossier,
         },
     )
+
+
+@app.get("/library", response_class=HTMLResponse, tags=["Web"])
+def view_library_page(
+    request: Request,
+    category: Optional[str] = None,
+    search: Optional[str] = None,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Render the campus library monograph catalog and circulation desk."""
+    books = LibraryService.list_books(conn, category=category, search=search)
+    loans = LibraryService.list_loans(conn)
+    stats = LibraryService.get_stats(conn)
+    students = StudentService.list_students(conn)
+    return templates.TemplateResponse(
+        request=request,
+        name="library.html",
+        context={
+            "active_page": "library",
+            "books": books,
+            "loans": loans,
+            "stats": stats,
+            "students": students,
+            "selected_category": category,
+            "search": search or "",
+        },
+    )
+
 
 
 

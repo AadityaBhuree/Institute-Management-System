@@ -221,3 +221,39 @@ CREATE TABLE IF NOT EXISTS timetable_slots (
 CREATE INDEX IF NOT EXISTS idx_timetable_course ON timetable_slots(course_id);
 CREATE INDEX IF NOT EXISTS idx_timetable_day ON timetable_slots(day_of_week);
 CREATE INDEX IF NOT EXISTS idx_timetable_room ON timetable_slots(room_number);
+
+-- 15. Campus Library & Resource Circulation
+CREATE TABLE IF NOT EXISTS library_books (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    isbn TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL,
+    author TEXT NOT NULL,
+    category TEXT NOT NULL CHECK(category IN ('COMPUTER_SCIENCE', 'ENGINEERING', 'MANAGEMENT', 'BIOTECH', 'MATHEMATICS', 'LITERATURE', 'GENERAL')),
+    total_copies INTEGER NOT NULL DEFAULT 1 CHECK(total_copies >= 1),
+    available_copies INTEGER NOT NULL DEFAULT 1 CHECK(available_copies >= 0),
+    shelf_location TEXT NOT NULL DEFAULT 'Main Stack A-1',
+    publisher TEXT,
+    edition TEXT DEFAULT '1st Ed',
+    publication_year INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_books_isbn ON library_books(isbn);
+CREATE INDEX IF NOT EXISTS idx_books_category ON library_books(category);
+
+CREATE TABLE IF NOT EXISTS book_loans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL REFERENCES library_books(id) ON DELETE RESTRICT,
+    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    issue_date DATE NOT NULL,
+    due_date DATE NOT NULL,
+    return_date DATE,
+    fine_amount REAL NOT NULL DEFAULT 0.0 CHECK(fine_amount >= 0),
+    status TEXT NOT NULL DEFAULT 'ISSUED' CHECK(status IN ('ISSUED', 'RETURNED', 'OVERDUE')),
+    remarks TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_loans_book ON book_loans(book_id);
+CREATE INDEX IF NOT EXISTS idx_loans_student ON book_loans(student_id);
+CREATE INDEX IF NOT EXISTS idx_loans_status ON book_loans(status);

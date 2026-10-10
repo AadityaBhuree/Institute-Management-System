@@ -1,0 +1,543 @@
+{% extends "base.html" %}
+
+{% block title %}Campus Library & Resource Circulation{% endblock %}
+{% block header_title %}Library & Digital Circulation{% endblock %}
+{% block header_subtitle %}Monograph cataloging, resource circulation, scholar loans, and overdue audit telemetry{% endblock %}
+
+{% block header_actions %}
+<div style="display: flex; gap: 12px;">
+  <button class="btn btn-outline" onclick="openModal('modal-add-book')" id="btn-open-add-book">
+    <span>📖 Catalog New Book</span>
+  </button>
+  <button class="btn btn-primary" onclick="openModal('modal-issue-book')" id="btn-open-issue-book">
+    <span>🔖 Issue Book to Scholar</span>
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Circulation Metrics Grid -->
+<div class="metrics-grid" style="margin-bottom: 24px;">
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Catalog Titles</span>
+      <span class="metric-icon">📚</span>
+    </div>
+    <div class="metric-value">{{ stats.total_titles }}</div>
+    <div class="metric-footer">
+      <span>{{ stats.total_copies }} total physical copies</span>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Available in Stacks</span>
+      <span class="metric-icon">📗</span>
+    </div>
+    <div class="metric-value" style="color: var(--color-success);">{{ stats.available_copies }}</div>
+    <div class="metric-footer">
+      <span>Ready for immediate circulation</span>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Active Loans</span>
+      <span class="metric-icon">📖</span>
+    </div>
+    <div class="metric-value" style="color: var(--color-primary);">{{ stats.active_loans }}</div>
+    <div class="metric-footer">
+      <span>Currently checked out</span>
+    </div>
+  </div>
+
+  <div class="metric-card {% if stats.overdue_loans > 0 %}card-border-warning{% endif %}">
+    <div class="metric-header">
+      <span class="metric-title">Overdue Returns</span>
+      <span class="metric-icon">⚠️</span>
+    </div>
+    <div class="metric-value" style="color: var(--color-warning);">{{ stats.overdue_loans }}</div>
+    <div class="metric-footer">
+      <span>${{ "%.2f"|format(stats.total_fines_collected) }} total fines recorded</span>
+    </div>
+  </div>
+</div>
+
+<!-- Category & Search Filter Bar -->
+<div class="card" style="margin-bottom: 24px; padding: 18px 24px;">
+  <form method="GET" action="/library" style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+    <div style="flex: 2; min-width: 220px;">
+      <label class="form-label">Search Books / ISBN / Author</label>
+      <input type="text" name="search" class="form-control" placeholder="Search by title, author, or ISBN..." value="{{ search }}" id="input-library-search">
+    </div>
+
+    <div style="flex: 1; min-width: 170px;">
+      <label class="form-label">Subject Classification</label>
+      <select name="category" class="form-control" onchange="this.form.submit()" id="select-category">
+        <option value="">All Categories</option>
+        <option value="COMPUTER_SCIENCE" {% if selected_category == 'COMPUTER_SCIENCE' %}selected{% endif %}>💻 Computer Science</option>
+        <option value="ENGINEERING" {% if selected_category == 'ENGINEERING' %}selected{% endif %}>⚙️ Engineering</option>
+        <option value="MANAGEMENT" {% if selected_category == 'MANAGEMENT' %}selected{% endif %}>📊 Management</option>
+        <option value="BIOTECH" {% if selected_category == 'BIOTECH' %}selected{% endif %}>🧬 Biotech</option>
+        <option value="MATHEMATICS" {% if selected_category == 'MATHEMATICS' %}selected{% endif %}>📐 Mathematics</option>
+        <option value="LITERATURE" {% if selected_category == 'LITERATURE' %}selected{% endif %}>📜 Literature</option>
+        <option value="GENERAL" {% if selected_category == 'GENERAL' %}selected{% endif %}>🌐 General Reference</option>
+      </select>
+    </div>
+
+    <div>
+      <button type="submit" class="btn btn-secondary">Filter</button>
+      <a href="/library" class="btn btn-outline" style="margin-left: 8px;">Reset</a>
+    </div>
+  </form>
+</div>
+
+<!-- Tabs Navigation -->
+<div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 12px;">
+  <button class="btn btn-secondary" onclick="switchLibraryTab('tab-catalog')" id="btn-tab-catalog" style="font-weight: 600;">
+    📚 Book Catalog ({{ books|length }})
+  </button>
+  <button class="btn btn-outline" onclick="switchLibraryTab('tab-loans')" id="btn-tab-loans" style="font-weight: 600;">
+    🔖 Circulation & Loans ({{ loans|length }})
+  </button>
+</div>
+
+<!-- TAB 1: Catalog Directory -->
+<div id="tab-catalog" class="card" style="padding: 0; overflow: hidden;">
+  <div style="padding: 18px 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center;">
+    <h3 style="font-size: 1.1rem; font-weight: 600; color: #f8fafc;">Library Catalog Holdings</h3>
+    <span style="font-size: 0.85rem; color: #94a3b8;">Showing {{ books|length }} accessioned titles</span>
+  </div>
+
+  <div style="overflow-x: auto;">
+    <table class="data-table" style="width: 100%;">
+      <thead>
+        <tr>
+          <th>ISBN</th>
+          <th>Title & Details</th>
+          <th>Author</th>
+          <th>Subject</th>
+          <th>Shelf Location</th>
+          <th style="text-align: center;">Availability</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in books %}
+        <tr id="book-row-{{ b.id }}">
+          <td>
+            <code style="font-size: 0.85rem; color: var(--color-primary-light);">{{ b.isbn }}</code>
+          </td>
+          <td>
+            <div style="font-weight: 600; color: #f8fafc;">{{ b.title }}</div>
+            <div style="font-size: 0.8rem; color: #94a3b8;">{{ b.edition or '1st Ed' }} {% if b.publication_year %}• {{ b.publication_year }}{% endif %} • {{ b.publisher or 'Academic Press' }}</div>
+          </td>
+          <td>{{ b.author }}</td>
+          <td>
+            <span class="badge badge-secondary" style="font-size: 0.75rem;">{{ b.category }}</span>
+          </td>
+          <td>
+            <span style="font-size: 0.85rem; color: #cbd5e1;">📍 {{ b.shelf_location }}</span>
+          </td>
+          <td style="text-align: center;">
+            {% if b.available_copies > 0 %}
+            <span class="badge badge-success" style="font-size: 0.85rem;">{{ b.available_copies }} / {{ b.total_copies }}</span>
+            {% else %}
+            <span class="badge badge-danger" style="font-size: 0.85rem;">0 / {{ b.total_copies }} (Out)</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            {% if b.available_copies > 0 %}
+            <button class="btn btn-outline btn-sm" onclick="prepareIssueModal({{ b.id }}, '{{ b.title|replace("'", "\\'") }}')">
+              Issue
+            </button>
+            {% else %}
+            <span style="font-size: 0.8rem; color: #64748b;">Unavailable</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 48px; color: #94a3b8;">
+            No books found matching the current criteria.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAB 2: Circulation Loans -->
+<div id="tab-loans" class="card" style="padding: 0; overflow: hidden; display: none;">
+  <div style="padding: 18px 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center;">
+    <h3 style="font-size: 1.1rem; font-weight: 600; color: #f8fafc;">Circulation Register & Scholar Borrowers</h3>
+    <span style="font-size: 0.85rem; color: #94a3b8;">{{ loans|length }} loan transactions</span>
+  </div>
+
+  <div style="overflow-x: auto;">
+    <table class="data-table" style="width: 100%;">
+      <thead>
+        <tr>
+          <th>Loan ID</th>
+          <th>Scholar</th>
+          <th>Book Title</th>
+          <th>Issue Date</th>
+          <th>Due Date</th>
+          <th>Status</th>
+          <th>Fine</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in loans %}
+        <tr id="loan-row-{{ l.id }}">
+          <td>#LN-{{ "%04d"|format(l.id) }}</td>
+          <td>
+            <div style="font-weight: 600; color: #f8fafc;">{{ l.student_name }}</div>
+            <div style="font-size: 0.8rem; color: #94a3b8;">{{ l.enrollment_no }}</div>
+          </td>
+          <td>
+            <div style="font-weight: 500; color: #f1f5f9;">{{ l.book_title }}</div>
+            <div style="font-size: 0.75rem; color: #94a3b8;">ISBN: {{ l.isbn }}</div>
+          </td>
+          <td>{{ l.issue_date }}</td>
+          <td>
+            {% if l.is_overdue and l.status == 'ISSUED' %}
+            <span style="color: var(--color-danger); font-weight: 600;">⚠️ {{ l.due_date }} (Overdue)</span>
+            {% else %}
+            <span>{{ l.due_date }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if l.status == 'ISSUED' %}
+              {% if l.is_overdue %}
+              <span class="badge badge-warning">OVERDUE</span>
+              {% else %}
+              <span class="badge badge-primary">ACTIVE</span>
+              {% endif %}
+            {% elif l.status == 'RETURNED' %}
+              <span class="badge badge-success">RETURNED</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if l.fine_amount > 0 %}
+            <span style="color: var(--color-warning); font-weight: 600;">${{ "%.2f"|format(l.fine_amount) }}</span>
+            {% else %}
+            <span style="color: #64748b;">$0.00</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            {% if l.status == 'ISSUED' %}
+            <button class="btn btn-outline btn-sm" onclick="openReturnModal({{ l.id }}, '{{ l.book_title|replace("'", "\\'") }}', '{{ l.student_name|replace("'", "\\'") }}', '{{ l.due_date }}')">
+              📥 Check In
+            </button>
+            {% else %}
+            <span style="font-size: 0.8rem; color: #64748b;">Returned {{ l.return_date }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" style="text-align: center; padding: 48px; color: #94a3b8;">
+            No loan circulation records recorded yet.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL 1: Catalog New Book -->
+<div class="modal-backdrop" id="modal-add-book" style="display: none;">
+  <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-header">
+      <h3 class="modal-title">📖 Catalog New Book Accession</h3>
+      <button class="modal-close" onclick="closeModal('modal-add-book')">&times;</button>
+    </div>
+    <form id="form-add-book" onsubmit="submitAddBook(event)">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+        <div style="grid-column: span 2;">
+          <label class="form-label">Book Title *</label>
+          <input type="text" name="title" class="form-control" required placeholder="e.g., Designing Data-Intensive Applications" id="input-book-title">
+        </div>
+        <div>
+          <label class="form-label">ISBN Identifier *</label>
+          <input type="text" name="isbn" class="form-control" required placeholder="e.g., 978-1449373320" id="input-book-isbn">
+        </div>
+        <div>
+          <label class="form-label">Author / Editor *</label>
+          <input type="text" name="author" class="form-control" required placeholder="e.g., Martin Kleppmann" id="input-book-author">
+        </div>
+        <div>
+          <label class="form-label">Subject Category *</label>
+          <select name="category" class="form-control" required id="input-book-category">
+            <option value="COMPUTER_SCIENCE">Computer Science</option>
+            <option value="ENGINEERING">Engineering</option>
+            <option value="MANAGEMENT">Management</option>
+            <option value="BIOTECH">Biotechnology</option>
+            <option value="MATHEMATICS">Mathematics</option>
+            <option value="LITERATURE">Literature</option>
+            <option value="GENERAL">General Reference</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Total Copies *</label>
+          <input type="number" name="total_copies" class="form-control" min="1" value="3" required id="input-book-copies">
+        </div>
+        <div>
+          <label class="form-label">Shelf Stacks Location</label>
+          <input type="text" name="shelf_location" class="form-control" value="Main Stack A-1" id="input-book-shelf">
+        </div>
+        <div>
+          <label class="form-label">Edition</label>
+          <input type="text" name="edition" class="form-control" value="1st Ed" id="input-book-edition">
+        </div>
+        <div>
+          <label class="form-label">Publisher</label>
+          <input type="text" name="publisher" class="form-control" placeholder="e.g., O'Reilly Media" id="input-book-publisher">
+        </div>
+        <div>
+          <label class="form-label">Publication Year</label>
+          <input type="number" name="publication_year" class="form-control" min="1900" max="2030" value="2022" id="input-book-year">
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-add-book')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-book">Accession Book</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL 2: Issue Book to Scholar -->
+<div class="modal-backdrop" id="modal-issue-book" style="display: none;">
+  <div class="modal-content" style="max-width: 550px;">
+    <div class="modal-header">
+      <h3 class="modal-title">🔖 Issue Book Circulation Slip</h3>
+      <button class="modal-close" onclick="closeModal('modal-issue-book')">&times;</button>
+    </div>
+    <form id="form-issue-book" onsubmit="submitIssueBook(event)">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div>
+          <label class="form-label">Select Book *</label>
+          <select name="book_id" class="form-control" required id="issue-select-book">
+            <option value="">-- Choose Available Book --</option>
+            {% for b in books %}
+              {% if b.available_copies > 0 %}
+              <option value="{{ b.id }}">{{ b.title }} ({{ b.available_copies }} in stock - ISBN: {{ b.isbn }})</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Borrower Scholar *</label>
+          <select name="student_id" class="form-control" required id="issue-select-student">
+            <option value="">-- Choose Student --</option>
+            {% for s in students %}
+            <option value="{{ s.id }}">{{ s.first_name }} {{ s.last_name }} ({{ s.enrollment_no }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <label class="form-label">Issue Date *</label>
+            <input type="date" name="issue_date" class="form-control" required id="issue-date-input">
+          </div>
+          <div>
+            <label class="form-label">Due Date (14 Days) *</label>
+            <input type="date" name="due_date" class="form-control" required id="due-date-input">
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Circulation Remarks</label>
+          <input type="text" name="remarks" class="form-control" placeholder="Optional circulation notes..." id="issue-remarks-input">
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-issue-book')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-issue">Authorize Checkout</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL 3: Check In / Return Book -->
+<div class="modal-backdrop" id="modal-return-book" style="display: none;">
+  <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-header">
+      <h3 class="modal-title">📥 Return Circulation Check-In</h3>
+      <button class="modal-close" onclick="closeModal('modal-return-book')">&times;</button>
+    </div>
+    <form id="form-return-book" onsubmit="submitReturnBook(event)">
+      <input type="hidden" id="return-loan-id">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div style="background: rgba(255, 255, 255, 0.03); padding: 12px 16px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08);">
+          <div style="font-weight: 600; color: #f8fafc;" id="return-info-book">Book Title</div>
+          <div style="font-size: 0.85rem; color: #94a3b8;" id="return-info-student">Scholar Name</div>
+          <div style="font-size: 0.85rem; color: #94a3b8;" id="return-info-due">Due Date</div>
+        </div>
+        <div>
+          <label class="form-label">Return Date *</label>
+          <input type="date" name="return_date" class="form-control" required id="return-date-input">
+        </div>
+        <div>
+          <label class="form-label">Overdue Fine ($)</label>
+          <input type="number" step="0.50" min="0" value="0.00" name="fine_amount" class="form-control" id="return-fine-input">
+        </div>
+        <div>
+          <label class="form-label">Inspection & Condition Notes</label>
+          <input type="text" name="remarks" class="form-control" placeholder="Book condition verified, clean..." id="return-remarks-input">
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-return-book')">Cancel</button>
+        <button type="submit" class="btn btn-success" id="btn-submit-return">Confirm Book Check-In</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function switchLibraryTab(tabId) {
+  document.getElementById('tab-catalog').style.display = tabId === 'tab-catalog' ? 'block' : 'none';
+  document.getElementById('tab-loans').style.display = tabId === 'tab-loans' ? 'block' : 'none';
+
+  if (tabId === 'tab-catalog') {
+    document.getElementById('btn-tab-catalog').className = 'btn btn-secondary';
+    document.getElementById('btn-tab-loans').className = 'btn btn-outline';
+  } else {
+    document.getElementById('btn-tab-catalog').className = 'btn btn-outline';
+    document.getElementById('btn-tab-loans').className = 'btn btn-secondary';
+  }
+}
+
+// Prefill default dates
+document.addEventListener('DOMContentLoaded', () => {
+  const today = new Date().toISOString().split('T')[0];
+  const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  
+  const issueInput = document.getElementById('issue-date-input');
+  const dueInput = document.getElementById('due-date-input');
+  const returnInput = document.getElementById('return-date-input');
+  
+  if (issueInput) issueInput.value = today;
+  if (dueInput) dueInput.value = dueDate;
+  if (returnInput) returnInput.value = today;
+});
+
+function prepareIssueModal(bookId, bookTitle) {
+  const select = document.getElementById('issue-select-book');
+  if (select) select.value = bookId;
+  openModal('modal-issue-book');
+}
+
+function openReturnModal(loanId, bookTitle, studentName, dueDate) {
+  document.getElementById('return-loan-id').value = loanId;
+  document.getElementById('return-info-book').textContent = '📖 ' + bookTitle;
+  document.getElementById('return-info-student').textContent = 'Scholar: ' + studentName;
+  document.getElementById('return-info-due').textContent = 'Due Date: ' + dueDate;
+  
+  // Calculate default fine if overdue
+  const today = new Date().toISOString().split('T')[0];
+  if (today > dueDate) {
+    const diffDays = Math.ceil((new Date(today) - new Date(dueDate)) / (1000 * 60 * 60 * 24));
+    document.getElementById('return-fine-input').value = (diffDays * 1.0).toFixed(2);
+  } else {
+    document.getElementById('return-fine-input').value = "0.00";
+  }
+
+  openModal('modal-return-book');
+}
+
+async function submitAddBook(e) {
+  e.preventDefault();
+  const form = e.target;
+  const payload = {
+    title: form.title.value.trim(),
+    isbn: form.isbn.value.trim(),
+    author: form.author.value.trim(),
+    category: form.category.value,
+    total_copies: parseInt(form.total_copies.value, 10),
+    shelf_location: form.shelf_location.value.trim(),
+    edition: form.edition.value.trim(),
+    publisher: form.publisher.value.trim() || null,
+    publication_year: form.publication_year.value ? parseInt(form.publication_year.value, 10) : null
+  };
+
+  try {
+    const res = await fetch('/api/library/books', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to catalog book');
+    }
+    showToast('Book accessioned successfully to catalog!', 'success');
+    closeModal('modal-add-book');
+    setTimeout(() => window.location.reload(), 600);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function submitIssueBook(e) {
+  e.preventDefault();
+  const form = e.target;
+  const payload = {
+    book_id: parseInt(form.book_id.value, 10),
+    student_id: parseInt(form.student_id.value, 10),
+    issue_date: form.issue_date.value,
+    due_date: form.due_date.value,
+    remarks: form.remarks.value.trim() || null
+  };
+
+  try {
+    const res = await fetch('/api/library/issue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to issue book');
+    }
+    showToast('Book circulation slip issued successfully!', 'success');
+    closeModal('modal-issue-book');
+    setTimeout(() => window.location.reload(), 600);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function submitReturnBook(e) {
+  e.preventDefault();
+  const loanId = document.getElementById('return-loan-id').value;
+  const payload = {
+    return_date: document.getElementById('return-date-input').value,
+    fine_amount: parseFloat(document.getElementById('return-fine-input').value || 0),
+    remarks: document.getElementById('return-remarks-input').value.trim() || null
+  };
+
+  try {
+    const res = await fetch(`/api/library/return/${loanId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to process return');
+    }
+    showToast('Book checked in and returned to stacks!', 'success');
+    closeModal('modal-return-book');
+    setTimeout(() => window.location.reload(), 600);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+</script>
+{% endblock %}

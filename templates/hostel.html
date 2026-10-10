@@ -1,0 +1,597 @@
+{% extends "base.html" %}
+
+{% block title %}Hostel & Residential Hall Management{% endblock %}
+{% block header_title %}Hostel & Residential Life{% endblock %}
+{% block header_subtitle %}Campus residence blocks, room occupancy heatmaps, scholar room allocations, and checkout registers{% endblock %}
+
+{% block header_actions %}
+<div style="display: flex; gap: 12px;">
+  <button class="btn btn-outline" onclick="openModal('modal-add-block')" id="btn-open-add-block">
+    <span>🏢 Add Block</span>
+  </button>
+  <button class="btn btn-outline" onclick="openModal('modal-add-room')" id="btn-open-add-room">
+    <span>🚪 Add Room</span>
+  </button>
+  <button class="btn btn-primary" onclick="openModal('modal-allocate-room')" id="btn-open-allocate">
+    <span>🛏️ Allocate Bed</span>
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Residence Telemetry Metrics Grid -->
+<div class="metrics-grid" style="margin-bottom: 24px;">
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Residential Blocks</span>
+      <span class="metric-icon">🏢</span>
+    </div>
+    <div class="metric-value">{{ stats.total_blocks }}</div>
+    <div class="metric-footer">
+      <span>{{ stats.total_rooms }} dormitory rooms</span>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Total Bed Capacity</span>
+      <span class="metric-icon">🛏️</span>
+    </div>
+    <div class="metric-value">{{ stats.total_beds }}</div>
+    <div class="metric-footer">
+      <span>Institutional accommodation slots</span>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Occupied Beds</span>
+      <span class="metric-icon">👤</span>
+    </div>
+    <div class="metric-value" style="color: var(--color-primary);">{{ stats.occupied_beds }}</div>
+    <div class="metric-footer">
+      <span>{{ stats.active_residents }} registered student residents</span>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Vacant Beds Available</span>
+      <span class="metric-icon">✨</span>
+    </div>
+    <div class="metric-value" style="color: var(--color-success);">{{ stats.available_beds }}</div>
+    <div class="metric-footer">
+      <span>Ready for immediate allocation</span>
+    </div>
+  </div>
+</div>
+
+<!-- Filter Toolbar -->
+<div class="card" style="margin-bottom: 24px; padding: 18px 24px;">
+  <form method="GET" action="/hostel" style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+    <div style="flex: 1; min-width: 180px;">
+      <label class="form-label">Hostel Block</label>
+      <select name="block_id" class="form-control" onchange="this.form.submit()" id="select-block">
+        <option value="">All Residential Blocks</option>
+        {% for b in blocks %}
+        <option value="{{ b.id }}" {% if selected_block == b.id %}selected{% endif %}>{{ b.block_name }} ({{ b.gender_type }})</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="flex: 1; min-width: 160px;">
+      <label class="form-label">Room Type</label>
+      <select name="room_type" class="form-control" onchange="this.form.submit()" id="select-room-type">
+        <option value="">All Room Types</option>
+        <option value="SINGLE" {% if selected_type == 'SINGLE' %}selected{% endif %}>Single Bed</option>
+        <option value="DOUBLE" {% if selected_type == 'DOUBLE' %}selected{% endif %}>Double Shared</option>
+        <option value="TRIPLE" {% if selected_type == 'TRIPLE' %}selected{% endif %}>Triple Shared</option>
+        <option value="DORM" {% if selected_type == 'DORM' %}selected{% endif %}>Dormitory Suite</option>
+      </select>
+    </div>
+
+    <div style="flex: 1; min-width: 150px;">
+      <label class="form-label">Availability</label>
+      <select name="status" class="form-control" onchange="this.form.submit()" id="select-status">
+        <option value="">All Statuses</option>
+        <option value="AVAILABLE" {% if selected_status == 'AVAILABLE' %}selected{% endif %}>🟢 Available</option>
+        <option value="FULL" {% if selected_status == 'FULL' %}selected{% endif %}>🔴 Fully Occupied</option>
+        <option value="MAINTENANCE" {% if selected_status == 'MAINTENANCE' %}selected{% endif %}>🛠️ Maintenance</option>
+      </select>
+    </div>
+
+    <div>
+      <button type="submit" class="btn btn-secondary">Filter</button>
+      <a href="/hostel" class="btn btn-outline" style="margin-left: 8px;">Reset</a>
+    </div>
+  </form>
+</div>
+
+<!-- Tabs Navigation -->
+<div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 12px;">
+  <button class="btn btn-secondary" onclick="switchHostelTab('tab-rooms')" id="btn-tab-rooms" style="font-weight: 600;">
+    🚪 Dormitory Rooms ({{ rooms|length }})
+  </button>
+  <button class="btn btn-outline" onclick="switchHostelTab('tab-allocations')" id="btn-tab-allocations" style="font-weight: 600;">
+    👥 Resident Allocations ({{ allocations|length }})
+  </button>
+</div>
+
+<!-- TAB 1: Rooms Register -->
+<div id="tab-rooms" class="card" style="padding: 0; overflow: hidden;">
+  <div style="padding: 18px 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center;">
+    <h3 style="font-size: 1.1rem; font-weight: 600; color: #f8fafc;">Hostel Rooms Directory</h3>
+    <span style="font-size: 0.85rem; color: #94a3b8;">Showing {{ rooms|length }} rooms</span>
+  </div>
+
+  <div style="overflow-x: auto;">
+    <table class="data-table" style="width: 100%;">
+      <thead>
+        <tr>
+          <th>Block & Room</th>
+          <th>Room Type</th>
+          <th>Floor</th>
+          <th>Fee / Semester</th>
+          <th style="text-align: center;">Bed Occupancy</th>
+          <th>Status</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rooms %}
+        <tr id="room-row-{{ r.id }}">
+          <td>
+            <div style="font-weight: 600; color: #f8fafc;">Room {{ r.room_number }}</div>
+            <div style="font-size: 0.8rem; color: #94a3b8;">{{ r.block_name }}</div>
+          </td>
+          <td>
+            <span class="badge badge-secondary" style="font-size: 0.75rem;">{{ r.room_type }}</span>
+          </td>
+          <td>Floor {{ r.floor }}</td>
+          <td>${{ "%.2f"|format(r.fee_per_semester) }}</td>
+          <td style="text-align: center;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+              <span style="font-size: 0.85rem; font-weight: 600; color: {% if r.current_occupancy >= r.capacity %}var(--color-danger){% else %}var(--color-success){% endif %};">
+                {{ r.current_occupancy }} / {{ r.capacity }} Beds
+              </span>
+              <div style="width: 80px; height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden;">
+                <div style="width: {{ (r.current_occupancy / r.capacity * 100)|round }}%; height: 100%; background: {% if r.current_occupancy >= r.capacity %}var(--color-danger){% else %}var(--color-success){% endif %};"></div>
+              </div>
+            </div>
+          </td>
+          <td>
+            {% if r.status == 'AVAILABLE' %}
+            <span class="badge badge-success">AVAILABLE</span>
+            {% elif r.status == 'FULL' %}
+            <span class="badge badge-danger">FULL</span>
+            {% else %}
+            <span class="badge badge-warning">MAINTENANCE</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            {% if r.status == 'AVAILABLE' %}
+            <button class="btn btn-outline btn-sm" onclick="prepareAllocateModal({{ r.id }}, '{{ r.room_number }}', '{{ r.block_name|replace("'", "\\'") }}')">
+              Allocate
+            </button>
+            {% else %}
+            <span style="font-size: 0.8rem; color: #64748b;">No Vacancy</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 48px; color: #94a3b8;">
+            No hostel rooms configured. Create your first room to begin.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAB 2: Allocations Register -->
+<div id="tab-allocations" class="card" style="padding: 0; overflow: hidden; display: none;">
+  <div style="padding: 18px 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center;">
+    <h3 style="font-size: 1.1rem; font-weight: 600; color: #f8fafc;">Resident Scholars Directory</h3>
+    <span style="font-size: 0.85rem; color: #94a3b8;">{{ allocations|length }} resident records</span>
+  </div>
+
+  <div style="overflow-x: auto;">
+    <table class="data-table" style="width: 100%;">
+      <thead>
+        <tr>
+          <th>Alloc ID</th>
+          <th>Scholar Resident</th>
+          <th>Block & Room</th>
+          <th>Academic Term</th>
+          <th>Check-in Date</th>
+          <th>Status</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in allocations %}
+        <tr id="alloc-row-{{ a.id }}">
+          <td>#HST-{{ "%04d"|format(a.id) }}</td>
+          <td>
+            <div style="font-weight: 600; color: #f8fafc;">{{ a.student_name }}</div>
+            <div style="font-size: 0.8rem; color: #94a3b8;">{{ a.enrollment_no }}</div>
+          </td>
+          <td>
+            <div style="font-weight: 500; color: #f1f5f9;">Room {{ a.room_number }}</div>
+            <div style="font-size: 0.75rem; color: #94a3b8;">{{ a.block_name }}</div>
+          </td>
+          <td>{{ a.academic_year }}</td>
+          <td>{{ a.check_in_date }}</td>
+          <td>
+            {% if a.status == 'ACTIVE' %}
+            <span class="badge badge-success">ACTIVE RESIDENT</span>
+            {% elif a.status == 'CHECKED_OUT' %}
+            <span class="badge badge-secondary">CHECKED OUT</span>
+            {% else %}
+            <span class="badge badge-danger">CANCELLED</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            {% if a.status == 'ACTIVE' %}
+            <button class="btn btn-outline btn-sm" onclick="openCheckoutModal({{ a.id }}, '{{ a.student_name|replace("'", "\\'") }}', '{{ a.room_number }}', '{{ a.block_name|replace("'", "\\'") }}')">
+              🚪 Check Out
+            </button>
+            {% else %}
+            <span style="font-size: 0.8rem; color: #64748b;">Departed {{ a.check_out_date }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 48px; color: #94a3b8;">
+            No scholar room allocations recorded yet.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL 1: Add Block -->
+<div class="modal-backdrop" id="modal-add-block" style="display: none;">
+  <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-header">
+      <h3 class="modal-title">🏢 Add Residential Block</h3>
+      <button class="modal-close" onclick="closeModal('modal-add-block')">&times;</button>
+    </div>
+    <form id="form-add-block" onsubmit="submitAddBlock(event)">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div>
+          <label class="form-label">Block Name *</label>
+          <input type="text" name="block_name" class="form-control" required placeholder="e.g., Turing Hall of Residence" id="input-block-name">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <label class="form-label">Gender Type *</label>
+            <select name="gender_type" class="form-control" required id="input-block-gender">
+              <option value="MALE">Male</option>
+              <option value="FEMALE">Female</option>
+              <option value="COED" selected>Co-Educational</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Total Rooms *</label>
+            <input type="number" name="total_rooms" class="form-control" min="1" value="20" required id="input-block-rooms">
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Warden Name *</label>
+          <input type="text" name="warden_name" class="form-control" required placeholder="e.g., Dr. Marcus Vance" id="input-warden-name">
+        </div>
+        <div>
+          <label class="form-label">Warden Contact Details</label>
+          <input type="text" name="warden_contact" class="form-control" placeholder="+1 (555) 019-4829" id="input-warden-contact">
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-add-block')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-block">Create Block</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL 2: Add Room -->
+<div class="modal-backdrop" id="modal-add-room" style="display: none;">
+  <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-header">
+      <h3 class="modal-title">🚪 Add Dormitory Room</h3>
+      <button class="modal-close" onclick="closeModal('modal-add-room')">&times;</button>
+    </div>
+    <form id="form-add-room" onsubmit="submitAddRoom(event)">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div>
+          <label class="form-label">Residential Block *</label>
+          <select name="block_id" class="form-control" required id="input-room-block">
+            {% for b in blocks %}
+            <option value="{{ b.id }}">{{ b.block_name }} ({{ b.gender_type }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <label class="form-label">Room Number *</label>
+            <input type="text" name="room_number" class="form-control" required placeholder="e.g., 204" id="input-room-number">
+          </div>
+          <div>
+            <label class="form-label">Floor Number *</label>
+            <input type="number" name="floor" class="form-control" min="0" value="2" required id="input-room-floor">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <label class="form-label">Room Type *</label>
+            <select name="room_type" class="form-control" required id="input-room-type" onchange="updateRoomCapacityDefault(this.value)">
+              <option value="SINGLE">Single Bed</option>
+              <option value="DOUBLE" selected>Double Shared</option>
+              <option value="TRIPLE">Triple Shared</option>
+              <option value="DORM">Dormitory Suite</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Bed Capacity *</label>
+            <input type="number" name="capacity" class="form-control" min="1" value="2" required id="input-room-capacity">
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Fee Per Semester ($) *</label>
+          <input type="number" step="50" min="0" name="fee_per_semester" class="form-control" value="1200.00" required id="input-room-fee">
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-add-room')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-room">Add Room</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL 3: Allocate Bed to Scholar -->
+<div class="modal-backdrop" id="modal-allocate-room" style="display: none;">
+  <div class="modal-content" style="max-width: 550px;">
+    <div class="modal-header">
+      <h3 class="modal-title">🛏️ Allocate Residential Bed</h3>
+      <button class="modal-close" onclick="closeModal('modal-allocate-room')">&times;</button>
+    </div>
+    <form id="form-allocate-room" onsubmit="submitAllocateRoom(event)">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div>
+          <label class="form-label">Select Available Room *</label>
+          <select name="room_id" class="form-control" required id="alloc-select-room">
+            <option value="">-- Choose Available Room --</option>
+            {% for r in rooms %}
+              {% if r.status == 'AVAILABLE' %}
+              <option value="{{ r.id }}">Room {{ r.room_number }} • {{ r.block_name }} ({{ r.capacity - r.current_occupancy }} beds open - ${{ "%.2f"|format(r.fee_per_semester) }})</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Scholar Resident *</label>
+          <select name="student_id" class="form-control" required id="alloc-select-student">
+            <option value="">-- Choose Student --</option>
+            {% for s in students %}
+            <option value="{{ s.id }}">{{ s.first_name }} {{ s.last_name }} ({{ s.enrollment_no }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <label class="form-label">Academic Year *</label>
+            <input type="text" name="academic_year" class="form-control" value="2026-2027" required id="alloc-input-year">
+          </div>
+          <div>
+            <label class="form-label">Check-in Date *</label>
+            <input type="date" name="check_in_date" class="form-control" required id="alloc-input-date">
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Allocation Remarks</label>
+          <input type="text" name="remarks" class="form-control" placeholder="Room key issued, inventory inspected..." id="alloc-input-remarks">
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-allocate-room')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-alloc">Confirm Allocation</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL 4: Check Out Resident -->
+<div class="modal-backdrop" id="modal-checkout-room" style="display: none;">
+  <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-header">
+      <h3 class="modal-title">🚪 Student Room Check-Out</h3>
+      <button class="modal-close" onclick="closeModal('modal-checkout-room')">&times;</button>
+    </div>
+    <form id="form-checkout-room" onsubmit="submitCheckoutRoom(event)">
+      <input type="hidden" id="checkout-alloc-id">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div style="background: rgba(255, 255, 255, 0.03); padding: 12px 16px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08);">
+          <div style="font-weight: 600; color: #f8fafc;" id="checkout-info-student">Scholar Name</div>
+          <div style="font-size: 0.85rem; color: #94a3b8;" id="checkout-info-room">Room & Block</div>
+        </div>
+        <div>
+          <label class="form-label">Check-Out Date *</label>
+          <input type="date" name="check_out_date" class="form-control" required id="checkout-input-date">
+        </div>
+        <div>
+          <label class="form-label">Clearance & Inventory Remarks</label>
+          <input type="text" name="remarks" class="form-control" placeholder="Key surrendered, room cleared and clean..." id="checkout-input-remarks">
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-checkout-room')">Cancel</button>
+        <button type="submit" class="btn btn-danger" id="btn-submit-checkout">Process Clearance</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function switchHostelTab(tabId) {
+  document.getElementById('tab-rooms').style.display = tabId === 'tab-rooms' ? 'block' : 'none';
+  document.getElementById('tab-allocations').style.display = tabId === 'tab-allocations' ? 'block' : 'none';
+
+  if (tabId === 'tab-rooms') {
+    document.getElementById('btn-tab-rooms').className = 'btn btn-secondary';
+    document.getElementById('btn-tab-allocations').className = 'btn btn-outline';
+  } else {
+    document.getElementById('btn-tab-rooms').className = 'btn btn-outline';
+    document.getElementById('btn-tab-allocations').className = 'btn btn-secondary';
+  }
+}
+
+function updateRoomCapacityDefault(type) {
+  const cap = document.getElementById('input-room-capacity');
+  if (type === 'SINGLE') cap.value = 1;
+  else if (type === 'DOUBLE') cap.value = 2;
+  else if (type === 'TRIPLE') cap.value = 3;
+  else if (type === 'DORM') cap.value = 6;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const today = new Date().toISOString().split('T')[0];
+  const dateInput = document.getElementById('alloc-input-date');
+  const coInput = document.getElementById('checkout-input-date');
+  if (dateInput) dateInput.value = today;
+  if (coInput) coInput.value = today;
+});
+
+function prepareAllocateModal(roomId, roomNumber, blockName) {
+  const sel = document.getElementById('alloc-select-room');
+  if (sel) sel.value = roomId;
+  openModal('modal-allocate-room');
+}
+
+function openCheckoutModal(allocId, studentName, roomNumber, blockName) {
+  document.getElementById('checkout-alloc-id').value = allocId;
+  document.getElementById('checkout-info-student').textContent = 'Scholar: ' + studentName;
+  document.getElementById('checkout-info-room').textContent = 'Room ' + roomNumber + ' • ' + blockName;
+  openModal('modal-checkout-room');
+}
+
+async function submitAddBlock(e) {
+  e.preventDefault();
+  const form = e.target;
+  const payload = {
+    block_name: form.block_name.value.trim(),
+    gender_type: form.gender_type.value,
+    total_rooms: parseInt(form.total_rooms.value, 10),
+    warden_name: form.warden_name.value.trim(),
+    warden_contact: form.warden_contact.value.trim() || null
+  };
+
+  try {
+    const res = await fetch('/api/hostel/blocks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to create residential block');
+    }
+    showToast('Residential block created successfully!', 'success');
+    closeModal('modal-add-block');
+    setTimeout(() => window.location.reload(), 600);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function submitAddRoom(e) {
+  e.preventDefault();
+  const form = e.target;
+  const payload = {
+    block_id: parseInt(form.block_id.value, 10),
+    room_number: form.room_number.value.trim(),
+    room_type: form.room_type.value,
+    capacity: parseInt(form.capacity.value, 10),
+    floor: parseInt(form.floor.value, 10),
+    fee_per_semester: parseFloat(form.fee_per_semester.value)
+  };
+
+  try {
+    const res = await fetch('/api/hostel/rooms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to add room');
+    }
+    showToast('Dormitory room added successfully!', 'success');
+    closeModal('modal-add-room');
+    setTimeout(() => window.location.reload(), 600);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function submitAllocateRoom(e) {
+  e.preventDefault();
+  const form = e.target;
+  const payload = {
+    room_id: parseInt(form.room_id.value, 10),
+    student_id: parseInt(form.student_id.value, 10),
+    academic_year: form.academic_year.value.trim(),
+    check_in_date: form.check_in_date.value,
+    remarks: form.remarks.value.trim() || null
+  };
+
+  try {
+    const res = await fetch('/api/hostel/allocate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to allocate room');
+    }
+    showToast('Bed allocated and resident registered!', 'success');
+    closeModal('modal-allocate-room');
+    setTimeout(() => window.location.reload(), 600);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function submitCheckoutRoom(e) {
+  e.preventDefault();
+  const allocId = document.getElementById('checkout-alloc-id').value;
+  const payload = {
+    check_out_date: document.getElementById('checkout-input-date').value,
+    remarks: document.getElementById('checkout-input-remarks').value.trim() || null
+  };
+
+  try {
+    const res = await fetch(`/api/hostel/checkout/${allocId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to process checkout');
+    }
+    showToast('Resident checked out and bed freed!', 'success');
+    closeModal('modal-checkout-room');
+    setTimeout(() => window.location.reload(), 600);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+</script>
+{% endblock %}

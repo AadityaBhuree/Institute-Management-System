@@ -257,3 +257,48 @@ CREATE TABLE IF NOT EXISTS book_loans (
 CREATE INDEX IF NOT EXISTS idx_loans_book ON book_loans(book_id);
 CREATE INDEX IF NOT EXISTS idx_loans_student ON book_loans(student_id);
 CREATE INDEX IF NOT EXISTS idx_loans_status ON book_loans(status);
+
+-- 16. Hostel & Residential Hall Management
+CREATE TABLE IF NOT EXISTS hostel_blocks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    block_name TEXT NOT NULL UNIQUE,
+    gender_type TEXT NOT NULL DEFAULT 'COED' CHECK(gender_type IN ('MALE', 'FEMALE', 'COED')),
+    total_rooms INTEGER NOT NULL DEFAULT 10 CHECK(total_rooms >= 1),
+    warden_name TEXT NOT NULL,
+    warden_contact TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS hostel_rooms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    block_id INTEGER NOT NULL REFERENCES hostel_blocks(id) ON DELETE CASCADE,
+    room_number TEXT NOT NULL,
+    room_type TEXT NOT NULL DEFAULT 'DOUBLE' CHECK(room_type IN ('SINGLE', 'DOUBLE', 'TRIPLE', 'DORM')),
+    capacity INTEGER NOT NULL DEFAULT 2 CHECK(capacity >= 1),
+    current_occupancy INTEGER NOT NULL DEFAULT 0 CHECK(current_occupancy >= 0),
+    floor INTEGER NOT NULL DEFAULT 1 CHECK(floor >= 0),
+    fee_per_semester REAL NOT NULL DEFAULT 1200.0 CHECK(fee_per_semester >= 0),
+    status TEXT NOT NULL DEFAULT 'AVAILABLE' CHECK(status IN ('AVAILABLE', 'FULL', 'MAINTENANCE')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(block_id, room_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_rooms_block ON hostel_rooms(block_id);
+CREATE INDEX IF NOT EXISTS idx_rooms_status ON hostel_rooms(status);
+
+CREATE TABLE IF NOT EXISTS room_allocations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    room_id INTEGER NOT NULL REFERENCES hostel_rooms(id) ON DELETE CASCADE,
+    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    academic_year TEXT NOT NULL,
+    check_in_date DATE NOT NULL,
+    check_out_date DATE,
+    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'CHECKED_OUT', 'CANCELLED')),
+    remarks TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_allocations_room ON room_allocations(room_id);
+CREATE INDEX IF NOT EXISTS idx_allocations_student ON room_allocations(student_id);
+CREATE INDEX IF NOT EXISTS idx_allocations_status ON room_allocations(status);
+

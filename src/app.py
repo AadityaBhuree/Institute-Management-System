@@ -16,6 +16,7 @@ from src.api.announcements import router as announcements_router
 from src.api.courses import router as courses_router
 from src.api.faculty import router as faculty_router
 from src.api.finance import router as finance_router
+from src.api.hostel import router as hostel_router
 from src.api.leaves import router as leaves_router
 from src.api.library import router as library_router
 from src.api.reports import router as reports_router
@@ -39,6 +40,7 @@ from src.services.dashboard_service import DashboardService
 from src.services.department_service import DepartmentService
 from src.services.faculty_service import FacultyService
 from src.services.finance_service import FinanceService
+from src.services.hostel_service import HostelService
 from src.services.leave_service import LeaveService
 from src.services.library_service import LibraryService
 from src.services.reports_service import ReportsService
@@ -74,6 +76,7 @@ app.include_router(announcements_router)
 app.include_router(leaves_router)
 app.include_router(timetable_router)
 app.include_router(library_router)
+app.include_router(hostel_router)
 
 
 # Ensure directories exist and mount static assets
@@ -537,6 +540,38 @@ def view_library_page(
             "search": search or "",
         },
     )
+
+
+@app.get("/hostel", response_class=HTMLResponse, tags=["Web"])
+def view_hostel_page(
+    request: Request,
+    block_id: Optional[int] = None,
+    room_type: Optional[str] = None,
+    status: Optional[str] = None,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Render residential blocks, rooms occupancy, and scholar bed allocations."""
+    blocks = HostelService.list_blocks(conn)
+    rooms = HostelService.list_rooms(conn, block_id=block_id, room_type=room_type, status=status)
+    allocations = HostelService.list_allocations(conn, block_id=block_id)
+    stats = HostelService.get_stats(conn)
+    students = StudentService.list_students(conn)
+    return templates.TemplateResponse(
+        request=request,
+        name="hostel.html",
+        context={
+            "active_page": "hostel",
+            "blocks": blocks,
+            "rooms": rooms,
+            "allocations": allocations,
+            "stats": stats,
+            "students": students,
+            "selected_block": block_id,
+            "selected_type": room_type,
+            "selected_status": status,
+        },
+    )
+
 
 
 

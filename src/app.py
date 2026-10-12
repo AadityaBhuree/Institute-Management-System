@@ -19,6 +19,7 @@ from src.api.finance import router as finance_router
 from src.api.hostel import router as hostel_router
 from src.api.leaves import router as leaves_router
 from src.api.library import router as library_router
+from src.api.placements import router as placements_router
 from src.api.reports import router as reports_router
 from src.api.students import router as students_router
 from src.api.timetable import router as timetable_router
@@ -43,11 +44,11 @@ from src.services.finance_service import FinanceService
 from src.services.hostel_service import HostelService
 from src.services.leave_service import LeaveService
 from src.services.library_service import LibraryService
+from src.services.placement_service import PlacementService
 from src.services.reports_service import ReportsService
 from src.services.student_service import StudentService
 from src.services.system_service import SystemService
 from src.services.timetable_service import TimetableService
-
 
 
 @asynccontextmanager
@@ -77,6 +78,7 @@ app.include_router(leaves_router)
 app.include_router(timetable_router)
 app.include_router(library_router)
 app.include_router(hostel_router)
+app.include_router(placements_router)
 
 
 # Ensure directories exist and mount static assets
@@ -134,7 +136,6 @@ def create_system_backup(conn: sqlite3.Connection = Depends(get_db)):
 def list_system_backups():
     """List all available database snapshots in data/backups/."""
     return SystemService.list_backups()
-
 
 
 @app.get("/api/dashboard/stats", tags=["Dashboard"])
@@ -258,7 +259,6 @@ def view_faculty_portal_page(
             "search": search or "",
         },
     )
-
 
 
 @app.get("/courses", response_class=HTMLResponse, tags=["Web"])
@@ -484,7 +484,9 @@ def view_print_receipt_page(
     """Render official printable fee receipt and settlement statement."""
     invoice = FinanceService.get_invoice_by_id(conn, id)
     if not invoice:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Invoice #{id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Invoice #{id} not found"
+        )
     payments = FinanceService.list_payments(conn, invoice_id=id)
     return templates.TemplateResponse(
         request=request,
@@ -505,7 +507,9 @@ def view_print_transcript_page(
     """Render official printable academic transcript dossier."""
     dossier = StudentService.get_student_portal_dossier(conn, student_id)
     if not dossier or not dossier.get("student"):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Student #{student_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Student #{student_id} not found"
+        )
     return templates.TemplateResponse(
         request=request,
         name="print_transcript.html",
@@ -573,6 +577,28 @@ def view_hostel_page(
     )
 
 
-
-
-
+@app.get("/placements", response_class=HTMLResponse, tags=["Web"])
+def view_placements_page(
+    request: Request,
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Render campus recruitment drives, applications pipeline, and placement telemetry."""
+    drives = PlacementService.list_drives(conn, status=status, search=search)
+    applications = PlacementService.list_applications(conn)
+    stats = PlacementService.get_stats(conn)
+    students = StudentService.list_students(conn)
+    return templates.TemplateResponse(
+        request=request,
+        name="placements.html",
+        context={
+            "active_page": "placements",
+            "drives": drives,
+            "applications": applications,
+            "stats": stats,
+            "students": students,
+            "selected_status": status,
+            "search": search or "",
+        },
+    )

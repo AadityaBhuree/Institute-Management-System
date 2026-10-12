@@ -14,8 +14,12 @@ router = APIRouter(prefix="/api/announcements", tags=["Announcements"])
 
 @router.get("", response_model=List[AnnouncementOut])
 def list_announcements(
-    category: Optional[str] = Query(None, description="Filter by category (ACADEMIC, EXAM, FEES, EVENT, URGENT, GENERAL)"),
-    target_audience: Optional[str] = Query(None, description="Filter by target audience (ALL, STUDENTS, FACULTY)"),
+    category: Optional[str] = Query(
+        None, description="Filter by category (ACADEMIC, EXAM, FEES, EVENT, URGENT, GENERAL)"
+    ),
+    target_audience: Optional[str] = Query(
+        None, description="Filter by target audience (ALL, STUDENTS, FACULTY)"
+    ),
     is_active: Optional[int] = Query(None, description="Filter by active status (1 or 0)"),
     search: Optional[str] = Query(None, description="Search term for title/content"),
     conn: sqlite3.Connection = Depends(get_db),

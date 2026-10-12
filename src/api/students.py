@@ -110,4 +110,3 @@ def get_student_portal_dossier(
             detail=f"Student with ID {student_id} not found.",
         )
     return dossier
-

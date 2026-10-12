@@ -99,4 +99,3 @@ def get_faculty_portal_data(
             detail=f"Faculty member ID {faculty_id} not found.",
         )
     return data
-

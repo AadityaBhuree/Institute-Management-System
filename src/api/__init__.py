@@ -21,4 +21,3 @@ __all__ = [
     "leaves_router",
     "timetable_router",
 ]
-

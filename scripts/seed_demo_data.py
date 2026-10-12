@@ -29,7 +29,14 @@ from src.models.announcement import AnnouncementCreate
 from src.models.course import CourseCreate, EnrollmentCreate
 from src.models.faculty import FacultyCreate
 from src.models.finance import FeeInvoiceCreate, FeeStructureCreate, PaymentCreate
+from src.models.hostel import HostelBlockCreate, HostelRoomCreate, RoomAllocationCreate
 from src.models.leave import LeaveRequestCreate, LeaveStatusUpdate
+from src.models.library import BookIssueRequest, LibraryBookCreate
+from src.models.placement import (
+    PlacementApplicationCreate,
+    PlacementDriveCreate,
+    PlacementStatusUpdate,
+)
 from src.models.student import StudentCreate
 from src.models.timetable import TimetableSlotCreate
 from src.services.academics_service import AcademicsService
@@ -37,7 +44,10 @@ from src.services.announcement_service import AnnouncementService
 from src.services.course_service import CourseService
 from src.services.faculty_service import FacultyService
 from src.services.finance_service import FinanceService
+from src.services.hostel_service import HostelService
 from src.services.leave_service import LeaveService
+from src.services.library_service import LibraryService
+from src.services.placement_service import PlacementService
 from src.services.student_service import StudentService
 from src.services.timetable_service import TimetableService
 
@@ -660,6 +670,268 @@ def seed():
                     ),
                 )
         print("   * Student and faculty leave petitions populated.")
+
+    # 13. Seed Campus Library Monograph Catalog & Circulation Loans
+    existing_books = LibraryService.list_books(conn)
+    if not existing_books and student_records:
+        print("\n[+] Seeding Library Monograph Catalog & Circulation...")
+        book_data = [
+            (
+                "978-0131103627",
+                "The C Programming Language",
+                "Brian W. Kernighan, Dennis M. Ritchie",
+                "COMPUTER_SCIENCE",
+                5,
+                "Stack CS-A1",
+                "Prentice Hall",
+                "2nd Ed",
+                1988,
+            ),
+            (
+                "978-0262033848",
+                "Introduction to Algorithms",
+                "Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, Clifford Stein",
+                "COMPUTER_SCIENCE",
+                8,
+                "Stack CS-B2",
+                "MIT Press",
+                "3rd Ed",
+                2009,
+            ),
+            (
+                "978-0132350884",
+                "Clean Code: A Handbook of Agile Software Craftsmanship",
+                "Robert C. Martin",
+                "COMPUTER_SCIENCE",
+                6,
+                "Stack CS-C3",
+                "Prentice Hall",
+                "1st Ed",
+                2008,
+            ),
+            (
+                "978-0073380377",
+                "Microelectronic Circuits",
+                "Adel S. Sedra, Kenneth C. Smith",
+                "ENGINEERING",
+                4,
+                "Stack EE-A1",
+                "Oxford University Press",
+                "7th Ed",
+                2014,
+            ),
+            (
+                "978-0134444321",
+                "Principles of Neural Science",
+                "Eric R. Kandel, James H. Schwartz",
+                "BIOTECH",
+                3,
+                "Stack BIO-D4",
+                "McGraw-Hill",
+                "5th Ed",
+                2012,
+            ),
+        ]
+        created_books = []
+        for isbn, title, author, cat, copies, loc, pub, ed, yr in book_data:
+            b = LibraryService.create_book(
+                conn,
+                LibraryBookCreate(
+                    isbn=isbn,
+                    title=title,
+                    author=author,
+                    category=cat,
+                    total_copies=copies,
+                    shelf_location=loc,
+                    publisher=pub,
+                    edition=ed,
+                    publication_year=yr,
+                ),
+            )
+            created_books.append(b)
+
+        # Issue active loan to student
+        if created_books and len(student_records) > 0:
+            LibraryService.issue_book(
+                conn,
+                BookIssueRequest(
+                    book_id=created_books[0]["id"],
+                    student_id=student_records[0]["id"],
+                    issue_date=(today - datetime.timedelta(days=5)).isoformat(),
+                    due_date=(today + datetime.timedelta(days=9)).isoformat(),
+                    remarks="Assigned for Advanced Systems Lab",
+                ),
+            )
+        print("   * Library books and circulation loans populated.")
+
+    # 14. Seed Campus Residential Halls & Allocations
+    existing_blocks = HostelService.list_blocks(conn)
+    if not existing_blocks and student_records:
+        print("\n[+] Seeding Campus Residential Halls & Bed Allocations...")
+        block1 = HostelService.create_block(
+            conn,
+            HostelBlockCreate(
+                block_name="Ramanujan Hall of Residence",
+                gender_type="MALE",
+                total_rooms=20,
+                warden_name="Prof. S. Chandrasekhar",
+                warden_contact="+91 94444 11223",
+            ),
+        )
+        block2 = HostelService.create_block(
+            conn,
+            HostelBlockCreate(
+                block_name="Kalpana Chawla Hall of Residence",
+                gender_type="FEMALE",
+                total_rooms=20,
+                warden_name="Dr. Sunita Williams",
+                warden_contact="+91 94444 22334",
+            ),
+        )
+
+        r1 = HostelService.create_room(
+            conn,
+            HostelRoomCreate(
+                block_id=block1["id"],
+                room_number="101",
+                room_type="SINGLE",
+                capacity=1,
+                floor=1,
+                fee_per_semester=1800.0,
+            ),
+        )
+        HostelService.create_room(
+            conn,
+            HostelRoomCreate(
+                block_id=block1["id"],
+                room_number="102",
+                room_type="DOUBLE",
+                capacity=2,
+                floor=1,
+                fee_per_semester=1200.0,
+            ),
+        )
+        HostelService.create_room(
+            conn,
+            HostelRoomCreate(
+                block_id=block2["id"],
+                room_number="201",
+                room_type="DOUBLE",
+                capacity=2,
+                floor=2,
+                fee_per_semester=1200.0,
+            ),
+        )
+
+        # Allocate room 101 to student 0
+        if len(student_records) > 0:
+            HostelService.allocate_room(
+                conn,
+                RoomAllocationCreate(
+                    room_id=r1["id"],
+                    student_id=student_records[0]["id"],
+                    academic_year="2026-2027",
+                    check_in_date=(today - datetime.timedelta(days=30)).isoformat(),
+                    remarks="Room key issued, biometric registered.",
+                ),
+            )
+        print("   * Residential blocks, rooms, and bed allocations populated.")
+
+    # 15. Seed Corporate Placement Drives & Candidate Applications
+    existing_drives = PlacementService.list_drives(conn)
+    if not existing_drives and student_records:
+        print("\n[+] Seeding Corporate Placement Drives & Applications...")
+        d1 = PlacementService.create_drive(
+            conn,
+            PlacementDriveCreate(
+                company_name="Google DeepMind",
+                industry="Artificial Intelligence & Cloud",
+                job_title="Research Systems Software Engineer",
+                job_location="Bengaluru / Hybrid",
+                package_lpa=36.0,
+                min_gpa_required=8.0,
+                eligible_departments="CSE, ECE",
+                drive_date=(today + datetime.timedelta(days=25)).isoformat(),
+                registration_deadline=(today + datetime.timedelta(days=10)).isoformat(),
+                status="ACTIVE",
+            ),
+        )
+        d2 = PlacementService.create_drive(
+            conn,
+            PlacementDriveCreate(
+                company_name="NVIDIA Corporation",
+                industry="GPU Computing & Semiconductors",
+                job_title="CUDA Systems Architect",
+                job_location="Bengaluru / On-Site",
+                package_lpa=32.0,
+                min_gpa_required=7.5,
+                eligible_departments="CSE, ECE",
+                drive_date=(today + datetime.timedelta(days=35)).isoformat(),
+                registration_deadline=(today + datetime.timedelta(days=15)).isoformat(),
+                status="ACTIVE",
+            ),
+        )
+        PlacementService.create_drive(
+            conn,
+            PlacementDriveCreate(
+                company_name="Microsoft Azure",
+                industry="Distributed Cloud Systems",
+                job_title="Cloud Infrastructure Engineer",
+                job_location="Hyderabad / Hybrid",
+                package_lpa=28.5,
+                min_gpa_required=7.0,
+                eligible_departments="ALL",
+                drive_date=(today + datetime.timedelta(days=45)).isoformat(),
+                registration_deadline=(today + datetime.timedelta(days=20)).isoformat(),
+                status="UPCOMING",
+            ),
+        )
+
+        # Register applications
+        if len(student_records) > 0:
+            app1 = PlacementService.apply_for_drive(
+                conn,
+                PlacementApplicationCreate(
+                    drive_id=d1["id"],
+                    student_id=student_records[0]["id"],
+                    current_gpa=9.40,
+                    resume_link="https://dossier.org/scholar1_resume.pdf",
+                    remarks="Honours scholar in distributed computing",
+                ),
+            )
+            # Advance to SELECTED
+            PlacementService.update_application_status(
+                conn,
+                app1["id"],
+                PlacementStatusUpdate(
+                    status="SELECTED",
+                    interview_date=(today - datetime.timedelta(days=2)).isoformat(),
+                    offer_package_lpa=38.0,
+                    remarks="Exceptional architecture interview, signing bonus extended",
+                ),
+            )
+
+        if len(student_records) > 1:
+            app2 = PlacementService.apply_for_drive(
+                conn,
+                PlacementApplicationCreate(
+                    drive_id=d2["id"],
+                    student_id=student_records[1]["id"],
+                    current_gpa=8.65,
+                    resume_link="https://dossier.org/scholar2_resume.pdf",
+                    remarks="Parallel systems and GPU lab specialist",
+                ),
+            )
+            PlacementService.update_application_status(
+                conn,
+                app2["id"],
+                PlacementStatusUpdate(
+                    status="TECHNICAL_ROUND",
+                    interview_date=(today + datetime.timedelta(days=5)).isoformat(),
+                    remarks="Shortlisted for live algorithmic systems round",
+                ),
+            )
+        print("   * Corporate placement drives, candidate applications, and offers populated.")
 
     conn.close()
     print("\n" + "=" * 60)

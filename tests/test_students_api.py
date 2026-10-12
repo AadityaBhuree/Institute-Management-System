@@ -211,4 +211,3 @@ def test_view_print_transcript_page(client):
     assert "text/html" in res.headers["content-type"]
     assert "Official Transcript" in res.text
     assert "INSTITUTE MANAGEMENT SYSTEM" in res.text
-

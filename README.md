@@ -3,13 +3,13 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-WAL%20Mode-003B57.svg?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
-[![Tests](https://img.shields.io/badge/Pytest-75%2F75%20Passing-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Pytest-95%2F95%20Passing-success.svg)](tests/)
 [![CI](https://github.com/AadityaBhuree/Institute-Management-System/actions/workflows/ci.yml/badge.svg)](https://github.com/AadityaBhuree/Institute-Management-System/actions/workflows/ci.yml)
 [![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED.svg?logo=docker&logoColor=white)](Dockerfile)
 [![Code Style](https://img.shields.io/badge/Linter-Ruff%20Clean-black.svg)](pyproject.toml)
 [![Architecture](https://img.shields.io/badge/Architecture-Clean%20%2F%20Layered-indigo.svg)](src/)
 
-A modern, high-performance, and modular educational administration platform built with **FastAPI**, **SQLite** (WAL mode), and a responsive **Glassmorphism Web Dashboard**. Engineered for academic institutions, colleges, and university divisions to automate admissions, course scheduling, attendance registries, academic grading, bursar financial audits, lecture timetables, and campus bulletins.
+A modern, high-performance, and modular educational administration platform built with **FastAPI**, **SQLite** (WAL mode), and a responsive **Glassmorphism Web Dashboard**. Engineered for academic institutions, colleges, and university divisions to automate admissions, course scheduling, attendance registries, academic grading, bursar financial audits, lecture timetables, campus bulletins, library circulation, residential hostels, and corporate placement drives.
 
 ---
 
@@ -22,6 +22,9 @@ A modern, high-performance, and modular educational administration platform buil
 * **Campus Bulletins & Announcements:** Institutional broadcast engine with priority tags (`HIGH`, `NORMAL`, `LOW`), target audience filtering (`ALL`, `STUDENTS`, `FACULTY`), and circular lifecycle management (`/announcements`).
 * **Lecture Timetable & Conflict Sentinel:** Weekly scheduling matrix with automated classroom double-booking collision prevention and instructor schedule overlap detection (`/timetable`).
 * **Institutional Leave Management:** Absence petitions, medical leaves, duty slips, and Dean review decision workflows with status telemetry (`/leaves`).
+* **Campus Library & Monograph Circulation:** ISBN monograph catalog, search, real-time copy inventory, loan checkout/returns, and overdue fines (`/library`).
+* **Hostel & Residential Hall Management:** Residential blocks, room types (Single/Double/Dorm), capacity-capped bed allocations, and scholar check-in/checkout tracking (`/hostel`).
+* **Campus Placements & Corporate Recruitment Cell:** Partner recruitment drives, minimum GPA eligibility verification, candidate application pipeline, interview scheduling, and verified CTC package telemetry (`/placements`).
 * **Student & Faculty Portals:** Scholar self-service academic dossier (`/portal`), faculty teaching workbench (`/faculty-portal`), institutional reports & `< 75%` attendance risk sentinel (`/reports`), and official printable transcripts.
 * **Sleek Enterprise UX:** Vanilla CSS glassmorphic theme (`#090d16` & `#0f172a`), interactive modals, responsive sidebar, toast notifications, and KPI overview cards.
 
@@ -215,6 +218,37 @@ Institute Management System/
 | `GET` | `/api/leaves/{id}` | Retrieve individual leave petition dossier |
 | `PUT` | `/api/leaves/{id}/status` | Review and approve/reject leave petition with remarks |
 
+### 📖 Campus Library & Digital Monograph Circulation
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/library/books` | Catalog a new monograph volume with ISBN, shelf, and copies |
+| `GET` | `/api/library/books` | List books filtered by category, shelf, or title/author search |
+| `GET` | `/api/library/loans` | Query scholar book loan circulation registers |
+| `POST` | `/api/library/loans/issue` | Checkout monograph book to scholar with due date tracking |
+| `PUT` | `/api/library/loans/{id}/return` | Check in returned book, update inventory, and record fines |
+| `GET` | `/api/library/stats` | Circulation telemetry (copies, active loans, overdue fines) |
+
+### 🏠 Residential Halls & Bed Allocations
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/hostel/blocks` | Register residential hall block with warden contact |
+| `GET` | `/api/hostel/blocks` | List hostel hall blocks and residential directories |
+| `POST` | `/api/hostel/rooms` | Configure residential rooms with capacity, floor, and fee |
+| `GET` | `/api/hostel/rooms` | Query room occupancy, room types, and capacity status |
+| `POST` | `/api/hostel/allocate` | Allocate bed to scholar with academic year and check-in date |
+| `PUT` | `/api/hostel/allocations/{id}/checkout` | Checkout scholar and decrement active room occupancy |
+| `GET` | `/api/hostel/stats` | Residential telemetry (occupancy rate, capacity, bed count) |
+
+### 💼 Campus Placements & Corporate Recruitment
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/placements/drives` | Host corporate recruitment drive with CTC package & min GPA |
+| `GET` | `/api/placements/drives` | List recruitment drives with applicant counts and filters |
+| `POST` | `/api/placements/apply` | Submit student application with automated GPA gating |
+| `GET` | `/api/placements/applications` | Query candidate applications, interviews, and offer packages |
+| `PUT` | `/api/placements/applications/{id}/status` | Advance pipeline stage (Shortlisted, Tech Round, Selected) |
+| `GET` | `/api/placements/stats` | Placement telemetry (hiring partners, offers, avg/highest CTC) |
+
 ---
 
 ## 🚀 Quickstart & Installation
@@ -268,6 +302,9 @@ Open **[http://localhost:8000](http://localhost:8000)** in your browser:
 * **Lecture Timetable Matrix:** `http://localhost:8000/timetable`
 * **Campus Bulletins & Notices:** `http://localhost:8000/announcements`
 * **Leave Management Portal:** `http://localhost:8000/leaves`
+* **Campus Library Catalog:** `http://localhost:8000/library`
+* **Hostel & Housing:** `http://localhost:8000/hostel`
+* **Corporate Placements:** `http://localhost:8000/placements`
 * **Fee Invoicing & Bursar Audit:** `http://localhost:8000/finance`
 * **Institutional Reports & Sentinel:** `http://localhost:8000/reports`
 * **System Settings & Hot Backup:** `http://localhost:8000/settings`
@@ -281,7 +318,7 @@ Open **[http://localhost:8000](http://localhost:8000)** in your browser:
 The test suite runs with isolated SQLite databases in temporary environments via pytest fixtures:
 
 ```bash
-# Run all 75 automated unit and integration tests
+# Run all 95 automated unit and integration tests
 pytest tests/ -v
 
 # Run Ruff linter to confirm clean code hygiene

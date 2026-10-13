@@ -101,9 +101,7 @@ class AnnouncementService:
         return AnnouncementService.get_by_id(conn, announcement_id)
 
     @staticmethod
-    def toggle_active(
-        conn: sqlite3.Connection, announcement_id: int, is_active: int
-    ) -> Optional[dict]:
+    def toggle_active(conn: sqlite3.Connection, announcement_id: int, is_active: int) -> Optional[dict]:
         with transaction(conn) as cursor:
             cursor.execute(
                 "UPDATE announcements SET is_active = ? WHERE id = ?;",

@@ -136,7 +136,9 @@ class HostelService:
         )
         if cursor.fetchone():
             cursor.close()
-            raise ValueError(f"Room {data.room_number} already exists in {block['block_name']}.")
+            raise ValueError(
+                f"Room {data.room_number} already exists in {block['block_name']}."
+            )
         cursor.close()
 
         with transaction(conn) as cur:
@@ -196,7 +198,9 @@ class HostelService:
         )
         if cursor.fetchone():
             cursor.close()
-            raise ValueError(f"Student already has an active allocation for {data.academic_year}.")
+            raise ValueError(
+                f"Student already has an active allocation for {data.academic_year}."
+            )
         cursor.close()
 
         with transaction(conn) as cur:

@@ -302,3 +302,41 @@ CREATE INDEX IF NOT EXISTS idx_allocations_room ON room_allocations(room_id);
 CREATE INDEX IF NOT EXISTS idx_allocations_student ON room_allocations(student_id);
 CREATE INDEX IF NOT EXISTS idx_allocations_status ON room_allocations(status);
 
+-- 17. Campus Placements & Corporate Recruitment Cell
+CREATE TABLE IF NOT EXISTS placement_drives (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    company_name TEXT NOT NULL,
+    industry TEXT NOT NULL DEFAULT 'Technology & Software',
+    job_title TEXT NOT NULL,
+    job_location TEXT NOT NULL DEFAULT 'Bengaluru / Hybrid',
+    package_lpa REAL NOT NULL CHECK(package_lpa > 0),
+    min_gpa_required REAL NOT NULL DEFAULT 6.5 CHECK(min_gpa_required >= 0.0 AND min_gpa_required <= 10.0),
+    eligible_departments TEXT NOT NULL DEFAULT 'ALL',
+    drive_date DATE NOT NULL,
+    registration_deadline DATE NOT NULL,
+    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('UPCOMING', 'ACTIVE', 'CLOSED')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_drives_status ON placement_drives(status);
+CREATE INDEX IF NOT EXISTS idx_drives_company ON placement_drives(company_name);
+
+CREATE TABLE IF NOT EXISTS placement_applications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    drive_id INTEGER NOT NULL REFERENCES placement_drives(id) ON DELETE CASCADE,
+    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    current_gpa REAL NOT NULL CHECK(current_gpa >= 0.0 AND current_gpa <= 10.0),
+    resume_link TEXT,
+    status TEXT NOT NULL DEFAULT 'APPLIED' CHECK(status IN ('APPLIED', 'SHORTLISTED', 'TECHNICAL_ROUND', 'SELECTED', 'REJECTED')),
+    interview_date DATE,
+    offer_package_lpa REAL,
+    remarks TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(drive_id, student_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_placements_drive ON placement_applications(drive_id);
+CREATE INDEX IF NOT EXISTS idx_placements_student ON placement_applications(student_id);
+CREATE INDEX IF NOT EXISTS idx_placements_status ON placement_applications(status);
+
+

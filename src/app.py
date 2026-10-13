@@ -23,6 +23,7 @@ from src.api.placements import router as placements_router
 from src.api.reports import router as reports_router
 from src.api.students import router as students_router
 from src.api.timetable import router as timetable_router
+from src.api.transport import router as transport_router
 from src.core.config import (
     APP_DESCRIPTION,
     APP_NAME,
@@ -49,6 +50,7 @@ from src.services.reports_service import ReportsService
 from src.services.student_service import StudentService
 from src.services.system_service import SystemService
 from src.services.timetable_service import TimetableService
+from src.services.transport_service import TransportService
 
 
 @asynccontextmanager
@@ -79,6 +81,7 @@ app.include_router(timetable_router)
 app.include_router(library_router)
 app.include_router(hostel_router)
 app.include_router(placements_router)
+app.include_router(transport_router)
 
 
 # Ensure directories exist and mount static assets
@@ -602,3 +605,33 @@ def view_placements_page(
             "search": search or "",
         },
     )
+
+
+@app.get("/transport", response_class=HTMLResponse, tags=["Web"])
+def view_transport_page(
+    request: Request,
+    route_id: Optional[int] = None,
+    status: Optional[str] = None,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Render campus transport fleet, routes, and transit passes portal."""
+    routes = TransportService.list_routes(conn)
+    vehicles = TransportService.list_vehicles(conn, route_id=route_id, status=status)
+    passes = TransportService.list_passes(conn)
+    stats = TransportService.get_stats(conn)
+    students = StudentService.list_students(conn)
+    return templates.TemplateResponse(
+        request=request,
+        name="transport.html",
+        context={
+            "active_page": "transport",
+            "routes": routes,
+            "vehicles": vehicles,
+            "passes": passes,
+            "stats": stats,
+            "students": students,
+            "selected_route": route_id,
+            "selected_status": status,
+        },
+    )
+

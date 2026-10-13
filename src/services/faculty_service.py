@@ -280,3 +280,4 @@ class FacultyService:
             "total_exams": len(exams),
             "total_attendance_records": len(attendance_logs),
         }
+

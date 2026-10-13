@@ -3,13 +3,13 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-WAL%20Mode-003B57.svg?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
-[![Tests](https://img.shields.io/badge/Pytest-95%2F95%20Passing-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Pytest-116%2F116%20Passing-success.svg)](tests/)
 [![CI](https://github.com/AadityaBhuree/Institute-Management-System/actions/workflows/ci.yml/badge.svg)](https://github.com/AadityaBhuree/Institute-Management-System/actions/workflows/ci.yml)
 [![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED.svg?logo=docker&logoColor=white)](Dockerfile)
 [![Code Style](https://img.shields.io/badge/Linter-Ruff%20Clean-black.svg)](pyproject.toml)
 [![Architecture](https://img.shields.io/badge/Architecture-Clean%20%2F%20Layered-indigo.svg)](src/)
 
-A modern, high-performance, and modular educational administration platform built with **FastAPI**, **SQLite** (WAL mode), and a responsive **Glassmorphism Web Dashboard**. Engineered for academic institutions, colleges, and university divisions to automate admissions, course scheduling, attendance registries, academic grading, bursar financial audits, lecture timetables, campus bulletins, library circulation, residential hostels, and corporate placement drives.
+A modern, high-performance, and modular educational administration platform built with **FastAPI**, **SQLite** (WAL mode), and a responsive **Glassmorphism Web Dashboard**. Engineered for academic institutions, colleges, and university divisions to automate admissions, course scheduling, attendance registries, academic grading, bursar financial audits, lecture timetables, campus bulletins, library circulation, residential hostels, corporate placement drives, transport fleet transit logistics, scholarship grants, and alumni mentorship networks.
 
 ---
 
@@ -25,6 +25,9 @@ A modern, high-performance, and modular educational administration platform buil
 * **Campus Library & Monograph Circulation:** ISBN monograph catalog, search, real-time copy inventory, loan checkout/returns, and overdue fines (`/library`).
 * **Hostel & Residential Hall Management:** Residential blocks, room types (Single/Double/Dorm), capacity-capped bed allocations, and scholar check-in/checkout tracking (`/hostel`).
 * **Campus Placements & Corporate Recruitment Cell:** Partner recruitment drives, minimum GPA eligibility verification, candidate application pipeline, interview scheduling, and verified CTC package telemetry (`/placements`).
+* **Campus Transport Fleet & Transit Logistics:** Multi-stop campus bus routes, fleet vehicle allocation, driver logs, route stops, and sequential student transit passes (`PASS-YYYY-XXXX`) (`/transport`).
+* **Scholarships, Grants & Financial Aid:** Institutional and endowment schemes, automated GPA and family income eligibility gating, bursar review decisions, and grant disbursement tracking (`/scholarships`).
+* **Alumni Network & Career Mentorship:** Graduate directory, cohort filtering, industry roles, student mentorship requests, and career guidance session tracking (`/alumni`).
 * **Student & Faculty Portals:** Scholar self-service academic dossier (`/portal`), faculty teaching workbench (`/faculty-portal`), institutional reports & `< 75%` attendance risk sentinel (`/reports`), and official printable transcripts.
 * **Sleek Enterprise UX:** Vanilla CSS glassmorphic theme (`#090d16` & `#0f172a`), interactive modals, responsive sidebar, toast notifications, and KPI overview cards.
 
@@ -66,43 +69,61 @@ Institute Management System/
 ├── src/
 │   ├── api/                        # Modular FastAPI REST API route handlers
 │   │   ├── academics.py            # Attendance and examination endpoints
+│   │   ├── alumni.py               # Alumni directory and career mentorship endpoints
 │   │   ├── announcements.py        # Campus bulletin and announcements endpoints
 │   │   ├── courses.py              # Course catalog and enrollment endpoints
 │   │   ├── faculty.py              # Faculty directory endpoints
 │   │   ├── finance.py              # Invoicing, receipts, and audit endpoints
+│   │   ├── hostel.py               # Residential halls and bed allocation endpoints
 │   │   ├── leaves.py               # Leave application and approval endpoints
+│   │   ├── library.py              # Campus library and loan circulation endpoints
+│   │   ├── placements.py           # Corporate recruitment and hiring drive endpoints
 │   │   ├── reports.py              # Institutional analytics and telemetry endpoints
+│   │   ├── scholarships.py         # Scholarship schemes and aid grant endpoints
 │   │   ├── students.py             # Admissions and scholar endpoints
-│   │   └── timetable.py            # Lecture timetable and scheduling endpoints
+│   │   ├── timetable.py            # Lecture timetable and scheduling endpoints
+│   │   └── transport.py            # Fleet routes, vehicles, and transit pass endpoints
 │   ├── core/
 │   │   └── config.py               # Application configuration and path tokens
 │   ├── database/
 │   │   ├── connection.py           # SQLite connection pool and atomic transaction contexts
 │   │   ├── init_db.py              # Schema deployment and seed verification
-│   │   └── schema.sql              # Relational DDL schema with 14 tables & 19 indexes
+│   │   └── schema.sql              # Relational DDL schema with 20 tables & 26 indexes
 │   ├── models/                     # Strongly-typed Pydantic schemas (v2)
 │   │   ├── academics.py            # Attendance and exam request/response schemas
+│   │   ├── alumni.py               # Alumni member and mentorship schemas
 │   │   ├── announcement.py         # Campus bulletin schemas
 │   │   ├── course.py               # Course and enrollment schemas
 │   │   ├── department.py           # Department schemas
 │   │   ├── faculty.py              # Faculty schemas
 │   │   ├── finance.py              # Fee structure, invoice, and payment schemas
+│   │   ├── hostel.py               # Residential block and allocation schemas
 │   │   ├── leave.py                # Leave petition and review schemas
+│   │   ├── library.py              # Library book and loan schemas
+│   │   ├── placement.py            # Placement drive and candidate schemas
+│   │   ├── scholarship.py          # Scholarship scheme and application schemas
 │   │   ├── student.py              # Admissions and scholar registry schemas
-│   │   └── timetable.py            # Timetable slot schemas
+│   │   ├── timetable.py            # Timetable slot schemas
+│   │   └── transport.py            # Fleet route, vehicle, and pass schemas
 │   ├── services/                   # Business logic and database operations
 │   │   ├── academics_service.py    # Attendance and exam evaluation logic
+│   │   ├── alumni_service.py       # Alumni directory and mentorship matchmaking logic
 │   │   ├── announcement_service.py # Bulletin CRUD and priority query logic
 │   │   ├── course_service.py       # Course scheduling and capacity enforcement
 │   │   ├── dashboard_service.py    # Executive KPI metric aggregations
 │   │   ├── department_service.py   # Department operations
 │   │   ├── faculty_service.py      # Faculty management & teaching workbench
 │   │   ├── finance_service.py      # Invoicing, receipts, and ledger audit
+│   │   ├── hostel_service.py       # Residential hall and room allocation logic
 │   │   ├── leave_service.py        # Absence petitions and approval workflows
+│   │   ├── library_service.py      # Book circulation and loan inventory logic
+│   │   ├── placement_service.py    # Placement drives and candidate pipeline logic
 │   │   ├── reports_service.py      # Institutional telemetry and risk sentinels
+│   │   ├── scholarship_service.py  # Scholarship scheme and eligibility gating logic
 │   │   ├── student_service.py      # Student registry and admission routines
 │   │   ├── system_service.py       # Telemetry and hot SQLite online backup engine
-│   │   └── timetable_service.py    # Timetable matrix and collision avoidance logic
+│   │   ├── timetable_service.py    # Timetable matrix and collision avoidance logic
+│   │   └── transport_service.py    # Fleet route, vehicle, and transit pass logic
 │   └── app.py                      # FastAPI application, static mounting, and page routes
 ├── static/
 │   ├── css/
@@ -111,30 +132,42 @@ Institute Management System/
 │       └── app.js                  # Frontend utilities, modal handlers, and toast notifications
 ├── templates/                      # Jinja2 SSR Templates
 │   ├── academics.html              # Attendance register and exam grading hub
+│   ├── alumni.html                 # Alumni network and career mentorship hub
 │   ├── announcements.html          # Campus bulletin board and notice broadcast hub
 │   ├── base.html                   # Global glassmorphic sidebar layout
 │   ├── courses.html                # Course catalog and faculty roster portal
 │   ├── dashboard.html              # Executive overview dashboard
 │   ├── faculty_portal.html         # Faculty instructor workbench
 │   ├── finance.html                # Invoicing, payment collection, and audit ledger
+│   ├── hostel.html                 # Hostel and residential hall housing portal
 │   ├── leaves.html                 # Leave management and absence approval portal
+│   ├── library.html                # Campus library catalog and loan circulation
+│   ├── placements.html             # Corporate placements and recruitment cell
 │   ├── portal.html                 # Student self-service scholar portal
 │   ├── print_receipt.html          # Printable official fee receipt with seal
 │   ├── print_transcript.html       # Printable academic transcript dossier
 │   ├── reports.html                # Institutional analytics and attendance sentinel
+│   ├── scholarships.html           # Scholarships and financial aid grant portal
 │   ├── settings.html               # System telemetry and hot online database backups
 │   ├── students.html               # Admissions and student registry directory
-│   └── timetable.html              # Weekly academic lecture timetable matrix
-├── tests/                          # Automated Pytest validation suite (75 tests)
+│   ├── timetable.html              # Weekly academic lecture timetable matrix
+│   └── transport.html              # Campus transport fleet and transit pass hub
+├── tests/                          # Automated Pytest validation suite (116 tests)
 │   ├── conftest.py                 # Isolated test database runner
 │   ├── test_academics_api.py       # Attendance and examination API test cases
+│   ├── test_alumni_api.py          # Alumni network and mentorship test cases
 │   ├── test_announcements_api.py   # Bulletin board API and web test cases
 │   ├── test_core_and_dashboard.py  # Health check, settings, and backup test cases
 │   ├── test_courses_and_faculty.py # Course catalog and faculty test cases
 │   ├── test_finance_api.py         # Invoices, receipts, and printable receipt tests
+│   ├── test_hostel_api.py          # Hostel blocks and bed allocation test cases
 │   ├── test_leaves_api.py          # Leave application and approval test cases
+│   ├── test_library_api.py         # Library monographs and loan test cases
+│   ├── test_placements_api.py      # Campus placements and hiring drive test cases
+│   ├── test_scholarships_api.py    # Scholarships and grant disbursement tests
 │   ├── test_students_api.py        # Admissions, scholar portal, and transcript tests
-│   └── test_timetable_api.py       # Timetable scheduling and collision test cases
+│   ├── test_timetable_api.py       # Timetable scheduling and collision test cases
+│   └── test_transport_api.py       # Transport fleet and transit pass test cases
 ├── Dockerfile                      # Multi-stage production container
 ├── docker-compose.yml              # Persistent volume container deployment
 ├── render.yaml                     # Infrastructure-as-code cloud blueprint
@@ -249,6 +282,38 @@ Institute Management System/
 | `PUT` | `/api/placements/applications/{id}/status` | Advance pipeline stage (Shortlisted, Tech Round, Selected) |
 | `GET` | `/api/placements/stats` | Placement telemetry (hiring partners, offers, avg/highest CTC) |
 
+### 🚌 Campus Transport Fleet & Transit Logistics
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/transport/routes` | Define bus transit route with stops and semester fare |
+| `GET` | `/api/transport/routes` | List transport routes with vehicle and pass counts |
+| `POST` | `/api/transport/vehicles` | Register fleet vehicle and assign driver & route |
+| `GET` | `/api/transport/vehicles` | List fleet vehicles filtered by route and operational status |
+| `POST` | `/api/transport/passes` | Issue student transit pass (`PASS-YYYY-XXXX`) |
+| `GET` | `/api/transport/passes` | Query transit passes with student and route metadata |
+| `PUT` | `/api/transport/passes/{id}/cancel` | Cancel transit pass and free vehicle seat allocation |
+| `GET` | `/api/transport/stats` | Fleet telemetry (vehicles, routes, active passes, capacity) |
+
+### 🎓 Scholarships, Grants & Financial Aid
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/scholarships/schemes` | Create scholarship scheme with award amount & criteria |
+| `GET` | `/api/scholarships/schemes` | List scholarship schemes and applicant counts |
+| `POST` | `/api/scholarships/apply` | Submit student grant application with GPA & income gating |
+| `GET` | `/api/scholarships/applications` | Query applications filtered by scheme and review status |
+| `PUT` | `/api/scholarships/applications/{id}/review`| Bursar decision workflow (Approved, Disbursed, Rejected) |
+| `GET` | `/api/scholarships/stats` | Financial aid telemetry (funds disbursed, scholars assisted)|
+
+### 🤝 Alumni Network & Career Mentorship Hub
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/alumni/members` | Register graduate alumnus in network directory |
+| `GET` | `/api/alumni/members` | List alumni filtered by batch, department, or company |
+| `POST` | `/api/alumni/mentorship/request`| Scholar submits mentorship request to alumnus |
+| `GET` | `/api/alumni/mentorship/requests`| Query mentorship sessions and guidance requests |
+| `PUT` | `/api/alumni/mentorship/requests/{id}/status`| Update request status (Accepted, Completed, Declined) |
+| `GET` | `/api/alumni/stats` | Network telemetry (active alumni, mentors, batches) |
+
 ---
 
 ## 🚀 Quickstart & Installation
@@ -305,6 +370,9 @@ Open **[http://localhost:8000](http://localhost:8000)** in your browser:
 * **Campus Library Catalog:** `http://localhost:8000/library`
 * **Hostel & Housing:** `http://localhost:8000/hostel`
 * **Corporate Placements:** `http://localhost:8000/placements`
+* **Campus Transport Fleet:** `http://localhost:8000/transport`
+* **Scholarships & Financial Aid:** `http://localhost:8000/scholarships`
+* **Alumni Mentorship Network:** `http://localhost:8000/alumni`
 * **Fee Invoicing & Bursar Audit:** `http://localhost:8000/finance`
 * **Institutional Reports & Sentinel:** `http://localhost:8000/reports`
 * **System Settings & Hot Backup:** `http://localhost:8000/settings`
@@ -318,7 +386,7 @@ Open **[http://localhost:8000](http://localhost:8000)** in your browser:
 The test suite runs with isolated SQLite databases in temporary environments via pytest fixtures:
 
 ```bash
-# Run all 95 automated unit and integration tests
+# Run all 116 automated unit and integration tests
 pytest tests/ -v
 
 # Run Ruff linter to confirm clean code hygiene

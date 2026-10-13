@@ -80,12 +80,16 @@ class TimetableService:
     def create_slot(conn: sqlite3.Connection, data: TimetableSlotCreate) -> dict:
         """Schedule a lecture slot with room and instructor collision avoidance."""
         if data.start_time >= data.end_time:
-            raise ValueError(f"Lecture start time ({data.start_time}) must be earlier than end time ({data.end_time})")
+            raise ValueError(
+                f"Lecture start time ({data.start_time}) must be earlier than end time ({data.end_time})"
+            )
 
         cursor = conn.cursor()
 
         # 1. Check Course validity and instructor ID
-        cursor.execute("SELECT id, instructor_id, title FROM courses WHERE id = ?;", (data.course_id,))
+        cursor.execute(
+            "SELECT id, instructor_id, title FROM courses WHERE id = ?;", (data.course_id,)
+        )
         course = cursor.fetchone()
         if not course:
             cursor.close()
@@ -164,7 +168,9 @@ class TimetableService:
         return deleted
 
     @staticmethod
-    def get_weekly_matrix(conn: sqlite3.Connection, department_id: Optional[int] = None) -> Dict[str, List[dict]]:
+    def get_weekly_matrix(
+        conn: sqlite3.Connection, department_id: Optional[int] = None
+    ) -> Dict[str, List[dict]]:
         """Return timetable organized into a weekly day-by-day dictionary."""
         slots = TimetableService.list_slots(conn, department_id=department_id)
         days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]

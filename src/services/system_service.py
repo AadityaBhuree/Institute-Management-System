@@ -1,7 +1,8 @@
 """System telemetry, diagnostics, and database backup service."""
 
-import sqlite3
 from datetime import datetime
+from pathlib import Path
+import sqlite3
 from typing import Any, Dict, List
 
 from src.core.config import APP_NAME, APP_VERSION, DATA_DIR, DB_PATH

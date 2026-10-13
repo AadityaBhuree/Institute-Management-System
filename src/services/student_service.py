@@ -229,7 +229,9 @@ class StudentService:
 
         effective_present = present_count + late_count
         attendance_pct = (
-            round((effective_present / total_sessions) * 100, 1) if total_sessions > 0 else 100.0
+            round((effective_present / total_sessions) * 100, 1)
+            if total_sessions > 0
+            else 100.0
         )
 
         cursor.execute(
@@ -276,7 +278,9 @@ class StudentService:
             exam_results.append(res_dict)
 
         average_grade_pct = (
-            round((total_marks_obtained / total_max_marks) * 100, 1) if total_max_marks > 0 else 0.0
+            round((total_marks_obtained / total_max_marks) * 100, 1)
+            if total_max_marks > 0
+            else 0.0
         )
 
         # 4. Fee Account & Payments
@@ -341,3 +345,4 @@ class StudentService:
                 "is_settled": balance_outstanding <= 0.0,
             },
         }
+

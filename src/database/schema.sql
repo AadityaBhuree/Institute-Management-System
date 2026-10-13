@@ -339,4 +339,116 @@ CREATE INDEX IF NOT EXISTS idx_placements_drive ON placement_applications(drive_
 CREATE INDEX IF NOT EXISTS idx_placements_student ON placement_applications(student_id);
 CREATE INDEX IF NOT EXISTS idx_placements_status ON placement_applications(status);
 
+-- 18. Campus Transport Fleet & Transit Logistics
+CREATE TABLE IF NOT EXISTS transport_routes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    route_name TEXT NOT NULL UNIQUE,
+    source TEXT NOT NULL,
+    destination TEXT NOT NULL,
+    total_stops INTEGER NOT NULL DEFAULT 5 CHECK(total_stops > 0),
+    fare_per_semester REAL NOT NULL CHECK(fare_per_semester >= 0.0),
+    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'INACTIVE')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_transport_routes_status ON transport_routes(status);
+
+CREATE TABLE IF NOT EXISTS transport_vehicles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    route_id INTEGER REFERENCES transport_routes(id) ON DELETE SET NULL,
+    vehicle_number TEXT NOT NULL UNIQUE,
+    driver_name TEXT NOT NULL,
+    driver_phone TEXT NOT NULL,
+    capacity INTEGER NOT NULL CHECK(capacity > 0),
+    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'MAINTENANCE', 'RETIRED')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_transport_vehicles_route ON transport_vehicles(route_id);
+CREATE INDEX IF NOT EXISTS idx_transport_vehicles_status ON transport_vehicles(status);
+
+CREATE TABLE IF NOT EXISTS transport_passes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    route_id INTEGER NOT NULL REFERENCES transport_routes(id) ON DELETE CASCADE,
+    pass_number TEXT NOT NULL UNIQUE,
+    pickup_stop TEXT NOT NULL,
+    academic_year TEXT NOT NULL,
+    valid_until DATE NOT NULL,
+    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'EXPIRED', 'CANCELLED')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_transport_passes_student ON transport_passes(student_id);
+CREATE INDEX IF NOT EXISTS idx_transport_passes_route ON transport_passes(route_id);
+CREATE INDEX IF NOT EXISTS idx_transport_passes_status ON transport_passes(status);
+
+-- 19. Scholarships, Grants & Financial Aid
+CREATE TABLE IF NOT EXISTS scholarship_schemes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scheme_name TEXT NOT NULL UNIQUE,
+    sponsor_type TEXT NOT NULL DEFAULT 'INSTITUTIONAL' CHECK(sponsor_type IN ('INSTITUTIONAL', 'GOVERNMENT', 'CORPORATE', 'ALUMNI_ENDOWMENT')),
+    award_amount REAL NOT NULL CHECK(award_amount > 0.0),
+    min_gpa_required REAL NOT NULL DEFAULT 7.5 CHECK(min_gpa_required >= 0.0 AND min_gpa_required <= 10.0),
+    max_family_income REAL DEFAULT 800000.0 CHECK(max_family_income > 0.0),
+    eligible_category TEXT NOT NULL DEFAULT 'ALL',
+    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'CLOSED')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_scholarship_schemes_status ON scholarship_schemes(status);
+
+CREATE TABLE IF NOT EXISTS scholarship_applications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scheme_id INTEGER NOT NULL REFERENCES scholarship_schemes(id) ON DELETE CASCADE,
+    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    current_gpa REAL NOT NULL CHECK(current_gpa >= 0.0 AND current_gpa <= 10.0),
+    annual_family_income REAL NOT NULL CHECK(annual_family_income >= 0.0),
+    disbursed_amount REAL DEFAULT 0.0 CHECK(disbursed_amount >= 0.0),
+    status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING', 'APPROVED', 'DISBURSED', 'REJECTED')),
+    review_remarks TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(scheme_id, student_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_scholarship_apps_scheme ON scholarship_applications(scheme_id);
+CREATE INDEX IF NOT EXISTS idx_scholarship_apps_student ON scholarship_applications(student_id);
+CREATE INDEX IF NOT EXISTS idx_scholarship_apps_status ON scholarship_applications(status);
+
+-- 20. Alumni Network & Career Mentorship Hub
+CREATE TABLE IF NOT EXISTS alumni_members (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER REFERENCES students(id) ON DELETE SET NULL,
+    full_name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    phone TEXT,
+    graduation_year INTEGER NOT NULL CHECK(graduation_year >= 1950),
+    degree TEXT NOT NULL DEFAULT 'B.Tech',
+    department_id INTEGER NOT NULL REFERENCES departments(id) ON DELETE RESTRICT,
+    current_company TEXT NOT NULL DEFAULT 'Independent / Higher Studies',
+    job_title TEXT NOT NULL DEFAULT 'Alumnus',
+    city TEXT NOT NULL DEFAULT 'Bengaluru',
+    linkedin_url TEXT,
+    mentorship_status TEXT NOT NULL DEFAULT 'AVAILABLE' CHECK(mentorship_status IN ('AVAILABLE', 'BUSY', 'INACTIVE')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_alumni_dept ON alumni_members(department_id);
+CREATE INDEX IF NOT EXISTS idx_alumni_grad_year ON alumni_members(graduation_year);
+CREATE INDEX IF NOT EXISTS idx_alumni_mentorship ON alumni_members(mentorship_status);
+
+CREATE TABLE IF NOT EXISTS alumni_mentorship_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    alumni_id INTEGER NOT NULL REFERENCES alumni_members(id) ON DELETE CASCADE,
+    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    mentorship_topic TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'REQUESTED' CHECK(status IN ('REQUESTED', 'ACCEPTED', 'COMPLETED', 'DECLINED')),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_mentorship_alumni ON alumni_mentorship_requests(alumni_id);
+CREATE INDEX IF NOT EXISTS idx_mentorship_student ON alumni_mentorship_requests(student_id);
+CREATE INDEX IF NOT EXISTS idx_mentorship_status ON alumni_mentorship_requests(status);
+
 

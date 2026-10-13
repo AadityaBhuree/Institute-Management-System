@@ -1,0 +1,442 @@
+{% extends "base.html" %}
+
+{% block title %}Scholarships, Grants & Financial Aid | IMS Enterprise{% endblock %}
+{% block header_title %}Scholarships & Financial Aid Hub{% endblock %}
+{% block header_subtitle %}Institutional endowments, merit fellowship schemes, grant disbursements, and scholar financial aid telemetry{% endblock %}
+
+{% block header_actions %}
+<div style="display: flex; gap: 12px;">
+  <button class="btn btn-outline" onclick="openModal('modal-create-scheme')" id="btn-open-create-scheme">
+    <span>🏆 Define Scheme</span>
+  </button>
+  <button class="btn btn-primary" onclick="openModal('modal-apply-scholarship')" id="btn-open-apply-scholarship">
+    <span>📝 Apply for Grant</span>
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Financial Aid Telemetry Metrics -->
+<div class="metrics-grid" style="margin-bottom: 24px;">
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Endowment Schemes</span>
+      <span class="metric-icon">🎓</span>
+    </div>
+    <div class="metric-value">{{ stats.total_schemes }}</div>
+    <div class="metric-footer">
+      <span>{{ stats.active_schemes }} currently accepting applicants</span>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Scholar Applications</span>
+      <span class="metric-icon">📑</span>
+    </div>
+    <div class="metric-value">{{ stats.total_applications }}</div>
+    <div class="metric-footer">
+      <span>Total student grant petitions</span>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Recipients Awarded</span>
+      <span class="metric-icon">🌟</span>
+    </div>
+    <div class="metric-value" style="color: var(--color-success);">{{ stats.awarded_count }}</div>
+    <div class="metric-footer">
+      <span>Approved and disbursed scholars</span>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Total Funds Disbursed</span>
+      <span class="metric-icon">💰</span>
+    </div>
+    <div class="metric-value" style="color: var(--color-primary-light);">
+      ₹{{ "{:,.0f}".format(stats.total_funds_disbursed) }}
+    </div>
+    <div class="metric-footer">
+      <span>Avg award: ₹{{ "{:,.0f}".format(stats.average_award_amount) }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Tabs Navigation -->
+<div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 12px;">
+  <button class="btn btn-secondary" onclick="switchScholarshipTab('tab-schemes')" id="btn-tab-schemes" style="font-weight: 600;">
+    🏆 Scholarship Schemes ({{ schemes|length }})
+  </button>
+  <button class="btn btn-outline" onclick="switchScholarshipTab('tab-applications')" id="btn-tab-applications" style="font-weight: 600;">
+    📑 Applications Pipeline ({{ applications|length }})
+  </button>
+</div>
+
+<!-- Tab 1: Scholarship Schemes -->
+<div id="tab-schemes" class="scholarship-tab-content">
+  <div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 class="card-title">Institutional & Sponsored Schemes</h3>
+      <span style="font-size: 0.85rem; color: var(--text-muted);">{{ schemes|length }} schemes listed</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Scheme Title</th>
+            <th>Sponsor Type</th>
+            <th>Award Amount</th>
+            <th>Academic Gating</th>
+            <th>Income Ceiling</th>
+            <th>Category</th>
+            <th>Applicants</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in schemes %}
+          <tr id="row-scheme-{{ s.id }}">
+            <td style="font-weight: 600; color: #f8fafc;">{{ s.scheme_name }}</td>
+            <td>
+              <span class="badge badge-info">{{ s.sponsor_type }}</span>
+            </td>
+            <td style="font-weight: 700; color: var(--color-primary-light);">
+              ₹{{ "{:,.0f}".format(s.award_amount) }}
+            </td>
+            <td>Min GPA {{ "{:.1f}".format(s.min_gpa_required) }}</td>
+            <td>&le; ₹{{ "{:,.0f}".format(s.max_family_income) }} /yr</td>
+            <td>{{ s.eligible_category }}</td>
+            <td>
+              <span class="badge badge-primary">{{ s.applications_count }} Candidates</span>
+            </td>
+            <td>
+              {% if s.status == 'ACTIVE' %}
+              <span class="badge badge-success">ACTIVE</span>
+              {% else %}
+              <span class="badge badge-danger">CLOSED</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 32px;">
+              No scholarship schemes available. Click "Define Scheme" to create one.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 2: Applications Pipeline -->
+<div id="tab-applications" class="scholarship-tab-content" style="display: none;">
+  <div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 class="card-title">Scholar Aid Applications & Bursar Decisions</h3>
+      <span style="font-size: 0.85rem; color: var(--text-muted);">{{ applications|length }} applications recorded</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Scholar</th>
+            <th>Scheme Title</th>
+            <th>Current GPA</th>
+            <th>Family Income</th>
+            <th>Disbursed Sum</th>
+            <th>Decision Status</th>
+            <th>Remarks</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in applications %}
+          <tr id="row-app-{{ a.id }}">
+            <td>
+              <div style="font-weight: 600;">{{ a.student_name }}</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">{{ a.enrollment_no }} ({{ a.department_code }})</div>
+            </td>
+            <td>{{ a.scheme_name }}</td>
+            <td style="font-weight: 600;">{{ "{:.2f}".format(a.current_gpa) }}</td>
+            <td>₹{{ "{:,.0f}".format(a.annual_family_income) }}</td>
+            <td style="font-weight: 700; color: var(--color-success);">
+              {% if a.disbursed_amount > 0 %}
+              ₹{{ "{:,.0f}".format(a.disbursed_amount) }}
+              {% else %}
+              —
+              {% endif %}
+            </td>
+            <td>
+              {% if a.status == 'DISBURSED' %}
+              <span class="badge badge-success">DISBURSED</span>
+              {% elif a.status == 'APPROVED' %}
+              <span class="badge badge-info">APPROVED</span>
+              {% elif a.status == 'PENDING' %}
+              <span class="badge badge-warning">PENDING REVIEW</span>
+              {% else %}
+              <span class="badge badge-danger">REJECTED</span>
+              {% endif %}
+            </td>
+            <td style="max-width: 200px; font-size: 0.85rem; color: var(--text-muted);">
+              {{ a.review_remarks or 'No remarks recorded' }}
+            </td>
+            <td>
+              <button class="btn btn-outline" style="padding: 4px 10px; font-size: 0.8rem;" onclick="openReviewModal({{ a.id }}, '{{ a.status }}', {{ a.award_amount }})">Review</button>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 32px;">
+              No grant applications submitted yet. Click "Apply for Grant" to register an applicant.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal 1: Define Scheme -->
+<div id="modal-create-scheme" class="modal-backdrop" style="display: none;">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 class="modal-title">Define Scholarship Scheme</h3>
+      <button class="modal-close" onclick="closeModal('modal-create-scheme')">&times;</button>
+    </div>
+    <form id="form-create-scheme" onsubmit="submitCreateScheme(event)">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div>
+          <label class="form-label">Scheme Title *</label>
+          <input type="text" name="scheme_name" class="form-control" placeholder="e.g. Founder's STEM Merit Scholarship" required>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div>
+            <label class="form-label">Sponsor Classification *</label>
+            <select name="sponsor_type" class="form-control">
+              <option value="INSTITUTIONAL">🏛️ Institutional Fund</option>
+              <option value="GOVERNMENT">🏢 Government Grant</option>
+              <option value="CORPORATE">💼 Corporate CSR</option>
+              <option value="ALUMNI_ENDOWMENT">🤝 Alumni Endowment</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Award Grant Amount (₹) *</label>
+            <input type="number" name="award_amount" class="form-control" value="50000" step="1000" min="1000" required>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div>
+            <label class="form-label">Minimum GPA Required *</label>
+            <input type="number" name="min_gpa_required" class="form-control" value="8.0" step="0.1" min="0" max="10" required>
+          </div>
+          <div>
+            <label class="form-label">Annual Family Income Ceiling (₹) *</label>
+            <input type="number" name="max_family_income" class="form-control" value="700000" step="10000" min="0" required>
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Eligible Category / Departments</label>
+          <input type="text" name="eligible_category" class="form-control" value="ALL" placeholder="ALL, CSE, ECE, Merit-cum-Means">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px;">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modal-create-scheme')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Scheme</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal 2: Apply for Scholarship -->
+<div id="modal-apply-scholarship" class="modal-backdrop" style="display: none;">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 class="modal-title">Scholarship Grant Application</h3>
+      <button class="modal-close" onclick="closeModal('modal-apply-scholarship')">&times;</button>
+    </div>
+    <form id="form-apply-scholarship" onsubmit="submitApplyScholarship(event)">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div>
+          <label class="form-label">Select Registered Student *</label>
+          <select name="student_id" class="form-control" required>
+            <option value="">-- Choose Candidate --</option>
+            {% for s in students %}
+            <option value="{{ s.id }}">{{ s.enrollment_no }} - {{ s.first_name }} {{ s.last_name }} ({{ s.department_code }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Select Scholarship Scheme *</label>
+          <select name="scheme_id" class="form-control" required>
+            <option value="">-- Choose Scheme --</option>
+            {% for sc in schemes if sc.status == 'ACTIVE' %}
+            <option value="{{ sc.id }}">{{ sc.scheme_name }} (₹{{ "{:,.0f}".format(sc.award_amount) }} | Min GPA {{ sc.min_gpa_required }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div>
+            <label class="form-label">Current Cumulative GPA *</label>
+            <input type="number" name="current_gpa" class="form-control" value="8.8" step="0.01" min="0" max="10" required>
+          </div>
+          <div>
+            <label class="form-label">Annual Family Income (₹) *</label>
+            <input type="number" name="annual_family_income" class="form-control" value="450000" step="5000" min="0" required>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px;">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modal-apply-scholarship')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Submit Application</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal 3: Review Application -->
+<div id="modal-review-application" class="modal-backdrop" style="display: none;">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 class="modal-title">Bursar Grant Review & Decision</h3>
+      <button class="modal-close" onclick="closeModal('modal-review-application')">&times;</button>
+    </div>
+    <form id="form-review-application" onsubmit="submitReviewApplication(event)">
+      <input type="hidden" name="app_id" id="review-app-id">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div>
+          <label class="form-label">Decision Status *</label>
+          <select name="status" id="review-status" class="form-control" required>
+            <option value="APPROVED">🟢 APPROVED (Sanctioned for Disbursement)</option>
+            <option value="DISBURSED">💰 DISBURSED (Direct Account Transfer)</option>
+            <option value="REJECTED">🔴 REJECTED</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Disbursed Amount (₹)</label>
+          <input type="number" name="disbursed_amount" id="review-disbursed-amount" class="form-control" step="500" min="0">
+        </div>
+        <div>
+          <label class="form-label">Review Remarks / Committee Notes</label>
+          <textarea name="review_remarks" id="review-remarks" class="form-control" rows="3" placeholder="Document committee approval justification or reasons for rejection..."></textarea>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px;">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modal-review-application')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Record Decision</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function switchScholarshipTab(tabId) {
+  document.querySelectorAll('.scholarship-tab-content').forEach(el => el.style.display = 'none');
+  const target = document.getElementById(tabId);
+  if (target) target.style.display = 'block';
+
+  ['btn-tab-schemes', 'btn-tab-applications'].forEach(btnId => {
+    const btn = document.getElementById(btnId);
+    if (btn) {
+      btn.className = (btnId === 'btn-' + tabId) ? 'btn btn-secondary' : 'btn btn-outline';
+    }
+  });
+}
+
+function openReviewModal(appId, currentStatus, defaultAmount) {
+  document.getElementById('review-app-id').value = appId;
+  document.getElementById('review-status').value = currentStatus === 'PENDING' ? 'APPROVED' : currentStatus;
+  document.getElementById('review-disbursed-amount').value = defaultAmount || 50000;
+  openModal('modal-review-application');
+}
+
+async function submitCreateScheme(e) {
+  e.preventDefault();
+  const form = e.target;
+  const payload = {
+    scheme_name: form.scheme_name.value.trim(),
+    sponsor_type: form.sponsor_type.value,
+    award_amount: parseFloat(form.award_amount.value),
+    min_gpa_required: parseFloat(form.min_gpa_required.value),
+    max_family_income: parseFloat(form.max_family_income.value),
+    eligible_category: form.eligible_category.value.trim() || 'ALL',
+    status: 'ACTIVE'
+  };
+
+  try {
+    const res = await fetch('/api/scholarships/schemes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to create scheme');
+    }
+    showToast('Scholarship scheme defined successfully.', 'success');
+    setTimeout(() => window.location.reload(), 600);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function submitApplyScholarship(e) {
+  e.preventDefault();
+  const form = e.target;
+  const payload = {
+    student_id: parseInt(form.student_id.value),
+    scheme_id: parseInt(form.scheme_id.value),
+    current_gpa: parseFloat(form.current_gpa.value),
+    annual_family_income: parseFloat(form.annual_family_income.value)
+  };
+
+  try {
+    const res = await fetch('/api/scholarships/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to submit application');
+    }
+    showToast('Scholarship application submitted.', 'success');
+    setTimeout(() => window.location.reload(), 600);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function submitReviewApplication(e) {
+  e.preventDefault();
+  const form = e.target;
+  const appId = form.app_id.value;
+  const payload = {
+    status: form.status.value,
+    disbursed_amount: form.disbursed_amount.value ? parseFloat(form.disbursed_amount.value) : null,
+    review_remarks: form.review_remarks.value.trim()
+  };
+
+  try {
+    const res = await fetch(`/api/scholarships/applications/${appId}/review`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to record decision');
+    }
+    showToast('Application reviewed and decision updated.', 'success');
+    setTimeout(() => window.location.reload(), 600);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+</script>
+{% endblock %}

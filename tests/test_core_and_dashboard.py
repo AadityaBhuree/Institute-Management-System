@@ -187,3 +187,5 @@ def test_view_settings_html_page(client):
     assert "Database Backup Engine" in html
     assert "Academic Departments" in html
     assert "Relational Schema Telemetry" in html
+
+

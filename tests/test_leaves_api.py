@@ -42,8 +42,8 @@ def test_list_leaves_and_filtering(client: TestClient):
     assert res.status_code == 200
     leaves = res.json()
     assert len(leaves) >= 1
-    assert all(l["applicant_type"] == "STUDENT" for l in leaves)
-    assert all(l["status"] == "PENDING" for l in leaves)
+    assert all(req["applicant_type"] == "STUDENT" for req in leaves)
+    assert all(req["status"] == "PENDING" for req in leaves)
 
 
 def test_update_leave_status_approved_and_rejected(client: TestClient):

@@ -288,4 +288,3 @@ def test_view_faculty_portal_html_page(client):
     spec_html = res_spec.text
     assert "Ada Lovelace" in spec_html
     assert "CS101" in spec_html
-

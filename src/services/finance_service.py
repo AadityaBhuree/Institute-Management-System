@@ -103,9 +103,7 @@ class FinanceService:
         return [dict(r) for r in rows]
 
     @staticmethod
-    def create_invoice(
-        conn: sqlite3.Connection, invoice_in: FeeInvoiceCreate
-    ) -> Dict[str, Any]:
+    def create_invoice(conn: sqlite3.Connection, invoice_in: FeeInvoiceCreate) -> Dict[str, Any]:
         cursor = conn.cursor()
         cursor.execute(
             "SELECT id, first_name, last_name, enrollment_no FROM students WHERE id = ?;",
@@ -211,9 +209,7 @@ class FinanceService:
         return [dict(r) for r in rows]
 
     @staticmethod
-    def get_invoice_by_id(
-        conn: sqlite3.Connection, invoice_id: int
-    ) -> Optional[Dict[str, Any]]:
+    def get_invoice_by_id(conn: sqlite3.Connection, invoice_id: int) -> Optional[Dict[str, Any]]:
         FinanceService._sync_overdue_invoices(conn)
         cursor = conn.cursor()
         cursor.execute(
@@ -250,9 +246,7 @@ class FinanceService:
         return invoice_dict
 
     @staticmethod
-    def record_payment(
-        conn: sqlite3.Connection, payment_in: PaymentCreate
-    ) -> Dict[str, Any]:
+    def record_payment(conn: sqlite3.Connection, payment_in: PaymentCreate) -> Dict[str, Any]:
         cursor = conn.cursor()
         cursor.execute(
             """

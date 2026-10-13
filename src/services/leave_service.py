@@ -99,9 +99,7 @@ class LeaveService:
         return LeaveService.get_by_id(conn, leave_id)
 
     @staticmethod
-    def update_status(
-        conn: sqlite3.Connection, leave_id: int, data: LeaveStatusUpdate
-    ) -> Optional[dict]:
+    def update_status(conn: sqlite3.Connection, leave_id: int, data: LeaveStatusUpdate) -> Optional[dict]:
         with transaction(conn) as cursor:
             cursor.execute(
                 """

@@ -105,7 +105,9 @@ class AcademicsService:
         return [dict(row) for row in rows]
 
     @staticmethod
-    def get_student_attendance_summary(conn: sqlite3.Connection, student_id: int) -> Dict[str, Any]:
+    def get_student_attendance_summary(
+        conn: sqlite3.Connection, student_id: int
+    ) -> Dict[str, Any]:
         cursor = conn.cursor()
         cursor.execute(
             """

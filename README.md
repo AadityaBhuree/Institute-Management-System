@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-WAL%20Mode-003B57.svg?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
-[![Tests](https://img.shields.io/badge/Pytest-116%2F116%20Passing-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Pytest-121%2F121%20Passing-success.svg)](tests/)
 [![CI](https://github.com/AadityaBhuree/Institute-Management-System/actions/workflows/ci.yml/badge.svg)](https://github.com/AadityaBhuree/Institute-Management-System/actions/workflows/ci.yml)
 [![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED.svg?logo=docker&logoColor=white)](Dockerfile)
 [![Code Style](https://img.shields.io/badge/Linter-Ruff%20Clean-black.svg)](pyproject.toml)
@@ -29,6 +29,7 @@ A modern, high-performance, and modular educational administration platform buil
 * **Scholarships, Grants & Financial Aid:** Institutional and endowment schemes, automated GPA and family income eligibility gating, bursar review decisions, and grant disbursement tracking (`/scholarships`).
 * **Alumni Network & Career Mentorship:** Graduate directory, cohort filtering, industry roles, student mentorship requests, and career guidance session tracking (`/alumni`).
 * **Student & Faculty Portals:** Scholar self-service academic dossier (`/portal`), faculty teaching workbench (`/faculty-portal`), institutional reports & `< 75%` attendance risk sentinel (`/reports`), and official printable transcripts.
+* **Institutional Reports & CSV Data Engine:** Real-time attendance risk sentinel (< 75%), grade distributions, fiscal recovery audits, and streaming CSV downloads for scholar directories, attendance telemetry, and financial audit ledgers.
 * **Sleek Enterprise UX:** Vanilla CSS glassmorphic theme (`#090d16` & `#0f172a`), interactive modals, responsive sidebar, toast notifications, and KPI overview cards.
 
 ---
@@ -152,7 +153,7 @@ Institute Management System/
 │   ├── students.html               # Admissions and student registry directory
 │   ├── timetable.html              # Weekly academic lecture timetable matrix
 │   └── transport.html              # Campus transport fleet and transit pass hub
-├── tests/                          # Automated Pytest validation suite (116 tests)
+├── tests/                          # Automated Pytest validation suite (121 tests)
 │   ├── conftest.py                 # Isolated test database runner
 │   ├── test_academics_api.py       # Attendance and examination API test cases
 │   ├── test_alumni_api.py          # Alumni network and mentorship test cases
@@ -164,6 +165,7 @@ Institute Management System/
 │   ├── test_leaves_api.py          # Leave application and approval test cases
 │   ├── test_library_api.py         # Library monographs and loan test cases
 │   ├── test_placements_api.py      # Campus placements and hiring drive test cases
+│   ├── test_reports_export_api.py  # CSV export streaming and data engine tests
 │   ├── test_scholarships_api.py    # Scholarships and grant disbursement tests
 │   ├── test_students_api.py        # Admissions, scholar portal, and transcript tests
 │   ├── test_timetable_api.py       # Timetable scheduling and collision test cases
@@ -314,6 +316,14 @@ Institute Management System/
 | `PUT` | `/api/alumni/mentorship/requests/{id}/status`| Update request status (Accepted, Completed, Declined) |
 | `GET` | `/api/alumni/stats` | Network telemetry (active alumni, mentors, batches) |
 
+### 📊 Institutional Reports & CSV Exports
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/reports/analytics-summary` | Institutional telemetry, attendance risk sentinel, and recovery metrics |
+| `GET` | `/api/reports/export/students/csv` | Download complete registered student directory as CSV |
+| `GET` | `/api/reports/export/attendance-risk/csv` | Download at-risk (< 75%) scholar attendance report as CSV |
+| `GET` | `/api/reports/export/finances/csv` | Download bursar invoice ledger audit as CSV |
+
 ---
 
 ## 🚀 Quickstart & Installation
@@ -386,7 +396,7 @@ Open **[http://localhost:8000](http://localhost:8000)** in your browser:
 The test suite runs with isolated SQLite databases in temporary environments via pytest fixtures:
 
 ```bash
-# Run all 116 automated unit and integration tests
+# Run all 121 automated unit and integration tests
 pytest tests/ -v
 
 # Run Ruff linter to confirm clean code hygiene

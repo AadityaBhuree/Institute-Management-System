@@ -1,5 +1,5 @@
-"""Institutional Reports and Analytics service."""
-
+import csv
+import io
 import sqlite3
 from typing import Any, Dict, List, Optional
 
@@ -286,3 +286,148 @@ class ReportsService:
             "department_metrics": department_metrics,
             "exam_performance": exam_performance,
         }
+
+    @staticmethod
+    def export_students_csv(conn: sqlite3.Connection, department_id: Optional[int] = None) -> str:
+        """Export student directory to CSV string."""
+        cursor = conn.cursor()
+        query = """
+            SELECT
+                s.enrollment_no, s.first_name, s.last_name, s.email, s.phone,
+                d.name AS department_name, s.current_semester, s.status, s.admission_date
+            FROM students s
+            JOIN departments d ON s.department_id = d.id
+            WHERE 1=1
+        """
+        params: List[Any] = []
+        if department_id:
+            query += " AND s.department_id = ?"
+            params.append(department_id)
+        query += " ORDER BY s.enrollment_no ASC;"
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        cursor.close()
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            "Enrollment No",
+            "First Name",
+            "Last Name",
+            "Email",
+            "Phone",
+            "Department",
+            "Semester",
+            "Status",
+            "Admission Date",
+        ])
+        for r in rows:
+            writer.writerow([
+                r["enrollment_no"],
+                r["first_name"],
+                r["last_name"],
+                r["email"],
+                r["phone"] or "",
+                r["department_name"],
+                r["current_semester"],
+                r["status"],
+                r["admission_date"],
+            ])
+        return output.getvalue()
+
+    @staticmethod
+    def export_attendance_risk_csv(
+        conn: sqlite3.Connection, department_id: Optional[int] = None
+    ) -> str:
+        """Export scholars with critical attendance below 75% to CSV string."""
+        summary = ReportsService.get_analytics_summary(conn, department_id=department_id)
+        at_risk = summary.get("at_risk_scholars", [])
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            "Enrollment No",
+            "First Name",
+            "Last Name",
+            "Email",
+            "Department",
+            "Semester",
+            "Total Sessions",
+            "Attended Sessions",
+            "Absent Sessions",
+            "Late Sessions",
+            "Attendance Percentage",
+            "Risk Level",
+        ])
+        for s in at_risk:
+            writer.writerow([
+                s["enrollment_no"],
+                s["first_name"],
+                s["last_name"],
+                s["email"],
+                s["department_name"],
+                s["current_semester"],
+                s["total_sessions"],
+                s["attended_sessions"],
+                s["absent_sessions"],
+                s["late_sessions"],
+                f"{s['attendance_pct']}%",
+                s["risk_level"],
+            ])
+        return output.getvalue()
+
+    @staticmethod
+    def export_financial_ledger_csv(
+        conn: sqlite3.Connection, department_id: Optional[int] = None
+    ) -> str:
+        """Export billing ledger and student invoices to CSV string."""
+        cursor = conn.cursor()
+        query = """
+            SELECT
+                fi.invoice_no, s.enrollment_no, s.first_name, s.last_name,
+                d.name AS department_name, fi.title, fi.term_name,
+                fi.total_amount, fi.paid_amount, fi.balance_amount, fi.status, fi.due_date
+            FROM fee_invoices fi
+            JOIN students s ON fi.student_id = s.id
+            JOIN departments d ON s.department_id = d.id
+            WHERE 1=1
+        """
+        params: List[Any] = []
+        if department_id:
+            query += " AND s.department_id = ?"
+            params.append(department_id)
+        query += " ORDER BY fi.created_at DESC;"
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        cursor.close()
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            "Invoice No",
+            "Enrollment No",
+            "Student Name",
+            "Department",
+            "Title",
+            "Term",
+            "Total Invoiced",
+            "Paid Amount",
+            "Balance Due",
+            "Status",
+            "Due Date",
+        ])
+        for r in rows:
+            writer.writerow([
+                r["invoice_no"],
+                r["enrollment_no"],
+                f"{r['first_name']} {r['last_name']}",
+                r["department_name"],
+                r["title"],
+                r["term_name"],
+                f"{r['total_amount']:.2f}",
+                f"{r['paid_amount']:.2f}",
+                f"{r['balance_amount']:.2f}",
+                r["status"],
+                r["due_date"],
+            ])
+        return output.getvalue()

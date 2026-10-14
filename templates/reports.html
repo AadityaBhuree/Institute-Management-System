@@ -5,6 +5,17 @@
 {% block header_subtitle %}Institutional intelligence, attendance risk sentinel, academic performance, and fiscal audits{% endblock %}
 
 {% block header_actions %}
+<div class="dropdown" style="display: inline-block;">
+  <a href="/api/reports/export/students/csv" class="btn btn-secondary btn-sm" id="btn-export-students-csv" title="Download registered students CSV">
+    <span>📥 Students CSV</span>
+  </a>
+</div>
+<a href="/api/reports/export/attendance-risk/csv" class="btn btn-secondary btn-sm" id="btn-export-risk-csv" title="Download low-attendance risk sentinel CSV">
+  <span>⚠️ Risk Sentinel CSV</span>
+</a>
+<a href="/api/reports/export/finances/csv" class="btn btn-secondary btn-sm" id="btn-export-finance-csv" title="Download bursar invoice ledger CSV">
+  <span>💰 Finance CSV</span>
+</a>
 <button class="btn btn-secondary btn-sm" onclick="window.print()" id="btn-print-reports">
   <span>🖨️ Export PDF / Print</span>
 </button>

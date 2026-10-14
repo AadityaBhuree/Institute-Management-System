@@ -23,9 +23,7 @@ router = APIRouter(prefix="/api/alumni", tags=["Alumni Network & Mentorship"])
 def list_alumni(
     department_id: Optional[int] = Query(None, description="Filter by department ID"),
     graduation_year: Optional[int] = Query(None, description="Filter by graduation batch year"),
-    mentorship_status: Optional[str] = Query(
-        None, description="AVAILABLE, BUSY, INACTIVE"
-    ),
+    mentorship_status: Optional[str] = Query(None, description="AVAILABLE, BUSY, INACTIVE"),
     search: Optional[str] = Query(None, description="Search name, company, role, or city"),
     conn: sqlite3.Connection = Depends(get_db),
 ):
@@ -52,9 +50,7 @@ def register_alumnus(data: AlumniMemberCreate, conn: sqlite3.Connection = Depend
 def list_mentorship_requests(
     alumni_id: Optional[int] = Query(None, description="Filter by mentor alumni ID"),
     student_id: Optional[int] = Query(None, description="Filter by mentee student ID"),
-    status: Optional[str] = Query(
-        None, description="REQUESTED, ACCEPTED, COMPLETED, DECLINED"
-    ),
+    status: Optional[str] = Query(None, description="REQUESTED, ACCEPTED, COMPLETED, DECLINED"),
     conn: sqlite3.Connection = Depends(get_db),
 ):
     """List alumni mentorship connections and status."""

@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from src.api.academics import router as academics_router
+from src.api.alumni import router as alumni_router
 from src.api.announcements import router as announcements_router
 from src.api.courses import router as courses_router
 from src.api.faculty import router as faculty_router
@@ -21,6 +22,7 @@ from src.api.leaves import router as leaves_router
 from src.api.library import router as library_router
 from src.api.placements import router as placements_router
 from src.api.reports import router as reports_router
+from src.api.scholarships import router as scholarships_router
 from src.api.students import router as students_router
 from src.api.timetable import router as timetable_router
 from src.api.transport import router as transport_router
@@ -36,6 +38,7 @@ from src.database.connection import get_db
 from src.database.init_db import init_database
 from src.models.department import DepartmentCreate
 from src.services.academics_service import AcademicsService
+from src.services.alumni_service import AlumniService
 from src.services.announcement_service import AnnouncementService
 from src.services.course_service import CourseService
 from src.services.dashboard_service import DashboardService
@@ -47,6 +50,7 @@ from src.services.leave_service import LeaveService
 from src.services.library_service import LibraryService
 from src.services.placement_service import PlacementService
 from src.services.reports_service import ReportsService
+from src.services.scholarship_service import ScholarshipService
 from src.services.student_service import StudentService
 from src.services.system_service import SystemService
 from src.services.timetable_service import TimetableService
@@ -82,6 +86,8 @@ app.include_router(library_router)
 app.include_router(hostel_router)
 app.include_router(placements_router)
 app.include_router(transport_router)
+app.include_router(scholarships_router)
+app.include_router(alumni_router)
 
 
 # Ensure directories exist and mount static assets
@@ -634,4 +640,69 @@ def view_transport_page(
             "selected_status": status,
         },
     )
+
+
+@app.get("/scholarships", response_class=HTMLResponse, tags=["Web"])
+def view_scholarships_page(
+    request: Request,
+    status: Optional[str] = None,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Render scholarships, grants, and financial aid management hub."""
+    schemes = ScholarshipService.list_schemes(conn, status=status)
+    applications = ScholarshipService.list_applications(conn)
+    stats = ScholarshipService.get_stats(conn)
+    students = StudentService.list_students(conn)
+    return templates.TemplateResponse(
+        request=request,
+        name="scholarships.html",
+        context={
+            "active_page": "scholarships",
+            "schemes": schemes,
+            "applications": applications,
+            "stats": stats,
+            "students": students,
+            "selected_status": status,
+        },
+    )
+
+
+@app.get("/alumni", response_class=HTMLResponse, tags=["Web"])
+def view_alumni_page(
+    request: Request,
+    department_id: Optional[int] = None,
+    graduation_year: Optional[int] = None,
+    mentorship_status: Optional[str] = None,
+    search: Optional[str] = None,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Render alumni network directory and student career mentorship hub."""
+    alumni_list = AlumniService.list_alumni(
+        conn,
+        department_id=department_id,
+        graduation_year=graduation_year,
+        mentorship_status=mentorship_status,
+        search=search,
+    )
+    requests = AlumniService.list_mentorship_requests(conn)
+    stats = AlumniService.get_stats(conn)
+    departments = DepartmentService.list_all(conn)
+    students = StudentService.list_students(conn)
+    return templates.TemplateResponse(
+        request=request,
+        name="alumni.html",
+        context={
+            "active_page": "alumni",
+            "alumni": alumni_list,
+            "requests": requests,
+            "stats": stats,
+            "departments": departments,
+            "students": students,
+            "selected_dept": department_id,
+            "selected_year": graduation_year,
+            "selected_status": mentorship_status,
+            "search": search or "",
+        },
+    )
+
 

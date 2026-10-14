@@ -25,6 +25,11 @@ from src.models.academics import (
     SingleAttendance,
     SingleGrade,
 )
+from src.models.alumni import (
+    AlumniMemberCreate,
+    AlumniMentorshipRequestCreate,
+    AlumniMentorshipStatusUpdate,
+)
 from src.models.announcement import AnnouncementCreate
 from src.models.course import CourseCreate, EnrollmentCreate
 from src.models.faculty import FacultyCreate
@@ -37,9 +42,20 @@ from src.models.placement import (
     PlacementDriveCreate,
     PlacementStatusUpdate,
 )
+from src.models.scholarship import (
+    ScholarshipApplicationCreate,
+    ScholarshipReviewUpdate,
+    ScholarshipSchemeCreate,
+)
 from src.models.student import StudentCreate
 from src.models.timetable import TimetableSlotCreate
+from src.models.transport import (
+    TransportPassCreate,
+    TransportRouteCreate,
+    TransportVehicleCreate,
+)
 from src.services.academics_service import AcademicsService
+from src.services.alumni_service import AlumniService
 from src.services.announcement_service import AnnouncementService
 from src.services.course_service import CourseService
 from src.services.faculty_service import FacultyService
@@ -48,8 +64,10 @@ from src.services.hostel_service import HostelService
 from src.services.leave_service import LeaveService
 from src.services.library_service import LibraryService
 from src.services.placement_service import PlacementService
+from src.services.scholarship_service import ScholarshipService
 from src.services.student_service import StudentService
 from src.services.timetable_service import TimetableService
+from src.services.transport_service import TransportService
 
 
 def seed():
@@ -932,6 +950,219 @@ def seed():
                 ),
             )
         print("   * Corporate placement drives, candidate applications, and offers populated.")
+
+    # 16. Seed Campus Transport Fleet & Passes
+    existing_routes = TransportService.list_routes(conn)
+    if not existing_routes:
+        print("\n[+] Seeding Campus Transport Fleet & Routes...")
+        r1 = TransportService.create_route(
+            conn,
+            TransportRouteCreate(
+                route_name="Route 101 - North Tech Express",
+                source="North Metro Terminal",
+                destination="Central Campus Gate 1",
+                total_stops=6,
+                fare_per_semester=12000.0,
+                status="ACTIVE",
+            ),
+        )
+        r2 = TransportService.create_route(
+            conn,
+            TransportRouteCreate(
+                route_name="Route 202 - Southern Suburbs & Ring Road",
+                source="South Suburb Station",
+                destination="Central Campus Gate 2",
+                total_stops=8,
+                fare_per_semester=14500.0,
+                status="ACTIVE",
+            ),
+        )
+
+        TransportService.create_vehicle(
+            conn,
+            TransportVehicleCreate(
+                route_id=r1["id"],
+                vehicle_number="KA-01-EQ-9801",
+                driver_name="Rajesh Kumar",
+                driver_phone="+1-555-8801",
+                capacity=50,
+                status="ACTIVE",
+            ),
+        )
+        TransportService.create_vehicle(
+            conn,
+            TransportVehicleCreate(
+                route_id=r2["id"],
+                vehicle_number="KA-01-EQ-9802",
+                driver_name="Mahesh Shinde",
+                driver_phone="+1-555-8802",
+                capacity=40,
+                status="ACTIVE",
+            ),
+        )
+
+        if len(student_records) > 0:
+            TransportService.issue_transit_pass(
+                conn,
+                TransportPassCreate(
+                    student_id=student_records[0]["id"],
+                    route_id=r1["id"],
+                    pickup_stop="Tech Corridor",
+                    academic_year="2026-2027",
+                    valid_until=(today + datetime.timedelta(days=180)).isoformat(),
+                ),
+            )
+        print("   * Transport routes, fleet vehicles, and transit passes populated.")
+
+    # 17. Seed Scholarships & Financial Grants
+    existing_schemes = ScholarshipService.list_schemes(conn)
+    if not existing_schemes:
+        print("\n[+] Seeding Scholarships, Grants & Financial Aid...")
+        s1 = ScholarshipService.create_scheme(
+            conn,
+            ScholarshipSchemeCreate(
+                scheme_name="Presidential Merit Fellowship",
+                sponsor_type="INSTITUTIONAL",
+                award_amount=100000.0,
+                min_gpa_required=9.0,
+                max_family_income=1200000.0,
+                eligible_category="MERIT_SCHOLARS",
+                status="ACTIVE",
+            ),
+        )
+        s2 = ScholarshipService.create_scheme(
+            conn,
+            ScholarshipSchemeCreate(
+                scheme_name="Need-Based Financial Equity Grant",
+                sponsor_type="GOVERNMENT",
+                award_amount=65000.0,
+                min_gpa_required=7.5,
+                max_family_income=500000.0,
+                eligible_category="NEED_BASED",
+                status="ACTIVE",
+            ),
+        )
+
+        if len(student_records) > 0:
+            app1 = ScholarshipService.apply_for_scholarship(
+                conn,
+                ScholarshipApplicationCreate(
+                    scheme_id=s1["id"],
+                    student_id=student_records[0]["id"],
+                    current_gpa=9.40,
+                    annual_family_income=450000.0,
+                ),
+            )
+            ScholarshipService.review_application(
+                conn,
+                app1["id"],
+                ScholarshipReviewUpdate(
+                    status="DISBURSED",
+                    review_remarks="Exceptional academic performance and faculty recommendations. Grant fully disbursed.",
+                    disbursed_amount=100000.0,
+                ),
+            )
+
+        if len(student_records) > 1:
+            app2 = ScholarshipService.apply_for_scholarship(
+                conn,
+                ScholarshipApplicationCreate(
+                    scheme_id=s2["id"],
+                    student_id=student_records[1]["id"],
+                    current_gpa=8.65,
+                    annual_family_income=380000.0,
+                ),
+            )
+            ScholarshipService.review_application(
+                conn,
+                app2["id"],
+                ScholarshipReviewUpdate(
+                    status="APPROVED",
+                    review_remarks="Income eligibility and GPA verified. Approved for upcoming disbursement cycle.",
+                    disbursed_amount=None,
+                ),
+            )
+        print(
+            "   * Scholarship grant schemes, student applications, and bursar disbursements populated."
+        )
+
+    # 18. Seed Alumni Network & Career Mentorship
+    existing_alumni = AlumniService.list_alumni(conn)
+    if not existing_alumni:
+        print("\n[+] Seeding Alumni Network & Mentorship Directory...")
+        dept_id = faculty_records[0]["department_id"] if faculty_records else 1
+
+        a1 = AlumniService.register_alumnus(
+            conn,
+            AlumniMemberCreate(
+                student_id=None,
+                full_name="Priya Nair",
+                email="priya.nair@alumni.edu",
+                phone="+1-555-9011",
+                graduation_year=2020,
+                degree="B.Tech Computer Science",
+                department_id=dept_id,
+                current_company="Google",
+                job_title="Staff Infrastructure Engineer",
+                city="Sunnyvale, CA",
+                linkedin_url="https://linkedin.com/in/priyanair-mock",
+                mentorship_status="AVAILABLE",
+            ),
+        )
+        AlumniService.register_alumnus(
+            conn,
+            AlumniMemberCreate(
+                student_id=None,
+                full_name="Dev Malhotra",
+                email="dev.malhotra@alumni.edu",
+                phone="+1-555-9012",
+                graduation_year=2021,
+                degree="B.Tech Electronics & Comm",
+                department_id=dept_id,
+                current_company="NVIDIA",
+                job_title="Senior Hardware Systems Architect",
+                city="Santa Clara, CA",
+                linkedin_url="https://linkedin.com/in/devmalhotra-mock",
+                mentorship_status="BUSY",
+            ),
+        )
+        AlumniService.register_alumnus(
+            conn,
+            AlumniMemberCreate(
+                student_id=None,
+                full_name="Ananya Deshmukh",
+                email="ananya.deshmukh@alumni.edu",
+                phone="+1-555-9013",
+                graduation_year=2019,
+                degree="B.Tech Computer Science",
+                department_id=dept_id,
+                current_company="Stripe",
+                job_title="VP of Engineering",
+                city="San Francisco, CA",
+                linkedin_url="https://linkedin.com/in/ananyad-mock",
+                mentorship_status="AVAILABLE",
+            ),
+        )
+
+        if len(student_records) > 0:
+            req1 = AlumniService.request_mentorship(
+                conn,
+                AlumniMentorshipRequestCreate(
+                    alumni_id=a1["id"],
+                    student_id=student_records[0]["id"],
+                    mentorship_topic="Distributed Consensus & Large-Scale Systems Interview Prep",
+                    notes="Preparing for cloud infrastructure roles; seeking guidance on large-scale system design.",
+                ),
+            )
+            AlumniService.update_mentorship_status(
+                conn,
+                req1["id"],
+                AlumniMentorshipStatusUpdate(
+                    status="ACCEPTED",
+                    notes="Session scheduled for Friday 5:00 PM PST. Review Raft paper beforehand.",
+                ),
+            )
+        print("   * Alumni directory members and student career mentorship connections populated.")
 
     conn.close()
     print("\n" + "=" * 60)

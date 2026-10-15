@@ -31,6 +31,13 @@ from src.models.alumni import (
     AlumniMentorshipStatusUpdate,
 )
 from src.models.announcement import AnnouncementCreate
+from src.models.asset import (
+    AssetCheckoutCreate,
+    AssetCreate,
+    AssetMaintenanceCreate,
+    AssetMaintenanceStatusUpdate,
+    AssetReturnUpdate,
+)
 from src.models.course import CourseCreate, EnrollmentCreate
 from src.models.event import EventCreate, EventRegistrationCreate
 from src.models.faculty import FacultyCreate
@@ -58,6 +65,7 @@ from src.models.transport import (
 from src.services.academics_service import AcademicsService
 from src.services.alumni_service import AlumniService
 from src.services.announcement_service import AnnouncementService
+from src.services.asset_service import AssetService
 from src.services.course_service import CourseService
 from src.services.department_service import DepartmentService
 from src.services.event_service import EventService
@@ -1309,6 +1317,191 @@ def seed():
 
         print(
             "   * Campus events scheduled, attendee registrations enrolled, and certificates issued."
+        )
+
+    # 22. Seed Campus Assets, Lab Equipment & Inventory Circulation
+    existing_assets = AssetService.list_assets(conn)
+    departments = DepartmentService.list_all(conn)
+    dept_map = {d["code"]: d["id"] for d in departments}
+    if not existing_assets and dept_map:
+        print("\n[+] Seeding Campus Assets, Lab Instruments & Inventory Circulation...")
+        cse_id = dept_map.get("CSE")
+        ece_id = dept_map.get("ECE")
+        mech_id = dept_map.get("MECH")
+        chem_id = dept_map.get("CHEM") or dept_map.get("CIVIL") or next(iter(dept_map.values()))
+
+        # Asset 1: Tektronix Digital Storage Oscilloscope (ECE)
+        a1 = AssetService.create_asset(
+            conn,
+            AssetCreate(
+                name="Tektronix TBS2000B 4-Channel Digital Storage Oscilloscope",
+                category="LAB_EQUIPMENT",
+                department_id=ece_id,
+                lab_room="VLSI & Embedded Systems Lab - Room 204",
+                serial_number="SN-TEK-2024-9918",
+                model_number="TBS2000B-100MHz",
+                manufacturer="Tektronix Inc.",
+                purchase_date=str(today - datetime.timedelta(days=360)),
+                purchase_cost=2450.00,
+                warranty_expiry=str(today + datetime.timedelta(days=730)),
+                status="AVAILABLE",
+            ),
+        )
+
+        # Asset 2: NVIDIA RTX 6000 Ada GPU AI Server Node (CSE)
+        a2 = AssetService.create_asset(
+            conn,
+            AssetCreate(
+                name="Supermicro Dual Xeon + 4x NVIDIA RTX 6000 Ada GPU Deep Learning Node",
+                category="COMPUTING",
+                department_id=cse_id,
+                lab_room="Turing High-Performance Computing Cluster - Bay 1",
+                serial_number="SN-SMC-GPU-4421",
+                model_number="SYS-420GP-TNR",
+                manufacturer="Supermicro / NVIDIA",
+                purchase_date=str(today - datetime.timedelta(days=200)),
+                purchase_cost=28500.00,
+                warranty_expiry=str(today + datetime.timedelta(days=890)),
+                status="AVAILABLE",
+            ),
+        )
+
+        # Asset 3: Ultimaker S5 Industrial 3D Printer (MECH)
+        a3 = AssetService.create_asset(
+            conn,
+            AssetCreate(
+                name="Ultimaker S5 Dual-Extrusion Production 3D Printer",
+                category="RESEARCH_INSTRUMENT",
+                department_id=mech_id,
+                lab_room="Additive Manufacturing & Prototyping Bay - Room 108",
+                serial_number="SN-ULTI-S5-8820",
+                model_number="S5-PRO-DUAL",
+                manufacturer="UltiMaker B.V.",
+                purchase_date=str(today - datetime.timedelta(days=450)),
+                purchase_cost=6950.00,
+                warranty_expiry=str(today + datetime.timedelta(days=180)),
+                status="AVAILABLE",
+            ),
+        )
+
+        # Asset 4: Shimadzu UV-Vis Spectrophotometer (CHEM/LAB)
+        a4 = AssetService.create_asset(
+            conn,
+            AssetCreate(
+                name="Shimadzu UV-1900i Double-Beam UV-Vis Spectrophotometer",
+                category="LAB_EQUIPMENT",
+                department_id=chem_id,
+                lab_room="Analytical Chemistry & Materials Lab - Room 302",
+                serial_number="SN-SHIM-UV-5510",
+                model_number="UV-1900i",
+                manufacturer="Shimadzu Corporation",
+                purchase_date=str(today - datetime.timedelta(days=500)),
+                purchase_cost=8400.00,
+                warranty_expiry=str(today + datetime.timedelta(days=230)),
+                status="AVAILABLE",
+            ),
+        )
+
+        # Asset 5: Epson 4K Laser Projection & AV Suite (GENERAL)
+        AssetService.create_asset(
+            conn,
+            AssetCreate(
+                name="Epson Pro L1755UNL 15,000-Lumen 4K Laser Projector Suite",
+                category="AV_MULTIMEDIA",
+                department_id=None,
+                lab_room="Central Auditorium & Conference Hall",
+                serial_number="SN-EPS-L1755-1029",
+                model_number="Pro L1755UNL",
+                manufacturer="Epson Global",
+                purchase_date=str(today - datetime.timedelta(days=600)),
+                purchase_cost=14200.00,
+                warranty_expiry=str(today + datetime.timedelta(days=120)),
+                status="AVAILABLE",
+            ),
+        )
+
+        # Seed checkouts
+        if student_records and faculty_records:
+            s0_id = student_records[0]["id"]
+            s1_id = student_records[1]["id"] if len(student_records) > 1 else s0_id
+
+            # Active checkout of Oscilloscope to student
+            AssetService.checkout_asset(
+                conn,
+                AssetCheckoutCreate(
+                    asset_id=a1["id"],
+                    borrower_type="STUDENT",
+                    student_id=s0_id,
+                    checkout_date=str(today - datetime.timedelta(days=3)),
+                    due_date=str(today + datetime.timedelta(days=4)),
+                    condition_out="EXCELLENT",
+                    notes="Senior thesis signal analysis and FPGA interfacing experiments.",
+                ),
+            )
+
+            # Returned checkout of 3D printer
+            chk_returned = AssetService.checkout_asset(
+                conn,
+                AssetCheckoutCreate(
+                    asset_id=a3["id"],
+                    borrower_type="STUDENT",
+                    student_id=s1_id,
+                    checkout_date=str(today - datetime.timedelta(days=15)),
+                    due_date=str(today - datetime.timedelta(days=8)),
+                    condition_out="GOOD",
+                    notes="Rapid prototyping of drone aerodynamic chassis.",
+                ),
+            )
+            AssetService.return_asset(
+                conn,
+                chk_returned["id"],
+                AssetReturnUpdate(
+                    returned_date=str(today - datetime.timedelta(days=8)),
+                    condition_in="GOOD",
+                    notes="Returned in working order, no extruder clogging.",
+                ),
+            )
+
+            # Maintenance ticket for Spectrophotometer
+            AssetService.schedule_maintenance(
+                conn,
+                AssetMaintenanceCreate(
+                    asset_id=a4["id"],
+                    maintenance_type="CALIBRATION",
+                    scheduled_date=str(today - datetime.timedelta(days=2)),
+                    technician_name="Shimadzu Certified Engineer (Rajesh Verma)",
+                    cost=450.00,
+                    status="IN_PROGRESS",
+                    resolution_notes="Annual photometric linearity calibration and deuterium lamp inspection.",
+                ),
+            )
+
+            # Routine preventative service on GPU node (Completed)
+            m_comp = AssetService.schedule_maintenance(
+                conn,
+                AssetMaintenanceCreate(
+                    asset_id=a2["id"],
+                    maintenance_type="PREVENTATIVE",
+                    scheduled_date=str(today - datetime.timedelta(days=30)),
+                    technician_name="Supermicro Service Tech (Alok Nath)",
+                    cost=280.00,
+                    status="SCHEDULED",
+                    resolution_notes="Liquid cooling loop flush and thermal paste reapplication on RTX 6000 Ada GPUs.",
+                ),
+            )
+            AssetService.update_maintenance_status(
+                conn,
+                m_comp["id"],
+                AssetMaintenanceStatusUpdate(
+                    status="COMPLETED",
+                    completed_date=str(today - datetime.timedelta(days=29)),
+                    cost=280.00,
+                    resolution_notes="Thermal paste renewed. GPU idle temps stabilized at 34C under load.",
+                ),
+            )
+
+        print(
+            "   * Campus assets, laboratory gear, circulation loans, and maintenance work orders seeded."
         )
 
     conn.close()

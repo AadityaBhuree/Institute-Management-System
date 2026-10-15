@@ -19,6 +19,7 @@ from src.api.events import router as events_router
 from src.api.faculty import router as faculty_router
 from src.api.finance import router as finance_router
 from src.api.hostel import router as hostel_router
+from src.api.inventory import router as inventory_router
 from src.api.leaves import router as leaves_router
 from src.api.library import router as library_router
 from src.api.placements import router as placements_router
@@ -41,6 +42,7 @@ from src.models.department import DepartmentCreate
 from src.services.academics_service import AcademicsService
 from src.services.alumni_service import AlumniService
 from src.services.announcement_service import AnnouncementService
+from src.services.asset_service import AssetService
 from src.services.course_service import CourseService
 from src.services.dashboard_service import DashboardService
 from src.services.department_service import DepartmentService
@@ -129,6 +131,10 @@ OPENAPI_TAGS = [
         "description": "Institutional seminars, workshops, hackathons, symposiums, registrations, and certificate issuance.",
     },
     {
+        "name": "Campus Assets & Lab Inventory",
+        "description": "Scientific lab instruments, computing clusters, circulation checkouts, and maintenance work orders.",
+    },
+    {
         "name": "Reports & Analytics",
         "description": "Institutional intelligence, low-attendance risk sentinel (<75%), and automated CSV export engine.",
     },
@@ -164,6 +170,7 @@ app.include_router(transport_router)
 app.include_router(scholarships_router)
 app.include_router(alumni_router)
 app.include_router(events_router)
+app.include_router(inventory_router)
 
 
 # Ensure directories exist and mount static assets
@@ -811,6 +818,51 @@ def view_events_page(
             "active_page": "events",
             "events": events,
             "registrations": registrations,
+            "stats": stats,
+            "departments": departments,
+            "faculty": faculty_list,
+            "students": students,
+            "selected_category": category,
+            "selected_status": status,
+            "selected_dept": department_id,
+            "search": search or "",
+        },
+    )
+
+
+@app.get("/inventory", response_class=HTMLResponse, tags=["Web"])
+def view_inventory_page(
+    request: Request,
+    category: Optional[str] = None,
+    status: Optional[str] = None,
+    department_id: Optional[int] = None,
+    lab_room: Optional[str] = None,
+    search: Optional[str] = None,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Render campus equipment, laboratory instruments, and circulation inventory hub."""
+    assets = AssetService.list_assets(
+        conn,
+        category=category,
+        status=status,
+        department_id=department_id,
+        lab_room=lab_room,
+        search=search,
+    )
+    checkouts = AssetService.list_checkouts(conn, limit=100)
+    maintenance = AssetService.list_maintenance(conn, limit=100)
+    stats = AssetService.get_stats(conn)
+    departments = DepartmentService.list_all(conn)
+    faculty_list = FacultyService.list_faculty(conn)
+    students = StudentService.list_students(conn)
+    return templates.TemplateResponse(
+        request=request,
+        name="inventory.html",
+        context={
+            "active_page": "inventory",
+            "assets": assets,
+            "checkouts": checkouts,
+            "maintenance": maintenance,
             "stats": stats,
             "departments": departments,
             "faculty": faculty_list,

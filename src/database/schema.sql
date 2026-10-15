@@ -493,4 +493,69 @@ CREATE INDEX IF NOT EXISTS idx_event_reg_student ON event_registrations(student_
 CREATE INDEX IF NOT EXISTS idx_event_reg_status ON event_registrations(status);
 CREATE INDEX IF NOT EXISTS idx_event_reg_num ON event_registrations(registration_number);
 
+-- 22. Campus Assets, Laboratory Equipment & Inventory Circulation Hub
+CREATE TABLE IF NOT EXISTS assets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    asset_tag TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL CHECK(category IN ('LAB_EQUIPMENT', 'COMPUTING', 'AV_MULTIMEDIA', 'RESEARCH_INSTRUMENT', 'FURNITURE', 'OTHER')),
+    department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
+    lab_room TEXT NOT NULL,
+    serial_number TEXT UNIQUE,
+    model_number TEXT,
+    manufacturer TEXT,
+    purchase_date DATE NOT NULL,
+    purchase_cost REAL NOT NULL CHECK(purchase_cost >= 0.0),
+    warranty_expiry DATE,
+    status TEXT NOT NULL DEFAULT 'AVAILABLE' CHECK(status IN ('AVAILABLE', 'CHECKED_OUT', 'MAINTENANCE', 'DECOMMISSIONED')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_assets_tag ON assets(asset_tag);
+CREATE INDEX IF NOT EXISTS idx_assets_dept ON assets(department_id);
+CREATE INDEX IF NOT EXISTS idx_assets_category ON assets(category);
+CREATE INDEX IF NOT EXISTS idx_assets_status ON assets(status);
+CREATE INDEX IF NOT EXISTS idx_assets_room ON assets(lab_room);
+
+CREATE TABLE IF NOT EXISTS asset_checkouts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    checkout_code TEXT NOT NULL UNIQUE,
+    asset_id INTEGER NOT NULL REFERENCES assets(id) ON DELETE RESTRICT,
+    borrower_type TEXT NOT NULL CHECK(borrower_type IN ('STUDENT', 'FACULTY')),
+    student_id INTEGER REFERENCES students(id) ON DELETE SET NULL,
+    faculty_id INTEGER REFERENCES faculty(id) ON DELETE SET NULL,
+    checkout_date DATE NOT NULL,
+    due_date DATE NOT NULL,
+    returned_date DATE,
+    condition_out TEXT NOT NULL DEFAULT 'GOOD' CHECK(condition_out IN ('NEW', 'EXCELLENT', 'GOOD', 'FAIR')),
+    condition_in TEXT CHECK(condition_in IN ('EXCELLENT', 'GOOD', 'FAIR', 'DAMAGED')),
+    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'RETURNED', 'OVERDUE')),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_asset_checkouts_code ON asset_checkouts(checkout_code);
+CREATE INDEX IF NOT EXISTS idx_asset_checkouts_asset ON asset_checkouts(asset_id);
+CREATE INDEX IF NOT EXISTS idx_asset_checkouts_student ON asset_checkouts(student_id);
+CREATE INDEX IF NOT EXISTS idx_asset_checkouts_faculty ON asset_checkouts(faculty_id);
+CREATE INDEX IF NOT EXISTS idx_asset_checkouts_status ON asset_checkouts(status);
+
+CREATE TABLE IF NOT EXISTS asset_maintenance (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    maintenance_code TEXT NOT NULL UNIQUE,
+    asset_id INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+    maintenance_type TEXT NOT NULL CHECK(maintenance_type IN ('CALIBRATION', 'PREVENTATIVE', 'REPAIR', 'FIRMWARE_UPGRADE', 'INSPECTION')),
+    scheduled_date DATE NOT NULL,
+    completed_date DATE,
+    technician_name TEXT NOT NULL,
+    cost REAL NOT NULL DEFAULT 0.0 CHECK(cost >= 0.0),
+    status TEXT NOT NULL DEFAULT 'SCHEDULED' CHECK(status IN ('SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED')),
+    resolution_notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_asset_maint_code ON asset_maintenance(maintenance_code);
+CREATE INDEX IF NOT EXISTS idx_asset_maint_asset ON asset_maintenance(asset_id);
+CREATE INDEX IF NOT EXISTS idx_asset_maint_status ON asset_maintenance(status);
+
 

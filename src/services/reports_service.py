@@ -310,29 +310,33 @@ class ReportsService:
 
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow([
-            "Enrollment No",
-            "First Name",
-            "Last Name",
-            "Email",
-            "Phone",
-            "Department",
-            "Semester",
-            "Status",
-            "Admission Date",
-        ])
+        writer.writerow(
+            [
+                "Enrollment No",
+                "First Name",
+                "Last Name",
+                "Email",
+                "Phone",
+                "Department",
+                "Semester",
+                "Status",
+                "Admission Date",
+            ]
+        )
         for r in rows:
-            writer.writerow([
-                r["enrollment_no"],
-                r["first_name"],
-                r["last_name"],
-                r["email"],
-                r["phone"] or "",
-                r["department_name"],
-                r["current_semester"],
-                r["status"],
-                r["admission_date"],
-            ])
+            writer.writerow(
+                [
+                    r["enrollment_no"],
+                    r["first_name"],
+                    r["last_name"],
+                    r["email"],
+                    r["phone"] or "",
+                    r["department_name"],
+                    r["current_semester"],
+                    r["status"],
+                    r["admission_date"],
+                ]
+            )
         return output.getvalue()
 
     @staticmethod
@@ -345,35 +349,39 @@ class ReportsService:
 
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow([
-            "Enrollment No",
-            "First Name",
-            "Last Name",
-            "Email",
-            "Department",
-            "Semester",
-            "Total Sessions",
-            "Attended Sessions",
-            "Absent Sessions",
-            "Late Sessions",
-            "Attendance Percentage",
-            "Risk Level",
-        ])
+        writer.writerow(
+            [
+                "Enrollment No",
+                "First Name",
+                "Last Name",
+                "Email",
+                "Department",
+                "Semester",
+                "Total Sessions",
+                "Attended Sessions",
+                "Absent Sessions",
+                "Late Sessions",
+                "Attendance Percentage",
+                "Risk Level",
+            ]
+        )
         for s in at_risk:
-            writer.writerow([
-                s["enrollment_no"],
-                s["first_name"],
-                s["last_name"],
-                s["email"],
-                s["department_name"],
-                s["current_semester"],
-                s["total_sessions"],
-                s["attended_sessions"],
-                s["absent_sessions"],
-                s["late_sessions"],
-                f"{s['attendance_pct']}%",
-                s["risk_level"],
-            ])
+            writer.writerow(
+                [
+                    s["enrollment_no"],
+                    s["first_name"],
+                    s["last_name"],
+                    s["email"],
+                    s["department_name"],
+                    s["current_semester"],
+                    s["total_sessions"],
+                    s["attended_sessions"],
+                    s["absent_sessions"],
+                    s["late_sessions"],
+                    f"{s['attendance_pct']}%",
+                    s["risk_level"],
+                ]
+            )
         return output.getvalue()
 
     @staticmethod
@@ -403,31 +411,35 @@ class ReportsService:
 
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow([
-            "Invoice No",
-            "Enrollment No",
-            "Student Name",
-            "Department",
-            "Title",
-            "Term",
-            "Total Invoiced",
-            "Paid Amount",
-            "Balance Due",
-            "Status",
-            "Due Date",
-        ])
+        writer.writerow(
+            [
+                "Invoice No",
+                "Enrollment No",
+                "Student Name",
+                "Department",
+                "Title",
+                "Term",
+                "Total Invoiced",
+                "Paid Amount",
+                "Balance Due",
+                "Status",
+                "Due Date",
+            ]
+        )
         for r in rows:
-            writer.writerow([
-                r["invoice_no"],
-                r["enrollment_no"],
-                f"{r['first_name']} {r['last_name']}",
-                r["department_name"],
-                r["title"],
-                r["term_name"],
-                f"{r['total_amount']:.2f}",
-                f"{r['paid_amount']:.2f}",
-                f"{r['balance_amount']:.2f}",
-                r["status"],
-                r["due_date"],
-            ])
+            writer.writerow(
+                [
+                    r["invoice_no"],
+                    r["enrollment_no"],
+                    f"{r['first_name']} {r['last_name']}",
+                    r["department_name"],
+                    r["title"],
+                    r["term_name"],
+                    f"{r['total_amount']:.2f}",
+                    f"{r['paid_amount']:.2f}",
+                    f"{r['balance_amount']:.2f}",
+                    r["status"],
+                    r["due_date"],
+                ]
+            )
         return output.getvalue()

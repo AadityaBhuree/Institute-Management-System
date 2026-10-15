@@ -451,4 +451,46 @@ CREATE INDEX IF NOT EXISTS idx_mentorship_alumni ON alumni_mentorship_requests(a
 CREATE INDEX IF NOT EXISTS idx_mentorship_student ON alumni_mentorship_requests(student_id);
 CREATE INDEX IF NOT EXISTS idx_mentorship_status ON alumni_mentorship_requests(status);
 
+-- 21. Campus Events, Conferences & Symposium Hub
+CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_code TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL,
+    category TEXT NOT NULL CHECK(category IN ('SEMINAR', 'WORKSHOP', 'SYMPOSIUM', 'HACKATHON', 'CULTURAL', 'SPORTS', 'CONFERENCE')),
+    department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
+    organizer_faculty_id INTEGER REFERENCES faculty(id) ON DELETE SET NULL,
+    venue TEXT NOT NULL,
+    event_date DATE NOT NULL,
+    start_time TEXT NOT NULL,
+    end_time TEXT NOT NULL,
+    max_capacity INTEGER NOT NULL DEFAULT 100 CHECK(max_capacity > 0),
+    registration_fee REAL NOT NULL DEFAULT 0.0 CHECK(registration_fee >= 0.0),
+    status TEXT NOT NULL DEFAULT 'UPCOMING' CHECK(status IN ('UPCOMING', 'ACTIVE', 'COMPLETED', 'CANCELLED')),
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_events_code ON events(event_code);
+CREATE INDEX IF NOT EXISTS idx_events_category ON events(category);
+CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);
+CREATE INDEX IF NOT EXISTS idx_events_date ON events(event_date);
+CREATE INDEX IF NOT EXISTS idx_events_dept ON events(department_id);
+
+CREATE TABLE IF NOT EXISTS event_registrations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    registration_number TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL DEFAULT 'REGISTERED' CHECK(status IN ('REGISTERED', 'ATTENDED', 'CANCELLED')),
+    certificate_issued INTEGER NOT NULL DEFAULT 0 CHECK(certificate_issued IN (0, 1)),
+    attendance_marked_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(event_id, student_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_event_reg_event ON event_registrations(event_id);
+CREATE INDEX IF NOT EXISTS idx_event_reg_student ON event_registrations(student_id);
+CREATE INDEX IF NOT EXISTS idx_event_reg_status ON event_registrations(status);
+CREATE INDEX IF NOT EXISTS idx_event_reg_num ON event_registrations(registration_number);
+
 

@@ -41,9 +41,7 @@ def create_scheme(data: ScholarshipSchemeCreate, conn: sqlite3.Connection = Depe
 def list_applications(
     scheme_id: Optional[int] = Query(None, description="Filter by scheme ID"),
     student_id: Optional[int] = Query(None, description="Filter by candidate student ID"),
-    status: Optional[str] = Query(
-        None, description="PENDING, APPROVED, DISBURSED, REJECTED"
-    ),
+    status: Optional[str] = Query(None, description="PENDING, APPROVED, DISBURSED, REJECTED"),
     conn: sqlite3.Connection = Depends(get_db),
 ):
     """List scholar financial aid and scholarship applications."""
@@ -52,7 +50,9 @@ def list_applications(
     )
 
 
-@router.post("/apply", response_model=ScholarshipApplicationOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/apply", response_model=ScholarshipApplicationOut, status_code=status.HTTP_201_CREATED
+)
 def apply_for_scholarship(
     data: ScholarshipApplicationCreate, conn: sqlite3.Connection = Depends(get_db)
 ):

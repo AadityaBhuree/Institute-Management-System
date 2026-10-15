@@ -65,7 +65,9 @@ def list_passes(
     conn: sqlite3.Connection = Depends(get_db),
 ):
     """List student transit passes and route allocations."""
-    return TransportService.list_passes(conn, route_id=route_id, student_id=student_id, status=status)
+    return TransportService.list_passes(
+        conn, route_id=route_id, student_id=student_id, status=status
+    )
 
 
 @router.post("/passes", response_model=TransportPassOut, status_code=status.HTTP_201_CREATED)

@@ -15,6 +15,7 @@ from src.api.academics import router as academics_router
 from src.api.alumni import router as alumni_router
 from src.api.announcements import router as announcements_router
 from src.api.courses import router as courses_router
+from src.api.events import router as events_router
 from src.api.faculty import router as faculty_router
 from src.api.finance import router as finance_router
 from src.api.hostel import router as hostel_router
@@ -43,6 +44,7 @@ from src.services.announcement_service import AnnouncementService
 from src.services.course_service import CourseService
 from src.services.dashboard_service import DashboardService
 from src.services.department_service import DepartmentService
+from src.services.event_service import EventService
 from src.services.faculty_service import FacultyService
 from src.services.finance_service import FinanceService
 from src.services.hostel_service import HostelService
@@ -123,6 +125,10 @@ OPENAPI_TAGS = [
         "description": "Graduate network directory, industry matchmaking, and career guidance sessions.",
     },
     {
+        "name": "Campus Events & Symposiums",
+        "description": "Institutional seminars, workshops, hackathons, symposiums, registrations, and certificate issuance.",
+    },
+    {
         "name": "Reports & Analytics",
         "description": "Institutional intelligence, low-attendance risk sentinel (<75%), and automated CSV export engine.",
     },
@@ -157,6 +163,7 @@ app.include_router(placements_router)
 app.include_router(transport_router)
 app.include_router(scholarships_router)
 app.include_router(alumni_router)
+app.include_router(events_router)
 
 
 # Ensure directories exist and mount static assets
@@ -775,3 +782,42 @@ def view_alumni_page(
     )
 
 
+@app.get("/events", response_class=HTMLResponse, tags=["Web"])
+def view_events_page(
+    request: Request,
+    category: Optional[str] = None,
+    status: Optional[str] = None,
+    department_id: Optional[int] = None,
+    search: Optional[str] = None,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Render campus events, conferences, seminars, and symposiums hub."""
+    events = EventService.list_events(
+        conn,
+        category=category,
+        status=status,
+        department_id=department_id,
+        search=search,
+    )
+    registrations = EventService.list_registrations(conn, limit=100)
+    stats = EventService.get_stats(conn)
+    departments = DepartmentService.list_all(conn)
+    faculty_list = FacultyService.list_faculty(conn)
+    students = StudentService.list_students(conn)
+    return templates.TemplateResponse(
+        request=request,
+        name="events.html",
+        context={
+            "active_page": "events",
+            "events": events,
+            "registrations": registrations,
+            "stats": stats,
+            "departments": departments,
+            "faculty": faculty_list,
+            "students": students,
+            "selected_category": category,
+            "selected_status": status,
+            "selected_dept": department_id,
+            "search": search or "",
+        },
+    )

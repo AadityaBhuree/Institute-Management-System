@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-WAL%20Mode-003B57.svg?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
-[![Tests](https://img.shields.io/badge/Pytest-121%2F121%20Passing-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Pytest-132%2F132%20Passing-success.svg)](tests/)
 [![CI](https://github.com/AadityaBhuree/Institute-Management-System/actions/workflows/ci.yml/badge.svg)](https://github.com/AadityaBhuree/Institute-Management-System/actions/workflows/ci.yml)
 [![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED.svg?logo=docker&logoColor=white)](Dockerfile)
 [![Code Style](https://img.shields.io/badge/Linter-Ruff%20Clean-black.svg)](pyproject.toml)
@@ -28,6 +28,7 @@ A modern, high-performance, and modular educational administration platform buil
 * **Campus Transport Fleet & Transit Logistics:** Multi-stop campus bus routes, fleet vehicle allocation, driver logs, route stops, and sequential student transit passes (`PASS-YYYY-XXXX`) (`/transport`).
 * **Scholarships, Grants & Financial Aid:** Institutional and endowment schemes, automated GPA and family income eligibility gating, bursar review decisions, and grant disbursement tracking (`/scholarships`).
 * **Alumni Network & Career Mentorship:** Graduate directory, cohort filtering, industry roles, student mentorship requests, and career guidance session tracking (`/alumni`).
+* **Campus Events & Symposiums Hub:** Institutional conferences, workshops, technical hackathons, guest lectures, scholar registrations with capacity enforcement, attendee tracking, and digital verifiable certificate issuance (`/events`).
 * **Student & Faculty Portals:** Scholar self-service academic dossier (`/portal`), faculty teaching workbench (`/faculty-portal`), institutional reports & `< 75%` attendance risk sentinel (`/reports`), and official printable transcripts.
 * **Institutional Reports & CSV Data Engine:** Real-time attendance risk sentinel (< 75%), grade distributions, fiscal recovery audits, and streaming CSV downloads for scholar directories, attendance telemetry, and financial audit ledgers.
 * **Sleek Enterprise UX:** Vanilla CSS glassmorphic theme (`#090d16` & `#0f172a`), interactive modals, responsive sidebar, toast notifications, and KPI overview cards.
@@ -73,6 +74,7 @@ Institute Management System/
 │   │   ├── alumni.py               # Alumni directory and career mentorship endpoints
 │   │   ├── announcements.py        # Campus bulletin and announcements endpoints
 │   │   ├── courses.py              # Course catalog and enrollment endpoints
+│   │   ├── events.py               # Campus events, symposiums, and registration endpoints
 │   │   ├── faculty.py              # Faculty directory endpoints
 │   │   ├── finance.py              # Invoicing, receipts, and audit endpoints
 │   │   ├── hostel.py               # Residential halls and bed allocation endpoints
@@ -89,13 +91,14 @@ Institute Management System/
 │   ├── database/
 │   │   ├── connection.py           # SQLite connection pool and atomic transaction contexts
 │   │   ├── init_db.py              # Schema deployment and seed verification
-│   │   └── schema.sql              # Relational DDL schema with 20 tables & 26 indexes
+│   │   └── schema.sql              # Relational DDL schema with 21 tables & 30 indexes
 │   ├── models/                     # Strongly-typed Pydantic schemas (v2)
 │   │   ├── academics.py            # Attendance and exam request/response schemas
 │   │   ├── alumni.py               # Alumni member and mentorship schemas
 │   │   ├── announcement.py         # Campus bulletin schemas
 │   │   ├── course.py               # Course and enrollment schemas
 │   │   ├── department.py           # Department schemas
+│   │   ├── event.py                # Event and attendee registration schemas
 │   │   ├── faculty.py              # Faculty schemas
 │   │   ├── finance.py              # Fee structure, invoice, and payment schemas
 │   │   ├── hostel.py               # Residential block and allocation schemas
@@ -113,6 +116,7 @@ Institute Management System/
 │   │   ├── course_service.py       # Course scheduling and capacity enforcement
 │   │   ├── dashboard_service.py    # Executive KPI metric aggregations
 │   │   ├── department_service.py   # Department operations
+│   │   ├── event_service.py        # Event management and attendee capacity logic
 │   │   ├── faculty_service.py      # Faculty management & teaching workbench
 │   │   ├── finance_service.py      # Invoicing, receipts, and ledger audit
 │   │   ├── hostel_service.py       # Residential hall and room allocation logic
@@ -138,6 +142,7 @@ Institute Management System/
 │   ├── base.html                   # Global glassmorphic sidebar layout
 │   ├── courses.html                # Course catalog and faculty roster portal
 │   ├── dashboard.html              # Executive overview dashboard
+│   ├── events.html                 # Campus events and symposiums hub
 │   ├── faculty_portal.html         # Faculty instructor workbench
 │   ├── finance.html                # Invoicing, payment collection, and audit ledger
 │   ├── hostel.html                 # Hostel and residential hall housing portal
@@ -153,13 +158,14 @@ Institute Management System/
 │   ├── students.html               # Admissions and student registry directory
 │   ├── timetable.html              # Weekly academic lecture timetable matrix
 │   └── transport.html              # Campus transport fleet and transit pass hub
-├── tests/                          # Automated Pytest validation suite (121 tests)
+├── tests/                          # Automated Pytest validation suite (132 tests)
 │   ├── conftest.py                 # Isolated test database runner
 │   ├── test_academics_api.py       # Attendance and examination API test cases
 │   ├── test_alumni_api.py          # Alumni network and mentorship test cases
 │   ├── test_announcements_api.py   # Bulletin board API and web test cases
 │   ├── test_core_and_dashboard.py  # Health check, settings, and backup test cases
 │   ├── test_courses_and_faculty.py # Course catalog and faculty test cases
+│   ├── test_events_api.py          # Campus events and attendee test cases
 │   ├── test_finance_api.py         # Invoices, receipts, and printable receipt tests
 │   ├── test_hostel_api.py          # Hostel blocks and bed allocation test cases
 │   ├── test_leaves_api.py          # Leave application and approval test cases
@@ -316,6 +322,18 @@ Institute Management System/
 | `PUT` | `/api/alumni/mentorship/requests/{id}/status`| Update request status (Accepted, Completed, Declined) |
 | `GET` | `/api/alumni/stats` | Network telemetry (active alumni, mentors, batches) |
 
+### 🎪 Campus Events & Symposiums
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/events` | Schedule a new institutional event, conference, or symposium |
+| `GET` | `/api/events` | List events with category, status, and department filtering |
+| `GET` | `/api/events/{id}` | Retrieve individual event details and capacity telemetry |
+| `PUT` | `/api/events/{id}/status` | Transition event status (UPCOMING, ACTIVE, COMPLETED, CANCELLED) |
+| `POST` | `/api/events/register` | Register student attendee with capacity validation |
+| `GET` | `/api/events/{id}/registrations` | List attendee registrations for a specific event |
+| `PUT` | `/api/events/registrations/{id}/status`| Update attendance status and issue verifiable certificate |
+| `GET` | `/api/events/stats` | Event telemetry (total, upcoming, registrations, certs) |
+
 ### 📊 Institutional Reports & CSV Exports
 | Method | Endpoint | Description |
 |---|---|---|
@@ -383,6 +401,7 @@ Open **[http://localhost:8000](http://localhost:8000)** in your browser:
 * **Campus Transport Fleet:** `http://localhost:8000/transport`
 * **Scholarships & Financial Aid:** `http://localhost:8000/scholarships`
 * **Alumni Mentorship Network:** `http://localhost:8000/alumni`
+* **Campus Events & Symposiums:** `http://localhost:8000/events`
 * **Fee Invoicing & Bursar Audit:** `http://localhost:8000/finance`
 * **Institutional Reports & Sentinel:** `http://localhost:8000/reports`
 * **System Settings & Hot Backup:** `http://localhost:8000/settings`
@@ -396,7 +415,7 @@ Open **[http://localhost:8000](http://localhost:8000)** in your browser:
 The test suite runs with isolated SQLite databases in temporary environments via pytest fixtures:
 
 ```bash
-# Run all 121 automated unit and integration tests
+# Run all 132 automated unit and integration tests
 pytest tests/ -v
 
 # Run Ruff linter to confirm clean code hygiene

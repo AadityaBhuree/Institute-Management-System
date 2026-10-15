@@ -115,9 +115,7 @@ class AlumniService:
         return AlumniService.get_alumnus_by_id(conn, alumni_id)  # type: ignore
 
     @staticmethod
-    def request_mentorship(
-        conn: sqlite3.Connection, data: AlumniMentorshipRequestCreate
-    ) -> dict:
+    def request_mentorship(conn: sqlite3.Connection, data: AlumniMentorshipRequestCreate) -> dict:
         alumnus = AlumniService.get_alumnus_by_id(conn, data.alumni_id)
         if not alumnus:
             raise ValueError(f"Alumnus ID {data.alumni_id} not found.")
@@ -247,7 +245,9 @@ class AlumniService:
         cursor.execute("SELECT COUNT(id) FROM alumni_members;")
         total_alumni = cursor.fetchone()[0]
 
-        cursor.execute("SELECT COUNT(id) FROM alumni_members WHERE mentorship_status = 'AVAILABLE';")
+        cursor.execute(
+            "SELECT COUNT(id) FROM alumni_members WHERE mentorship_status = 'AVAILABLE';"
+        )
         available_mentors = cursor.fetchone()[0]
 
         cursor.execute("SELECT COUNT(DISTINCT graduation_year) FROM alumni_members;")

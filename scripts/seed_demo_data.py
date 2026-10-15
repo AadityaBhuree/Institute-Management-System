@@ -32,6 +32,7 @@ from src.models.alumni import (
 )
 from src.models.announcement import AnnouncementCreate
 from src.models.course import CourseCreate, EnrollmentCreate
+from src.models.event import EventCreate, EventRegistrationCreate
 from src.models.faculty import FacultyCreate
 from src.models.finance import FeeInvoiceCreate, FeeStructureCreate, PaymentCreate
 from src.models.hostel import HostelBlockCreate, HostelRoomCreate, RoomAllocationCreate
@@ -58,6 +59,8 @@ from src.services.academics_service import AcademicsService
 from src.services.alumni_service import AlumniService
 from src.services.announcement_service import AnnouncementService
 from src.services.course_service import CourseService
+from src.services.department_service import DepartmentService
+from src.services.event_service import EventService
 from src.services.faculty_service import FacultyService
 from src.services.finance_service import FinanceService
 from src.services.hostel_service import HostelService
@@ -652,17 +655,19 @@ def seed():
         ]
         if faculty_records:
             f1 = faculty_records[0]
-            leave_samples.append((
-                "FACULTY",
-                f1["id"],
-                f"{f1['first_name']} {f1['last_name']}",
-                "ACADEMIC",
-                (today + datetime.timedelta(days=12)).isoformat(),
-                (today + datetime.timedelta(days=15)).isoformat(),
-                "Presenting peer-reviewed paper at IEEE International Computing Conference.",
-                "APPROVED",
-                "Duty leave sanctioned. Substitute instructor arranged.",
-            ))
+            leave_samples.append(
+                (
+                    "FACULTY",
+                    f1["id"],
+                    f"{f1['first_name']} {f1['last_name']}",
+                    "ACADEMIC",
+                    (today + datetime.timedelta(days=12)).isoformat(),
+                    (today + datetime.timedelta(days=15)).isoformat(),
+                    "Presenting peer-reviewed paper at IEEE International Computing Conference.",
+                    "APPROVED",
+                    "Duty leave sanctioned. Substitute instructor arranged.",
+                )
+            )
 
         for app_type, app_id, name, l_type, s_date, e_date, rsn, st, rem in leave_samples:
             created = LeaveService.submit_leave(
@@ -1163,6 +1168,148 @@ def seed():
                 ),
             )
         print("   * Alumni directory members and student career mentorship connections populated.")
+
+    # 18. Seed Campus Events, Seminars & Symposiums
+    existing_events = EventService.list_events(conn)
+    if not existing_events:
+        print("\n[+] Seeding Campus Events, Seminars & Symposium Hub...")
+        depts = DepartmentService.list_all(conn)
+        departments_map = {d["code"]: d["id"] for d in depts}
+        cse_dept_id = departments_map.get("CSE", 1)
+        ece_dept_id = departments_map.get("ECE", 2)
+        lead_faculty_id = faculty_records[0]["id"] if faculty_records else None
+        ece_faculty_id = faculty_records[1]["id"] if len(faculty_records) > 1 else lead_faculty_id
+
+        e1 = EventService.create_event(
+            conn,
+            EventCreate(
+                title="National Symposium on Generative AI & Autonomous Agents",
+                category="SYMPOSIUM",
+                department_id=cse_dept_id,
+                organizer_faculty_id=lead_faculty_id,
+                venue="Grand Auditorium Hall A",
+                event_date=str(today + datetime.timedelta(days=14)),
+                start_time="09:30",
+                end_time="17:30",
+                max_capacity=250,
+                registration_fee=0.0,
+                status="UPCOMING",
+                description="Keynotes on foundational LLM architectures, multi-agent coordination, and real-time inference optimization.",
+            ),
+        )
+
+        e2 = EventService.create_event(
+            conn,
+            EventCreate(
+                title="Full-Stack Cloud Microservices & Kubernetes Workshop",
+                category="WORKSHOP",
+                department_id=cse_dept_id,
+                organizer_faculty_id=lead_faculty_id,
+                venue="Advanced Cloud Computing Lab 3",
+                event_date=str(today + datetime.timedelta(days=3)),
+                start_time="10:00",
+                end_time="16:00",
+                max_capacity=60,
+                registration_fee=250.0,
+                status="ACTIVE",
+                description="Hands-on containerization, service meshes, zero-trust ingress, and Helm chart deployment pipelines.",
+            ),
+        )
+
+        EventService.create_event(
+            conn,
+            EventCreate(
+                title="Inter-Collegiate Hackathon: Smart City & Green IoT",
+                category="HACKATHON",
+                department_id=cse_dept_id,
+                organizer_faculty_id=lead_faculty_id,
+                venue="Student Innovation & Maker Hub",
+                event_date=str(today + datetime.timedelta(days=25)),
+                start_time="08:00",
+                end_time="20:00",
+                max_capacity=120,
+                registration_fee=0.0,
+                status="UPCOMING",
+                description="36-hour sprint building edge computer vision and smart grid IoT sensors with mentorship from tech leaders.",
+            ),
+        )
+
+        e4 = EventService.create_event(
+            conn,
+            EventCreate(
+                title="Next-Gen Semiconductor VLSI Architectures Seminar",
+                category="SEMINAR",
+                department_id=ece_dept_id,
+                organizer_faculty_id=ece_faculty_id,
+                venue="Departmental Seminar Room 102",
+                event_date=str(today - datetime.timedelta(days=7)),
+                start_time="14:00",
+                end_time="17:00",
+                max_capacity=80,
+                registration_fee=0.0,
+                status="ACTIVE",
+                description="In-depth exploration of 3nm FinFET, gate-all-around FETs, and neuromorphic edge processing chips.",
+            ),
+        )
+
+        EventService.create_event(
+            conn,
+            EventCreate(
+                title="Annual Cultural Symphony & Performing Arts Gala",
+                category="CULTURAL",
+                department_id=None,
+                organizer_faculty_id=None,
+                venue="Open Air Campus Amphitheatre",
+                event_date=str(today + datetime.timedelta(days=45)),
+                start_time="18:00",
+                end_time="22:00",
+                max_capacity=500,
+                registration_fee=100.0,
+                status="UPCOMING",
+                description="Celebration of multicultural music, classical dance ensembles, and theatrical student productions.",
+            ),
+        )
+
+        # Register students across events
+        if len(student_records) >= 3:
+            s0_id = student_records[0]["id"]
+            s1_id = student_records[1]["id"]
+            s2_id = student_records[2]["id"]
+
+            # e1: Symposium
+            EventService.register_for_event(
+                conn, EventRegistrationCreate(event_id=e1["id"], student_id=s0_id)
+            )
+            EventService.register_for_event(
+                conn, EventRegistrationCreate(event_id=e1["id"], student_id=s1_id)
+            )
+
+            # e2: Workshop (Active)
+            reg_e2 = EventService.register_for_event(
+                conn, EventRegistrationCreate(event_id=e2["id"], student_id=s0_id)
+            )
+            EventService.update_registration_status(
+                conn, reg_e2["id"], status="ATTENDED", certificate_issued=1
+            )
+
+            # e4: Seminar (Completed)
+            reg_e4_1 = EventService.register_for_event(
+                conn, EventRegistrationCreate(event_id=e4["id"], student_id=s1_id)
+            )
+            reg_e4_2 = EventService.register_for_event(
+                conn, EventRegistrationCreate(event_id=e4["id"], student_id=s2_id)
+            )
+            EventService.update_registration_status(
+                conn, reg_e4_1["id"], status="ATTENDED", certificate_issued=1
+            )
+            EventService.update_registration_status(
+                conn, reg_e4_2["id"], status="ATTENDED", certificate_issued=1
+            )
+            EventService.update_event_status(conn, e4["id"], "COMPLETED")
+
+        print(
+            "   * Campus events scheduled, attendee registrations enrolled, and certificates issued."
+        )
 
     conn.close()
     print("\n" + "=" * 60)

@@ -1,0 +1,1370 @@
+{% extends "base.html" %}
+
+{% block title %}Campus Clinic & Infirmary | IMS Enterprise{% endblock %}
+{% block header_title %}Campus Health & Infirmary Hub{% endblock %}
+{% block header_subtitle %}Electronic clinical consultations, scholar and faculty health profiles, dispensary pharmacy stock, and verified medical sick leave certificates{% endblock %}
+
+{% block header_actions %}
+<div style="display: flex; gap: 10px; flex-wrap: wrap;">
+  <button class="btn btn-outline" onclick="openModal('modal-add-medicine')" id="btn-open-add-med">
+    <span>💊 Add Medicine</span>
+  </button>
+  <button class="btn btn-outline" onclick="openModal('modal-add-profile')" id="btn-open-add-profile">
+    <span>🩹 Register Health Profile</span>
+  </button>
+  <button class="btn btn-secondary" onclick="openModal('modal-issue-certificate')" id="btn-open-issue-cert">
+    <span>📜 Issue Certificate</span>
+  </button>
+  <button class="btn btn-primary" onclick="openModal('modal-log-encounter')" id="btn-open-log-encounter">
+    <span>🩺 Log Consultation</span>
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Health Telemetry Metrics Grid -->
+<div class="metrics-grid" style="margin-bottom: 24px;">
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Total Consultations</span>
+      <span class="metric-icon">🩺</span>
+    </div>
+    <div class="metric-value">{{ stats.total_encounters }}</div>
+    <div class="metric-footer">
+      <span>{{ stats.student_visits }} scholars • {{ stats.faculty_visits }} faculty visits</span>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Active Medical Sick Leaves</span>
+      <span class="metric-icon">📜</span>
+    </div>
+    <div class="metric-value" style="color: var(--color-primary-light);">{{ stats.active_sick_leaves }}</div>
+    <div class="metric-footer">
+      <span>Current excused rest periods</span>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Allergy & Risk Watchlist</span>
+      <span class="metric-icon">⚠️</span>
+    </div>
+    <div class="metric-value" style="color: #f59e0b;">{{ stats.allergies_recorded_count }}</div>
+    <div class="metric-footer">
+      <span>{{ stats.emergency_triage_count }} urgent / emergency cases</span>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Dispensary Stock Alerts</span>
+      <span class="metric-icon">💊</span>
+    </div>
+    <div class="metric-value" style="color: {% if stats.low_stock_medicines > 0 %}#ef4444{% else %}var(--color-success){% endif %};">
+      {{ stats.low_stock_medicines }}
+    </div>
+    <div class="metric-footer">
+      <span>Medicines below reorder threshold</span>
+    </div>
+  </div>
+</div>
+
+<!-- Navigation Tabs -->
+<div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 12px; flex-wrap: wrap;">
+  <button class="btn btn-secondary" onclick="switchHealthTab('tab-encounters')" id="btn-tab-encounters" style="font-weight: 600;">
+    🩺 Clinical Encounters ({{ encounters|length }})
+  </button>
+  <button class="btn btn-outline" onclick="switchHealthTab('tab-profiles')" id="btn-tab-profiles" style="font-weight: 600;">
+    🩹 Health & Emergency Profiles ({{ profiles|length }})
+  </button>
+  <button class="btn btn-outline" onclick="switchHealthTab('tab-medicines')" id="btn-tab-medicines" style="font-weight: 600;">
+    💊 Dispensary Pharmacy ({{ medicines|length }})
+  </button>
+  <button class="btn btn-outline" onclick="switchHealthTab('tab-certificates')" id="btn-tab-certificates" style="font-weight: 600;">
+    📜 Medical Certificates ({{ certificates|length }})
+  </button>
+</div>
+
+<!-- ========================================================================= -->
+<!-- TAB 1: CLINICAL ENCOUNTERS                                                -->
+<!-- ========================================================================= -->
+<div id="tab-encounters" class="health-tab-content">
+  <div class="card" style="margin-bottom: 24px; padding: 16px 20px;">
+    <form method="GET" action="/health-center" style="display: flex; flex-wrap: wrap; gap: 14px; align-items: center;">
+      <input type="hidden" name="tab" value="encounters" />
+      <div style="flex: 1; min-width: 220px;">
+        <input
+          type="text"
+          name="search"
+          value="{{ search }}"
+          class="form-control"
+          placeholder="🔍 Search encounters by patient, code, doctor, diagnosis..."
+          id="encounter-search-input"
+        />
+      </div>
+      <div style="min-width: 150px;">
+        <select name="triage" class="form-control" id="encounter-triage-filter">
+          <option value="">All Triage Severities</option>
+          <option value="NORMAL" {% if selected_triage == 'NORMAL' %}selected{% endif %}>🟢 Normal</option>
+          <option value="URGENT" {% if selected_triage == 'URGENT' %}selected{% endif %}>🟡 Urgent</option>
+          <option value="EMERGENCY" {% if selected_triage == 'EMERGENCY' %}selected{% endif %}>🔴 Emergency</option>
+        </select>
+      </div>
+      <div style="min-width: 140px;">
+        <select name="patient_type" class="form-control" id="encounter-type-filter">
+          <option value="">All Patient Types</option>
+          <option value="STUDENT" {% if selected_type == 'STUDENT' %}selected{% endif %}>Student</option>
+          <option value="FACULTY" {% if selected_type == 'FACULTY' %}selected{% endif %}>Faculty</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" id="btn-filter-encounters">Filter</button>
+      <a href="/health-center?tab=encounters" class="btn btn-outline">Reset</a>
+    </form>
+  </div>
+
+  <div class="card table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Encounter Code</th>
+          <th>Patient / Person</th>
+          <th>Type</th>
+          <th>Visit Date</th>
+          <th>Attending Physician</th>
+          <th>Chief Complaint & Diagnosis</th>
+          <th>Vitals</th>
+          <th>Triage</th>
+          <th>Rx / Cert</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in encounters %}
+        <tr id="row-encounter-{{ e.id }}">
+          <td>
+            <span style="font-family: monospace; font-weight: 700; color: #38bdf8;">{{ e.encounter_code }}</span>
+          </td>
+          <td>
+            <strong>{{ e.patient_name }}</strong>
+            <div style="font-size: 0.8rem; color: #94a3b8;">
+              {{ e.patient_identifier }} • {{ e.department_name or 'General' }}
+            </div>
+          </td>
+          <td>
+            <span class="badge-tag {% if e.patient_type == 'STUDENT' %}badge-info{% else %}badge-warning{% endif %}">
+              {{ e.patient_type }}
+            </span>
+          </td>
+          <td>{{ e.visit_date }}</td>
+          <td>{{ e.doctor_name }}</td>
+          <td>
+            <strong style="color: #e2e8f0;">{{ e.chief_complaint }}</strong>
+            <div style="font-size: 0.8rem; color: #cbd5e1;">Dx: {{ e.diagnosis }}</div>
+          </td>
+          <td style="font-size: 0.85rem;">
+            {% if e.blood_pressure %}<div>BP: <code>{{ e.blood_pressure }}</code></div>{% endif %}
+            {% if e.pulse_bpm %}<div>Pulse: <code>{{ e.pulse_bpm }} bpm</code></div>{% endif %}
+            {% if e.temperature_f %}<div>Temp: <code>{{ e.temperature_f }}°F</code></div>{% endif %}
+            {% if not e.blood_pressure and not e.pulse_bpm and not e.temperature_f %}
+            <span style="color: #64748b;">Not recorded</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if e.triage_severity == 'EMERGENCY' %}
+            <span class="badge-tag badge-danger" style="animation: pulse 2s infinite;">🔴 Emergency</span>
+            {% elif e.triage_severity == 'URGENT' %}
+            <span class="badge-tag badge-warning">🟡 Urgent</span>
+            {% else %}
+            <span class="badge-tag badge-success">🟢 Normal</span>
+            {% endif %}
+          </td>
+          <td>
+            <div style="display: flex; gap: 4px; flex-direction: column;">
+              <span style="font-size: 0.8rem; color: #94a3b8;">
+                💊 {{ e.prescription_count }} meds
+              </span>
+              {% if e.has_medical_certificate %}
+              <span class="badge-tag badge-primary" style="font-size: 0.72rem;">📜 Cert Issued</span>
+              {% endif %}
+            </div>
+          </td>
+          <td>
+            <div style="display: flex; gap: 6px;">
+              <button class="btn btn-outline" style="padding: 4px 8px; font-size: 0.8rem;" onclick="viewEncounterDetails({{ e.id }})">
+                👁️ View
+              </button>
+              {% if not e.has_medical_certificate %}
+              <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="quickCertifyEncounter({{ e.id }}, '{{ e.patient_type }}', '{{ e.diagnosis }}')">
+                📜 Certify
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="10" style="text-align: center; padding: 48px; color: #64748b;">
+            <div style="font-size: 2rem; margin-bottom: 8px;">🩺</div>
+            <p>No medical consultations recorded matching the current filter criteria.</p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- TAB 2: HEALTH & EMERGENCY PROFILES                                       -->
+<!-- ========================================================================= -->
+<div id="tab-profiles" class="health-tab-content" style="display: none;">
+  <div class="card" style="margin-bottom: 24px; padding: 16px 20px;">
+    <form method="GET" action="/health-center" style="display: flex; flex-wrap: wrap; gap: 14px; align-items: center;">
+      <input type="hidden" name="tab" value="profiles" />
+      <div style="flex: 1; min-width: 240px;">
+        <input
+          type="text"
+          name="search"
+          value="{{ search }}"
+          class="form-control"
+          placeholder="🔍 Search profiles by name, ID, emergency contact, allergy, blood group..."
+          id="profile-search-input"
+        />
+      </div>
+      <button type="submit" class="btn btn-primary">Search</button>
+      <a href="/health-center?tab=profiles" class="btn btn-outline">Reset</a>
+    </form>
+  </div>
+
+  <div class="card table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Person Name</th>
+          <th>Type</th>
+          <th>ID / Department</th>
+          <th>Blood Group</th>
+          <th>Known Allergies</th>
+          <th>Chronic Conditions</th>
+          <th>Emergency Contact</th>
+          <th>Insurance</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in profiles %}
+        <tr id="row-profile-{{ p.id }}">
+          <td>
+            <strong>{{ p.person_name }}</strong>
+          </td>
+          <td>
+            <span class="badge-tag {% if p.person_type == 'STUDENT' %}badge-info{% else %}badge-warning{% endif %}">
+              {{ p.person_type }}
+            </span>
+          </td>
+          <td>
+            <code>{{ p.enrollment_or_faculty_id }}</code>
+            <div style="font-size: 0.8rem; color: #94a3b8;">{{ p.department_name or 'General' }}</div>
+          </td>
+          <td>
+            <span class="badge-tag badge-danger" style="font-weight: 700; font-size: 0.9rem;">
+              🩸 {{ p.blood_group }}
+            </span>
+          </td>
+          <td>
+            {% if p.allergies and p.allergies != 'None' and p.allergies != '' %}
+            <span class="badge-tag badge-warning" style="font-weight: 600;">⚠️ {{ p.allergies }}</span>
+            {% else %}
+            <span style="color: #64748b;">None</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if p.chronic_conditions and p.chronic_conditions != 'None' and p.chronic_conditions != '' %}
+            <span style="color: #fca5a5; font-size: 0.85rem;">{{ p.chronic_conditions }}</span>
+            {% else %}
+            <span style="color: #64748b;">None</span>
+            {% endif %}
+          </td>
+          <td>
+            <strong>{{ p.emergency_contact_name }}</strong> ({{ p.emergency_contact_relation }})
+            <div><code>{{ p.emergency_contact_phone }}</code></div>
+          </td>
+          <td style="font-size: 0.82rem; color: #cbd5e1;">
+            {% if p.insurance_provider %}
+            {{ p.insurance_provider }} <br/><code style="font-size: 0.75rem;">{{ p.insurance_policy_number or '' }}</code>
+            {% else %}
+            <span style="color: #64748b;">Institutional Basic</span>
+            {% endif %}
+          </td>
+          <td>
+            <button class="btn btn-outline" style="padding: 4px 8px; font-size: 0.8rem;" onclick="editProfile({{ p|tojson|forceescape }})">
+              ✏️ Edit
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" style="text-align: center; padding: 48px; color: #64748b;">
+            <div style="font-size: 2rem; margin-bottom: 8px;">🩹</div>
+            <p>No health profiles registered yet. Click "Register Health Profile" above.</p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- TAB 3: DISPENSARY PHARMACY STOCK                                         -->
+<!-- ========================================================================= -->
+<div id="tab-medicines" class="health-tab-content" style="display: none;">
+  <div class="card" style="margin-bottom: 24px; padding: 16px 20px;">
+    <form method="GET" action="/health-center" style="display: flex; flex-wrap: wrap; gap: 14px; align-items: center;">
+      <input type="hidden" name="tab" value="medicines" />
+      <div style="flex: 1; min-width: 240px;">
+        <input
+          type="text"
+          name="search"
+          value="{{ search }}"
+          class="form-control"
+          placeholder="🔍 Search medicines by name, code, batch number..."
+          id="medicine-search-input"
+        />
+      </div>
+      <button type="submit" class="btn btn-primary">Search</button>
+      <a href="/health-center?tab=medicines" class="btn btn-outline">Reset</a>
+    </form>
+  </div>
+
+  <div class="card table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Item Code</th>
+          <th>Medicine Name</th>
+          <th>Category</th>
+          <th>Form</th>
+          <th>Current Stock</th>
+          <th>Reorder Level</th>
+          <th>Batch Number</th>
+          <th>Expiry Date</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in medicines %}
+        <tr id="row-med-{{ m.id }}">
+          <td><code>{{ m.item_code }}</code></td>
+          <td><strong>{{ m.name }}</strong></td>
+          <td>
+            <span class="badge-tag badge-secondary">{{ m.category }}</span>
+          </td>
+          <td>{{ m.form }}</td>
+          <td>
+            <strong style="font-size: 1.05rem; color: {% if m.is_low_stock %}#ef4444{% else %}var(--color-success){% endif %};">
+              {{ m.stock_quantity }} {{ m.unit }}
+            </strong>
+          </td>
+          <td>{{ m.reorder_level }} {{ m.unit }}</td>
+          <td><code>{{ m.batch_number }}</code></td>
+          <td>{{ m.expiry_date }}</td>
+          <td>
+            {% if m.is_low_stock %}
+            <span class="badge-tag badge-danger">⚠️ Low Stock</span>
+            {% else %}
+            <span class="badge-tag badge-success">✓ In Stock</span>
+            {% endif %}
+          </td>
+          <td>
+            <button class="btn btn-outline" style="padding: 4px 8px; font-size: 0.8rem;" onclick="openRestockModal({{ m.id }}, '{{ m.name }}', {{ m.stock_quantity }})">
+              📦 Restock
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="10" style="text-align: center; padding: 48px; color: #64748b;">
+            <div style="font-size: 2rem; margin-bottom: 8px;">💊</div>
+            <p>No dispensary pharmacy stock recorded. Click "Add Medicine" above.</p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- TAB 4: MEDICAL CERTIFICATES & SICK LEAVE ENDORSEMENTS                     -->
+<!-- ========================================================================= -->
+<div id="tab-certificates" class="health-tab-content" style="display: none;">
+  <div class="card table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Certificate #</th>
+          <th>Encounter Code</th>
+          <th>Patient Name</th>
+          <th>Type & Dept</th>
+          <th>Rest Period (From - To)</th>
+          <th>Fit to Resume</th>
+          <th>Diagnosis Summary</th>
+          <th>Attending Doctor</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in certificates %}
+        <tr id="row-cert-{{ c.id }}">
+          <td>
+            <strong style="font-family: monospace; color: #38bdf8;">{{ c.certificate_number }}</strong>
+          </td>
+          <td><code>{{ c.encounter_code }}</code></td>
+          <td><strong>{{ c.patient_name }}</strong></td>
+          <td>
+            <span class="badge-tag {% if c.patient_type == 'STUDENT' %}badge-info{% else %}badge-warning{% endif %}">
+              {{ c.patient_type }}
+            </span>
+            <div style="font-size: 0.78rem; color: #94a3b8;">{{ c.department_name or 'General' }}</div>
+          </td>
+          <td>
+            <strong>{{ c.rest_from_date }}</strong> to <strong>{{ c.rest_to_date }}</strong>
+          </td>
+          <td>
+            <span class="badge-tag badge-success">📅 {{ c.fit_to_resume_date }}</span>
+          </td>
+          <td>{{ c.diagnosis_summary }}</td>
+          <td>{{ c.doctor_name }}</td>
+          <td>
+            {% if c.status == 'ISSUED' %}
+            <span class="badge-tag badge-success">✓ Issued</span>
+            {% else %}
+            <span class="badge-tag badge-danger">Revoked</span>
+            {% endif %}
+          </td>
+          <td>
+            <div style="display: flex; gap: 6px;">
+              <button class="btn btn-outline" style="padding: 4px 8px; font-size: 0.8rem;" onclick="viewCertificateDetails({{ c|tojson|forceescape }})">
+                📜 View
+              </button>
+              {% if c.status == 'ISSUED' %}
+              <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="revokeCertificate({{ c.id }})">
+                Revoke
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="10" style="text-align: center; padding: 48px; color: #64748b;">
+            <div style="font-size: 2rem; margin-bottom: 8px;">📜</div>
+            <p>No medical sick leave certificates issued yet.</p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: LOG MEDICAL ENCOUNTER                                             -->
+<!-- ========================================================================= -->
+<div id="modal-log-encounter" class="modal-backdrop" style="display: none;">
+  <div class="modal-card" style="max-width: 720px; max-height: 90vh; overflow-y: auto;">
+    <div class="modal-header">
+      <h3>🩺 Log Clinical Consultation Encounter</h3>
+      <button class="close-btn" onclick="closeModal('modal-log-encounter')">&times;</button>
+    </div>
+    <form id="form-log-encounter" onsubmit="handleLogEncounter(event)">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div class="form-group">
+          <label>Patient Type *</label>
+          <select name="patient_type" id="enc-patient-type" class="form-control" required onchange="togglePatientSelect()">
+            <option value="STUDENT">Scholar (Student)</option>
+            <option value="FACULTY">Faculty Instructor / Staff</option>
+          </select>
+        </div>
+        <div class="form-group" id="group-student-select">
+          <label>Select Student *</label>
+          <select name="student_id" id="enc-student-id" class="form-control">
+            <option value="">-- Choose Student --</option>
+            {% for s in students %}
+            <option value="{{ s.id }}">{{ s.first_name }} {{ s.last_name }} ({{ s.enrollment_no }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group" id="group-faculty-select" style="display: none;">
+          <label>Select Faculty *</label>
+          <select name="faculty_id" id="enc-faculty-id" class="form-control">
+            <option value="">-- Choose Faculty --</option>
+            {% for f in faculty %}
+            <option value="{{ f.id }}">{{ f.first_name }} {{ f.last_name }} ({{ f.faculty_id }})</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div class="form-group">
+          <label>Consultation Date *</label>
+          <input type="date" name="visit_date" id="enc-visit-date" class="form-control" required />
+        </div>
+        <div class="form-group">
+          <label>Attending Doctor / Medical Officer *</label>
+          <input type="text" name="doctor_name" id="enc-doctor-name" class="form-control" placeholder="Dr. Sarah Johnson, MD" required />
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div class="form-group">
+          <label>Chief Complaint *</label>
+          <input type="text" name="chief_complaint" id="enc-chief-complaint" class="form-control" placeholder="e.g. Acute migraine & dizziness" required />
+        </div>
+        <div class="form-group">
+          <label>Clinical Diagnosis *</label>
+          <input type="text" name="diagnosis" id="enc-diagnosis" class="form-control" placeholder="e.g. Tension Cephalea & Exhaustion" required />
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label>Symptoms & Clinical Observations</label>
+        <textarea name="symptoms" id="enc-symptoms" class="form-control" rows="2" placeholder="Throbbing temporal headache, sensitivity to light, BP elevated..."></textarea>
+      </div>
+
+      <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); padding: 14px; border-radius: 8px; margin-bottom: 14px;">
+        <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 0.95rem; color: #38bdf8;">📊 Vital Signs & Triage</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label style="font-size: 0.8rem;">Blood Pressure</label>
+            <input type="text" name="blood_pressure" id="enc-bp" class="form-control" placeholder="120/80" />
+          </div>
+          <div class="form-group">
+            <label style="font-size: 0.8rem;">Pulse (BPM)</label>
+            <input type="number" name="pulse_bpm" id="enc-pulse" class="form-control" placeholder="72" min="30" max="250" />
+          </div>
+          <div class="form-group">
+            <label style="font-size: 0.8rem;">Temp (°F)</label>
+            <input type="number" step="0.1" name="temperature_f" id="enc-temp" class="form-control" placeholder="98.6" min="85" max="110" />
+          </div>
+          <div class="form-group">
+            <label style="font-size: 0.8rem;">Triage Severity *</label>
+            <select name="triage_severity" id="enc-triage" class="form-control" required>
+              <option value="NORMAL">Normal</option>
+              <option value="URGENT">Urgent</option>
+              <option value="EMERGENCY">Emergency</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); padding: 14px; border-radius: 8px; margin-bottom: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <h4 style="margin: 0; font-size: 0.95rem; color: #38bdf8;">💊 Prescribed Medicines (Dispensary)</h4>
+          <button type="button" class="btn btn-outline" style="padding: 2px 8px; font-size: 0.8rem;" onclick="addPrescriptionRow()">
+            + Add Medicine
+          </button>
+        </div>
+        <div id="prescription-rows-container">
+          <!-- Dynamic prescription items -->
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div class="form-group">
+          <label>Immediate Treatment Given</label>
+          <input type="text" name="treatment_given" id="enc-treatment" class="form-control" placeholder="e.g. Administered IV Paracetamol 500mg, rest in observation room" />
+        </div>
+        <div class="form-group">
+          <label>Follow-up Recommended Date</label>
+          <input type="date" name="follow_up_date" id="enc-follow-up" class="form-control" />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-log-encounter')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-encounter">Save Consultation</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: REGISTER / UPDATE HEALTH PROFILE                                   -->
+<!-- ========================================================================= -->
+<div id="modal-add-profile" class="modal-backdrop" style="display: none;">
+  <div class="modal-card" style="max-width: 600px;">
+    <div class="modal-header">
+      <h3 id="profile-modal-title">🩹 Register / Update Health Profile</h3>
+      <button class="close-btn" onclick="closeModal('modal-add-profile')">&times;</button>
+    </div>
+    <form id="form-health-profile" onsubmit="handleSaveProfile(event)">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div class="form-group">
+          <label>Person Type *</label>
+          <select name="person_type" id="prof-person-type" class="form-control" required onchange="toggleProfilePersonSelect()">
+            <option value="STUDENT">Scholar (Student)</option>
+            <option value="FACULTY">Faculty / Staff</option>
+          </select>
+        </div>
+        <div class="form-group" id="group-prof-student">
+          <label>Student *</label>
+          <select name="student_id" id="prof-student-id" class="form-control">
+            <option value="">-- Choose Student --</option>
+            {% for s in students %}
+            <option value="{{ s.id }}">{{ s.first_name }} {{ s.last_name }} ({{ s.enrollment_no }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group" id="group-prof-faculty" style="display: none;">
+          <label>Faculty *</label>
+          <select name="faculty_id" id="prof-faculty-id" class="form-control">
+            <option value="">-- Choose Faculty --</option>
+            {% for f in faculty %}
+            <option value="{{ f.id }}">{{ f.first_name }} {{ f.last_name }} ({{ f.faculty_id }})</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div class="form-group">
+          <label>Blood Group *</label>
+          <select name="blood_group" id="prof-blood-group" class="form-control" required>
+            <option value="O+">O Positive (O+)</option>
+            <option value="O-">O Negative (O-)</option>
+            <option value="A+">A Positive (A+)</option>
+            <option value="A-">A Negative (A-)</option>
+            <option value="B+">B Positive (B+)</option>
+            <option value="B-">B Negative (B-)</option>
+            <option value="AB+">AB Positive (AB+)</option>
+            <option value="AB-">AB Negative (AB-)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Known Drug / Food Allergies</label>
+          <input type="text" name="allergies" id="prof-allergies" class="form-control" placeholder="e.g. Penicillin, Peanuts (or None)" value="None" />
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label>Chronic Medical Conditions</label>
+        <input type="text" name="chronic_conditions" id="prof-conditions" class="form-control" placeholder="e.g. Asthma, Type 1 Diabetes (or None)" value="None" />
+      </div>
+
+      <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); padding: 12px; border-radius: 8px; margin-bottom: 14px;">
+        <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 0.95rem; color: #38bdf8;">🚨 Emergency Contact</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label style="font-size: 0.8rem;">Contact Name *</label>
+            <input type="text" name="emergency_contact_name" id="prof-emg-name" class="form-control" required placeholder="Parent / Spouse Name" />
+          </div>
+          <div class="form-group">
+            <label style="font-size: 0.8rem;">Contact Phone *</label>
+            <input type="text" name="emergency_contact_phone" id="prof-emg-phone" class="form-control" required placeholder="+91 98765 43210" />
+          </div>
+          <div class="form-group">
+            <label style="font-size: 0.8rem;">Relationship</label>
+            <input type="text" name="emergency_contact_relation" id="prof-emg-rel" class="form-control" placeholder="Parent" value="Parent" />
+          </div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div class="form-group">
+          <label>Insurance Provider</label>
+          <input type="text" name="insurance_provider" id="prof-ins-prov" class="form-control" placeholder="Star Health / National Insurance" />
+        </div>
+        <div class="form-group">
+          <label>Policy Number</label>
+          <input type="text" name="insurance_policy_number" id="prof-ins-policy" class="form-control" placeholder="POL-992384" />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-add-profile')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-save-profile">Save Profile</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: ADD DISPENSARY MEDICINE                                           -->
+<!-- ========================================================================= -->
+<div id="modal-add-medicine" class="modal-backdrop" style="display: none;">
+  <div class="modal-card" style="max-width: 560px;">
+    <div class="modal-header">
+      <h3>💊 Add Dispensary Pharmacy Medicine</h3>
+      <button class="close-btn" onclick="closeModal('modal-add-medicine')">&times;</button>
+    </div>
+    <form id="form-add-medicine" onsubmit="handleAddMedicine(event)">
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div class="form-group">
+          <label>Medicine Name *</label>
+          <input type="text" name="name" class="form-control" placeholder="e.g. Paracetamol 500mg" required />
+        </div>
+        <div class="form-group">
+          <label>Category *</label>
+          <select name="category" class="form-control" required>
+            <option value="ANALGESIC">Analgesic</option>
+            <option value="ANTIBIOTIC">Antibiotic</option>
+            <option value="ANTIHISTAMINE">Antihistamine</option>
+            <option value="ANTISEPTIC">Antiseptic</option>
+            <option value="ANTACID">Antacid</option>
+            <option value="FIRST_AID">First Aid</option>
+            <option value="SUPPLEMENT">Supplement</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div class="form-group">
+          <label>Form *</label>
+          <select name="form" class="form-control" required>
+            <option value="TABLET">Tablet</option>
+            <option value="CAPSULE">Capsule</option>
+            <option value="SYRUP">Syrup</option>
+            <option value="OINTMENT">Ointment</option>
+            <option value="INJECTION">Injection</option>
+            <option value="BANDAGE">Bandage</option>
+            <option value="DROPS">Drops</option>
+            <option value="SACHET">Sachet / Powder</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Stock Qty *</label>
+          <input type="number" name="stock_quantity" class="form-control" value="100" min="0" required />
+        </div>
+        <div class="form-group">
+          <label>Unit</label>
+          <input type="text" name="unit" class="form-control" value="Tablets" required />
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div class="form-group">
+          <label>Reorder Level *</label>
+          <input type="number" name="reorder_level" class="form-control" value="20" min="0" required />
+        </div>
+        <div class="form-group">
+          <label>Batch # *</label>
+          <input type="text" name="batch_number" class="form-control" placeholder="BATCH-2026A" required />
+        </div>
+        <div class="form-group">
+          <label>Expiry Date *</label>
+          <input type="date" name="expiry_date" class="form-control" required />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-add-medicine')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add Medicine</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: RESTOCK MEDICINE                                                  -->
+<!-- ========================================================================= -->
+<div id="modal-restock-medicine" class="modal-backdrop" style="display: none;">
+  <div class="modal-card" style="max-width: 440px;">
+    <div class="modal-header">
+      <h3>📦 Restock Medicine</h3>
+      <button class="close-btn" onclick="closeModal('modal-restock-medicine')">&times;</button>
+    </div>
+    <form id="form-restock-medicine" onsubmit="handleRestockMedicine(event)">
+      <input type="hidden" id="restock-med-id" />
+      <p style="color: #cbd5e1; margin-bottom: 14px;">
+        Restocking: <strong id="restock-med-name" style="color: #38bdf8;"></strong><br/>
+        Current Available: <strong id="restock-med-current"></strong>
+      </p>
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label>Quantity to Add *</label>
+        <input type="number" id="restock-quantity" class="form-control" min="1" value="50" required />
+      </div>
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label>Reason / Source Note</label>
+        <input type="text" id="restock-reason" class="form-control" value="Batch Restock Delivery" />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-restock-medicine')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Confirm Restock</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: ISSUE MEDICAL SICK LEAVE CERTIFICATE                              -->
+<!-- ========================================================================= -->
+<div id="modal-issue-certificate" class="modal-backdrop" style="display: none;">
+  <div class="modal-card" style="max-width: 600px;">
+    <div class="modal-header">
+      <h3>📜 Issue Official Medical Certificate</h3>
+      <button class="close-btn" onclick="closeModal('modal-issue-certificate')">&times;</button>
+    </div>
+    <form id="form-issue-cert" onsubmit="handleIssueCertificate(event)">
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label>Linked Consultation Encounter *</label>
+        <select name="encounter_id" id="cert-encounter-id" class="form-control" required onchange="onEncounterSelectForCert()">
+          <option value="">-- Choose Medical Encounter --</option>
+          {% for e in encounters %}
+          {% if not e.has_medical_certificate %}
+          <option value="{{ e.id }}" data-diagnosis="{{ e.diagnosis }}">
+            {{ e.encounter_code }} - {{ e.patient_name }} ({{ e.diagnosis }})
+          </option>
+          {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div class="form-group">
+          <label>Rest From Date *</label>
+          <input type="date" name="rest_from_date" id="cert-from-date" class="form-control" required />
+        </div>
+        <div class="form-group">
+          <label>Rest To Date *</label>
+          <input type="date" name="rest_to_date" id="cert-to-date" class="form-control" required />
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label>Fit to Resume Studies / Duties Date *</label>
+        <input type="date" name="fit_to_resume_date" id="cert-resume-date" class="form-control" required />
+      </div>
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label>Diagnosis & Clinical Medical Justification *</label>
+        <input type="text" name="diagnosis_summary" id="cert-diagnosis" class="form-control" placeholder="Acute Viral Pharyngitis with High Fever" required />
+      </div>
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label>Physician's Remarks & Recommendations</label>
+        <textarea name="doctor_remarks" id="cert-remarks" class="form-control" rows="2" placeholder="Strict bed rest advised, avoid strenuous physical activities, plenty of fluids."></textarea>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-issue-certificate')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-cert">Issue Certificate</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: VIEW ENCOUNTER DETAILS                                            -->
+<!-- ========================================================================= -->
+<div id="modal-view-encounter" class="modal-backdrop" style="display: none;">
+  <div class="modal-card" style="max-width: 640px;">
+    <div class="modal-header">
+      <h3 id="view-enc-title">Consultation Details</h3>
+      <button class="close-btn" onclick="closeModal('modal-view-encounter')">&times;</button>
+    </div>
+    <div id="view-enc-body" style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.6;">
+      <!-- Populated dynamically via JS -->
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-view-encounter')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: VIEW MEDICAL CERTIFICATE                                          -->
+<!-- ========================================================================= -->
+<div id="modal-view-cert" class="modal-backdrop" style="display: none;">
+  <div class="modal-card" style="max-width: 650px; background: #0f172a; border: 2px solid #38bdf8;">
+    <div class="modal-header" style="border-bottom: 1px dashed rgba(255,255,255,0.2);">
+      <div>
+        <h3 style="margin: 0; color: #38bdf8;">🏛️ IMS Institutional Health Center</h3>
+        <span style="font-size: 0.8rem; color: #94a3b8;">Official Medical Certificate of Sickness & Convalescence</span>
+      </div>
+      <button class="close-btn" onclick="closeModal('modal-view-cert')">&times;</button>
+    </div>
+    <div id="view-cert-body" style="padding: 20px 0; color: #e2e8f0; line-height: 1.7;">
+      <!-- Populated dynamically via JS -->
+    </div>
+    <div class="modal-footer" style="border-top: 1px dashed rgba(255,255,255,0.2);">
+      <button type="button" class="btn btn-outline" onclick="window.print()">🖨️ Print Certificate</button>
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-view-cert')">Close</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Tab Switching
+  function switchHealthTab(tabId) {
+    document.querySelectorAll('.health-tab-content').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('button[id^="btn-tab-"]').forEach(btn => {
+      btn.classList.remove('btn-secondary');
+      btn.classList.add('btn-outline');
+    });
+
+    const targetTab = document.getElementById(tabId);
+    if (targetTab) targetTab.style.display = 'block';
+
+    const activeBtn = document.getElementById('btn-' + tabId);
+    if (activeBtn) {
+      activeBtn.classList.remove('btn-outline');
+      activeBtn.classList.add('btn-secondary');
+    }
+  }
+
+  // Preserve active tab from URL query
+  document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const activeTab = params.get('tab') || '{{ tab }}' || 'encounters';
+    if (activeTab === 'profiles') switchHealthTab('tab-profiles');
+    else if (activeTab === 'medicines') switchHealthTab('tab-medicines');
+    else if (activeTab === 'certificates') switchHealthTab('tab-certificates');
+    else switchHealthTab('tab-encounters');
+
+    // Default dates for forms
+    const today = new Date().toISOString().split('T')[0];
+    const visitDateInput = document.getElementById('enc-visit-date');
+    if (visitDateInput) visitDateInput.value = today;
+
+    const certFrom = document.getElementById('cert-from-date');
+    if (certFrom) certFrom.value = today;
+
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 3);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const certTo = document.getElementById('cert-to-date');
+    if (certTo) certTo.value = tomorrowStr;
+
+    const resume = new Date();
+    resume.setDate(resume.getDate() + 4);
+    const certResume = document.getElementById('cert-resume-date');
+    if (certResume) certResume.value = resume.toISOString().split('T')[0];
+  });
+
+  // Toggle patient select in encounter modal
+  function togglePatientSelect() {
+    const type = document.getElementById('enc-patient-type').value;
+    const studentGroup = document.getElementById('group-student-select');
+    const facultyGroup = document.getElementById('group-faculty-select');
+    if (type === 'STUDENT') {
+      studentGroup.style.display = 'block';
+      facultyGroup.style.display = 'none';
+      document.getElementById('enc-student-id').required = true;
+      document.getElementById('enc-faculty-id').required = false;
+      document.getElementById('enc-faculty-id').value = '';
+    } else {
+      studentGroup.style.display = 'none';
+      facultyGroup.style.display = 'block';
+      document.getElementById('enc-student-id').required = false;
+      document.getElementById('enc-faculty-id').required = true;
+      document.getElementById('enc-student-id').value = '';
+    }
+  }
+
+  // Toggle profile person select in profile modal
+  function toggleProfilePersonSelect() {
+    const type = document.getElementById('prof-person-type').value;
+    const studentGroup = document.getElementById('group-prof-student');
+    const facultyGroup = document.getElementById('group-prof-faculty');
+    if (type === 'STUDENT') {
+      studentGroup.style.display = 'block';
+      facultyGroup.style.display = 'none';
+      document.getElementById('prof-student-id').required = true;
+      document.getElementById('prof-faculty-id').required = false;
+      document.getElementById('prof-faculty-id').value = '';
+    } else {
+      studentGroup.style.display = 'none';
+      facultyGroup.style.display = 'block';
+      document.getElementById('prof-student-id').required = false;
+      document.getElementById('prof-faculty-id').required = true;
+      document.getElementById('prof-student-id').value = '';
+    }
+  }
+
+  // Dynamic Prescription Item Rows
+  let prescriptionRowIdx = 0;
+  const availableMedicines = [
+    {% for m in medicines %}
+    { id: {{ m.id }}, name: "{{ m.name }}", form: "{{ m.form }}", stock: {{ m.stock_quantity }} },
+    {% endfor %}
+  ];
+
+  function addPrescriptionRow() {
+    prescriptionRowIdx++;
+    const container = document.getElementById('prescription-rows-container');
+    const row = document.createElement('div');
+    row.id = `rx-row-${prescriptionRowIdx}`;
+    row.style.cssText = 'display: grid; grid-template-columns: 2fr 1.5fr 1.5fr 1fr 1fr auto; gap: 8px; margin-bottom: 8px; align-items: center;';
+    
+    let medOptions = '<option value="">-- Manual or Select Med --</option>';
+    availableMedicines.forEach(m => {
+      medOptions += `<option value="${m.id}" data-name="${m.name}">${m.name} (${m.stock} avail)</option>`;
+    });
+
+    row.innerHTML = `
+      <select class="form-control" onchange="onMedSelect(this, ${prescriptionRowIdx})">
+        ${medOptions}
+      </select>
+      <input type="text" class="form-control rx-name" placeholder="Med Name" required />
+      <input type="text" class="form-control rx-dosage" placeholder="e.g. 500mg" value="1 Tab" required />
+      <input type="text" class="form-control rx-freq" placeholder="Frequency" value="Twice Daily" required />
+      <input type="number" class="form-control rx-qty" placeholder="Qty" value="6" min="1" required />
+      <button type="button" class="btn btn-danger" style="padding: 4px 8px;" onclick="removePrescriptionRow(${prescriptionRowIdx})">&times;</button>
+    `;
+    container.appendChild(row);
+  }
+
+  function onMedSelect(selectEl, rowId) {
+    const opt = selectEl.options[selectEl.selectedIndex];
+    const row = document.getElementById(`rx-row-${rowId}`);
+    if (opt && opt.dataset.name) {
+      row.querySelector('.rx-name').value = opt.dataset.name;
+    }
+  }
+
+  function removePrescriptionRow(rowId) {
+    const row = document.getElementById(`rx-row-${rowId}`);
+    if (row) row.remove();
+  }
+
+  // Submit Encounter
+  async function handleLogEncounter(e) {
+    e.preventDefault();
+    const type = document.getElementById('enc-patient-type').value;
+    const studentId = document.getElementById('enc-student-id').value;
+    const facultyId = document.getElementById('enc-faculty-id').value;
+
+    const prescriptions = [];
+    const rows = document.querySelectorAll('#prescription-rows-container > div');
+    rows.forEach(r => {
+      const medSelect = r.querySelector('select');
+      const medId = medSelect && medSelect.value ? parseInt(medSelect.value) : null;
+      const name = r.querySelector('.rx-name').value;
+      const dosage = r.querySelector('.rx-dosage').value;
+      const freq = r.querySelector('.rx-freq').value;
+      const qty = parseInt(r.querySelector('.rx-qty').value) || 1;
+      if (name) {
+        prescriptions.push({
+          medicine_id: medId,
+          medicine_name: name,
+          dosage: dosage,
+          frequency: freq,
+          duration_days: 3,
+          quantity_dispensed: qty,
+        });
+      }
+    });
+
+    const payload = {
+      patient_type: type,
+      student_id: type === 'STUDENT' ? parseInt(studentId) : null,
+      faculty_id: type === 'FACULTY' ? parseInt(facultyId) : null,
+      visit_date: document.getElementById('enc-visit-date').value,
+      doctor_name: document.getElementById('enc-doctor-name').value,
+      chief_complaint: document.getElementById('enc-chief-complaint').value,
+      symptoms: document.getElementById('enc-symptoms').value || null,
+      diagnosis: document.getElementById('enc-diagnosis').value,
+      blood_pressure: document.getElementById('enc-bp').value || null,
+      pulse_bpm: document.getElementById('enc-pulse').value ? parseInt(document.getElementById('enc-pulse').value) : null,
+      temperature_f: document.getElementById('enc-temp').value ? parseFloat(document.getElementById('enc-temp').value) : null,
+      triage_severity: document.getElementById('enc-triage').value,
+      treatment_given: document.getElementById('enc-treatment').value || null,
+      follow_up_date: document.getElementById('enc-follow-up').value || null,
+      prescriptions: prescriptions,
+    };
+
+    try {
+      const res = await fetch('/api/health-center/encounters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to save encounter');
+      }
+      showToast('Clinical consultation encounter saved successfully!', 'success');
+      setTimeout(() => window.location.href = '/health-center?tab=encounters', 800);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  // Submit Profile
+  async function handleSaveProfile(e) {
+    e.preventDefault();
+    const type = document.getElementById('prof-person-type').value;
+    const studentId = document.getElementById('prof-student-id').value;
+    const facultyId = document.getElementById('prof-faculty-id').value;
+
+    const payload = {
+      person_type: type,
+      student_id: type === 'STUDENT' ? parseInt(studentId) : null,
+      faculty_id: type === 'FACULTY' ? parseInt(facultyId) : null,
+      blood_group: document.getElementById('prof-blood-group').value,
+      allergies: document.getElementById('prof-allergies').value || 'None',
+      chronic_conditions: document.getElementById('prof-conditions').value || 'None',
+      emergency_contact_name: document.getElementById('prof-emg-name').value,
+      emergency_contact_phone: document.getElementById('prof-emg-phone').value,
+      emergency_contact_relation: document.getElementById('prof-emg-rel').value || 'Parent',
+      insurance_provider: document.getElementById('prof-ins-prov').value || null,
+      insurance_policy_number: document.getElementById('prof-ins-policy').value || null,
+    };
+
+    try {
+      const res = await fetch('/api/health-center/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to save profile');
+      }
+      showToast('Health profile updated successfully!', 'success');
+      setTimeout(() => window.location.href = '/health-center?tab=profiles', 800);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  function editProfile(p) {
+    openModal('modal-add-profile');
+    document.getElementById('profile-modal-title').innerText = '✏️ Edit Health Profile: ' + (p.person_name || '');
+    document.getElementById('prof-person-type').value = p.person_type;
+    toggleProfilePersonSelect();
+    if (p.person_type === 'STUDENT') {
+      document.getElementById('prof-student-id').value = p.student_id;
+    } else {
+      document.getElementById('prof-faculty-id').value = p.faculty_id;
+    }
+    document.getElementById('prof-blood-group').value = p.blood_group;
+    document.getElementById('prof-allergies').value = p.allergies || 'None';
+    document.getElementById('prof-conditions').value = p.chronic_conditions || 'None';
+    document.getElementById('prof-emg-name').value = p.emergency_contact_name;
+    document.getElementById('prof-emg-phone').value = p.emergency_contact_phone;
+    document.getElementById('prof-emg-rel').value = p.emergency_contact_relation;
+    document.getElementById('prof-ins-prov').value = p.insurance_provider || '';
+    document.getElementById('prof-ins-policy').value = p.insurance_policy_number || '';
+  }
+
+  // Submit Medicine
+  async function handleAddMedicine(e) {
+    e.preventDefault();
+    const form = e.target;
+    const payload = {
+      name: form.name.value,
+      category: form.category.value,
+      form: form.form.value,
+      stock_quantity: parseInt(form.stock_quantity.value),
+      unit: form.unit.value,
+      reorder_level: parseInt(form.reorder_level.value),
+      batch_number: form.batch_number.value,
+      expiry_date: form.expiry_date.value,
+    };
+
+    try {
+      const res = await fetch('/api/health-center/medicines', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to add medicine');
+      }
+      showToast('Medicine registered in dispensary stock!', 'success');
+      setTimeout(() => window.location.href = '/health-center?tab=medicines', 800);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  // Restock Medicine Modal
+  function openRestockModal(id, name, currentStock) {
+    document.getElementById('restock-med-id').value = id;
+    document.getElementById('restock-med-name').innerText = name;
+    document.getElementById('restock-med-current').innerText = currentStock + ' units';
+    openModal('modal-restock-medicine');
+  }
+
+  async function handleRestockMedicine(e) {
+    e.preventDefault();
+    const id = document.getElementById('restock-med-id').value;
+    const qty = parseInt(document.getElementById('restock-quantity').value);
+    const reason = document.getElementById('restock-reason').value;
+
+    try {
+      const res = await fetch(`/api/health-center/medicines/${id}/stock`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity_change: qty, reason: reason }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to restock');
+      }
+      showToast('Dispensary stock updated successfully!', 'success');
+      setTimeout(() => window.location.href = '/health-center?tab=medicines', 800);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  // Issue Certificate
+  function onEncounterSelectForCert() {
+    const select = document.getElementById('cert-encounter-id');
+    const opt = select.options[select.selectedIndex];
+    if (opt && opt.dataset.diagnosis) {
+      document.getElementById('cert-diagnosis').value = opt.dataset.diagnosis;
+    }
+  }
+
+  function quickCertifyEncounter(encounterId, patientType, diagnosis) {
+    openModal('modal-issue-certificate');
+    const select = document.getElementById('cert-encounter-id');
+    select.value = encounterId;
+    document.getElementById('cert-diagnosis').value = diagnosis;
+  }
+
+  async function handleIssueCertificate(e) {
+    e.preventDefault();
+    const encounterId = parseInt(document.getElementById('cert-encounter-id').value);
+    const fromDate = document.getElementById('cert-from-date').value;
+    const toDate = document.getElementById('cert-to-date').value;
+    const resumeDate = document.getElementById('cert-resume-date').value;
+    const diagnosis = document.getElementById('cert-diagnosis').value;
+    const remarks = document.getElementById('cert-remarks').value;
+
+    try {
+      const res = await fetch('/api/health-center/certificates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          encounter_id: encounterId,
+          rest_from_date: fromDate,
+          rest_to_date: toDate,
+          fit_to_resume_date: resumeDate,
+          diagnosis_summary: diagnosis,
+          doctor_remarks: remarks || null,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to issue certificate');
+      }
+      showToast('Official medical certificate issued successfully!', 'success');
+      setTimeout(() => window.location.href = '/health-center?tab=certificates', 800);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function revokeCertificate(certId) {
+    if (!confirm('Are you sure you want to revoke this medical certificate?')) return;
+    try {
+      const res = await fetch(`/api/health-center/certificates/${certId}/revoke`, { method: 'PUT' });
+      if (!res.ok) throw new Error('Failed to revoke certificate');
+      showToast('Medical certificate revoked', 'info');
+      setTimeout(() => window.location.reload(), 600);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  // View Encounter
+  async function viewEncounterDetails(encounterId) {
+    try {
+      const res = await fetch(`/api/health-center/encounters/${encounterId}`);
+      if (!res.ok) throw new Error('Encounter details not found');
+      const e = await res.json();
+
+      let rxHtml = '<p style="color: #64748b;">No medicines prescribed.</p>';
+      if (e.prescriptions && e.prescriptions.length > 0) {
+        rxHtml = '<ul style="margin: 0; padding-left: 20px;">' +
+          e.prescriptions.map(p => `<li><strong>${p.medicine_name}</strong> - ${p.dosage} (${p.frequency}) × ${p.duration_days} days [${p.quantity_dispensed} dispensed]</li>`).join('') +
+          '</ul>';
+      }
+
+      document.getElementById('view-enc-title').innerText = `🩺 Encounter: ${e.encounter_code}`;
+      document.getElementById('view-enc-body').innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px;">
+          <div><strong>Patient:</strong> ${e.patient_name} (${e.patient_type})</div>
+          <div><strong>ID / Dept:</strong> ${e.patient_identifier || 'N/A'} • ${e.department_name || 'General'}</div>
+          <div><strong>Attending Doctor:</strong> ${e.doctor_name}</div>
+          <div><strong>Consultation Date:</strong> ${e.visit_date}</div>
+          <div><strong>Blood Group:</strong> <span class="badge-tag badge-danger">${e.blood_group || 'N/A'}</span></div>
+          <div><strong>Allergies:</strong> <span style="color: #f59e0b;">${e.allergies || 'None'}</span></div>
+        </div>
+        <p><strong>Chief Complaint:</strong> ${e.chief_complaint}</p>
+        <p><strong>Diagnosis:</strong> <span style="color: #38bdf8;">${e.diagnosis}</span></p>
+        ${e.symptoms ? `<p><strong>Symptoms:</strong> ${e.symptoms}</p>` : ''}
+        <div style="margin: 12px 0; background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.2); padding: 10px; border-radius: 6px;">
+          <strong>Vitals:</strong> BP: <code>${e.blood_pressure || 'N/A'}</code> | Pulse: <code>${e.pulse_bpm ? e.pulse_bpm + ' bpm' : 'N/A'}</code> | Temp: <code>${e.temperature_f ? e.temperature_f + '°F' : 'N/A'}</code> | Triage: <strong>${e.triage_severity}</strong>
+        </div>
+        <div style="margin-top: 14px;">
+          <h4 style="margin: 0 0 6px 0; color: #38bdf8; font-size: 0.95rem;">💊 Prescriptions:</h4>
+          ${rxHtml}
+        </div>
+        ${e.treatment_given ? `<p style="margin-top: 10px;"><strong>Treatment Given:</strong> ${e.treatment_given}</p>` : ''}
+        ${e.follow_up_date ? `<p><strong>Follow-up Date:</strong> 📅 ${e.follow_up_date}</p>` : ''}
+      `;
+      openModal('modal-view-encounter');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  // View Certificate
+  function viewCertificateDetails(c) {
+    document.getElementById('view-cert-body').innerHTML = `
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h2 style="margin: 0; color: #38bdf8; letter-spacing: 1px;">MEDICAL SICK LEAVE CERTIFICATE</h2>
+        <div style="font-family: monospace; font-size: 1.1rem; color: #f1f5f9; margin-top: 4px;">Certificate #: ${c.certificate_number}</div>
+        <div style="font-size: 0.85rem; color: #94a3b8;">Issued on: ${c.created_at.split('T')[0]} | Encounter Ref: ${c.encounter_code}</div>
+      </div>
+
+      <div style="margin: 20px 0; padding: 16px; background: rgba(255, 255, 255, 0.03); border-radius: 8px;">
+        <p style="margin: 0 0 10px 0;">
+          This is to certify that <strong>${c.patient_name}</strong> (${c.patient_type}, ID: <code>${c.patient_identifier || 'N/A'}</code>, Dept: ${c.department_name || 'General'}) was examined at the Institute Health Center.
+        </p>
+        <p style="margin: 0 0 10px 0;">
+          <strong>Clinical Diagnosis:</strong> <span style="color: #38bdf8; font-weight: 600;">${c.diagnosis_summary}</span>
+        </p>
+        <p style="margin: 0 0 10px 0;">
+          <strong>Medical Rest Recommendation:</strong> Excused from academic and institutional duties from <strong>${c.rest_from_date}</strong> to <strong>${c.rest_to_date}</strong>.
+        </p>
+        <p style="margin: 0;">
+          <strong>Fit to Resume:</strong> The patient is certified fit to resume studies/duties on <strong>${c.fit_to_resume_date}</strong>.
+        </p>
+        ${c.doctor_remarks ? `<p style="margin-top: 10px; font-style: italic; color: #cbd5e1;">Remarks: "${c.doctor_remarks}"</p>` : ''}
+      </div>
+
+      <div style="display: flex; justify-content: space-between; margin-top: 30px; padding-top: 10px;">
+        <div>
+          <div style="font-size: 0.8rem; color: #94a3b8;">Status:</div>
+          <span class="badge-tag ${c.status === 'ISSUED' ? 'badge-success' : 'badge-danger'}">${c.status}</span>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-weight: 700; color: #f8fafc;">${c.doctor_name || 'Chief Medical Officer'}</div>
+          <div style="font-size: 0.8rem; color: #94a3b8;">Attending Physician & Medical Officer</div>
+          <div style="font-size: 0.75rem; color: #64748b;">IMS Campus Health & Infirmary Services</div>
+        </div>
+      </div>
+    `;
+    openModal('modal-view-cert');
+  }
+</script>
+{% endblock %}

@@ -42,6 +42,13 @@ from src.models.course import CourseCreate, EnrollmentCreate
 from src.models.event import EventCreate, EventRegistrationCreate
 from src.models.faculty import FacultyCreate
 from src.models.finance import FeeInvoiceCreate, FeeStructureCreate, PaymentCreate
+from src.models.health import (
+    DispensaryMedicineCreate,
+    HealthProfileCreate,
+    MedicalCertificateCreate,
+    MedicalEncounterCreate,
+    PrescriptionItemCreate,
+)
 from src.models.hostel import HostelBlockCreate, HostelRoomCreate, RoomAllocationCreate
 from src.models.leave import LeaveRequestCreate, LeaveStatusUpdate
 from src.models.library import BookIssueRequest, LibraryBookCreate
@@ -71,6 +78,7 @@ from src.services.department_service import DepartmentService
 from src.services.event_service import EventService
 from src.services.faculty_service import FacultyService
 from src.services.finance_service import FinanceService
+from src.services.health_service import HealthService
 from src.services.hostel_service import HostelService
 from src.services.leave_service import LeaveService
 from src.services.library_service import LibraryService
@@ -1502,6 +1510,279 @@ def seed():
 
         print(
             "   * Campus assets, laboratory gear, circulation loans, and maintenance work orders seeded."
+        )
+
+    # 23. Seed Campus Health & Infirmary Hub
+    existing_meds = HealthService.list_dispensary_medicines(conn)
+    if not existing_meds:
+        print("\n[+] Seeding Campus Health, Infirmary & Clinical Hub...")
+
+        # Dispensary medicines
+        m_pcm = HealthService.create_dispensary_medicine(
+            conn,
+            DispensaryMedicineCreate(
+                name="Paracetamol 500mg",
+                category="ANALGESIC",
+                form="TABLET",
+                stock_quantity=450,
+                unit="Tablets",
+                reorder_level=50,
+                expiry_date=str(today + datetime.timedelta(days=450)),
+                batch_number="BATCH-2026-PCM",
+            ),
+        )
+        m_amx = HealthService.create_dispensary_medicine(
+            conn,
+            DispensaryMedicineCreate(
+                name="Amoxicillin 250mg",
+                category="ANTIBIOTIC",
+                form="CAPSULE",
+                stock_quantity=180,
+                unit="Capsules",
+                reorder_level=40,
+                expiry_date=str(today + datetime.timedelta(days=360)),
+                batch_number="BATCH-2026-AMX",
+            ),
+        )
+        m_ctz = HealthService.create_dispensary_medicine(
+            conn,
+            DispensaryMedicineCreate(
+                name="Cetirizine 10mg",
+                category="ANTIHISTAMINE",
+                form="TABLET",
+                stock_quantity=120,
+                unit="Tablets",
+                reorder_level=30,
+                expiry_date=str(today + datetime.timedelta(days=500)),
+                batch_number="BATCH-2026-CTZ",
+            ),
+        )
+        HealthService.create_dispensary_medicine(
+            conn,
+            DispensaryMedicineCreate(
+                name="Oral Rehydration Salts (ORS Sachet)",
+                category="FIRST_AID",
+                form="OTHER",
+                stock_quantity=300,
+                unit="Sachets",
+                reorder_level=60,
+                expiry_date=str(today + datetime.timedelta(days=700)),
+                batch_number="BATCH-2026-ORS",
+            ),
+        )
+        m_ibu = HealthService.create_dispensary_medicine(
+            conn,
+            DispensaryMedicineCreate(
+                name="Ibuprofen 400mg",
+                category="ANALGESIC",
+                form="TABLET",
+                stock_quantity=8,  # Below reorder level (15) to trigger low stock KPI
+                unit="Tablets",
+                reorder_level=15,
+                expiry_date=str(today + datetime.timedelta(days=280)),
+                batch_number="BATCH-2026-IBU",
+            ),
+        )
+        HealthService.create_dispensary_medicine(
+            conn,
+            DispensaryMedicineCreate(
+                name="Povidone Iodine 10% Antiseptic Ointment",
+                category="ANTISEPTIC",
+                form="OINTMENT",
+                stock_quantity=45,
+                unit="Tubes",
+                reorder_level=10,
+                expiry_date=str(today + datetime.timedelta(days=600)),
+                batch_number="BATCH-2026-PVI",
+            ),
+        )
+
+        # Health Profiles
+        if student_records and len(student_records) >= 3:
+            s0_id = student_records[0]["id"]
+            s1_id = student_records[1]["id"]
+            s2_id = student_records[2]["id"]
+
+            HealthService.create_or_update_profile(
+                conn,
+                HealthProfileCreate(
+                    person_type="STUDENT",
+                    student_id=s0_id,
+                    blood_group="O+",
+                    allergies="Penicillin, Peanuts",
+                    chronic_conditions="None",
+                    emergency_contact_name="Dr. Rajesh Sharma",
+                    emergency_contact_phone="+91 98111 22233",
+                    emergency_contact_relation="Father",
+                    insurance_provider="Star Health Student Mediclaim",
+                    insurance_policy_number="POL-SH-2026-8812",
+                ),
+            )
+            HealthService.create_or_update_profile(
+                conn,
+                HealthProfileCreate(
+                    person_type="STUDENT",
+                    student_id=s1_id,
+                    blood_group="B+",
+                    allergies="None",
+                    chronic_conditions="None",
+                    emergency_contact_name="Mrs. Sunita Verma",
+                    emergency_contact_phone="+91 98222 33344",
+                    emergency_contact_relation="Mother",
+                    insurance_provider="National Insurance Campus Shield",
+                    insurance_policy_number="POL-NIC-449102",
+                ),
+            )
+            HealthService.create_or_update_profile(
+                conn,
+                HealthProfileCreate(
+                    person_type="STUDENT",
+                    student_id=s2_id,
+                    blood_group="A-",
+                    allergies="Sulfa Drugs",
+                    chronic_conditions="Mild Bronchial Asthma",
+                    emergency_contact_name="Karan Patel",
+                    emergency_contact_phone="+91 98333 44455",
+                    emergency_contact_relation="Brother",
+                    insurance_provider="HDFC ERGO Health Suraksha",
+                    insurance_policy_number="POL-HE-990142",
+                ),
+            )
+
+        if faculty_records and len(faculty_records) >= 1:
+            f0_id = faculty_records[0]["id"]
+            HealthService.create_or_update_profile(
+                conn,
+                HealthProfileCreate(
+                    person_type="FACULTY",
+                    faculty_id=f0_id,
+                    blood_group="AB+",
+                    allergies="None",
+                    chronic_conditions="Hypertension (Controlled)",
+                    emergency_contact_name="Meera Sarabhai",
+                    emergency_contact_phone="+91 98444 55566",
+                    emergency_contact_relation="Spouse",
+                    insurance_provider="Care Health Group Scheme",
+                    insurance_policy_number="FAC-GRP-2026-001",
+                ),
+            )
+
+        # Encounters
+        if student_records and len(student_records) >= 3 and faculty_records:
+            s0_id = student_records[0]["id"]
+            s2_id = student_records[2]["id"]
+            f0_id = faculty_records[0]["id"]
+
+            enc1 = HealthService.create_encounter(
+                conn,
+                MedicalEncounterCreate(
+                    patient_type="STUDENT",
+                    student_id=s0_id,
+                    visit_date=str(today - datetime.timedelta(days=4)),
+                    doctor_name="Dr. Sarah Johnson, MD",
+                    chief_complaint="Acute febrile illness, sore throat, and severe fatigue",
+                    symptoms="High body temperature (101.4F), pharyngeal erythema, dry cough",
+                    diagnosis="Acute Viral Pharyngitis & Upper Respiratory Infection",
+                    blood_pressure="118/76",
+                    pulse_bpm=84,
+                    temperature_f=101.4,
+                    triage_severity="URGENT",
+                    treatment_given="Administered oral antipyretic, instructed on warm saline gargles",
+                    follow_up_date=str(today + datetime.timedelta(days=2)),
+                    prescriptions=[
+                        PrescriptionItemCreate(
+                            medicine_id=m_pcm["id"],
+                            medicine_name="Paracetamol 500mg",
+                            dosage="500mg",
+                            frequency="Thrice daily after meals",
+                            duration_days=4,
+                            quantity_dispensed=12,
+                        ),
+                        PrescriptionItemCreate(
+                            medicine_id=m_ctz["id"],
+                            medicine_name="Cetirizine 10mg",
+                            dosage="10mg",
+                            frequency="Once at bedtime",
+                            duration_days=5,
+                            quantity_dispensed=5,
+                        ),
+                    ],
+                ),
+            )
+
+            HealthService.create_encounter(
+                conn,
+                MedicalEncounterCreate(
+                    patient_type="STUDENT",
+                    student_id=s2_id,
+                    visit_date=str(today - datetime.timedelta(days=2)),
+                    doctor_name="Dr. Sarah Johnson, MD",
+                    chief_complaint="Post-exercise wheezing and acute bronchospasm",
+                    symptoms="Audible expiratory wheeze, tachypnea, chest tightness",
+                    diagnosis="Acute Exercise-Induced Asthma Exacerbation",
+                    blood_pressure="126/82",
+                    pulse_bpm=98,
+                    temperature_f=98.4,
+                    triage_severity="EMERGENCY",
+                    treatment_given="Immediate nebulization with Salbutamol bronchodilator; vitals monitored for 45 minutes",
+                    follow_up_date=str(today + datetime.timedelta(days=5)),
+                    prescriptions=[
+                        PrescriptionItemCreate(
+                            medicine_id=m_amx["id"],
+                            medicine_name="Amoxicillin 250mg",
+                            dosage="250mg",
+                            frequency="Twice daily",
+                            duration_days=5,
+                            quantity_dispensed=10,
+                        ),
+                    ],
+                ),
+            )
+
+            HealthService.create_encounter(
+                conn,
+                MedicalEncounterCreate(
+                    patient_type="FACULTY",
+                    faculty_id=f0_id,
+                    visit_date=str(today - datetime.timedelta(days=1)),
+                    doctor_name="Dr. Alan Turing, Chief Medical Officer",
+                    chief_complaint="Acute paraspinal lumbar spasm following lecture session",
+                    symptoms="Lower back stiffness, restricted flexion, local tenderness",
+                    diagnosis="Acute Mechanical Lumbar Strain",
+                    blood_pressure="132/84",
+                    pulse_bpm=72,
+                    temperature_f=98.6,
+                    triage_severity="NORMAL",
+                    treatment_given="Analgesic dispensation, heat therapy advice, ergonomic posture guidelines",
+                    follow_up_date=None,
+                    prescriptions=[
+                        PrescriptionItemCreate(
+                            medicine_id=m_ibu["id"],
+                            medicine_name="Ibuprofen 400mg",
+                            dosage="400mg",
+                            frequency="Twice daily after food",
+                            duration_days=3,
+                            quantity_dispensed=6,
+                        ),
+                    ],
+                ),
+            )
+
+            # Issue verifiable medical certificate for enc1
+            HealthService.issue_medical_certificate(
+                conn,
+                MedicalCertificateCreate(
+                    encounter_id=enc1["id"],
+                    rest_from_date=str(today - datetime.timedelta(days=4)),
+                    rest_to_date=str(today - datetime.timedelta(days=1)),
+                    fit_to_resume_date=str(today),
+                    diagnosis_summary="Acute Viral Pharyngitis & High Grade Pyrexia",
+                    doctor_remarks="Complete bed rest and isolation observed; certified fully fit to resume coursework and lab exams.",
+                ),
+            )
+
+        print(
+            "   * Dispensary pharmacy stock, health profiles, clinical encounters, and medical certificates seeded."
         )
 
     conn.close()

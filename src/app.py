@@ -18,6 +18,7 @@ from src.api.courses import router as courses_router
 from src.api.events import router as events_router
 from src.api.faculty import router as faculty_router
 from src.api.finance import router as finance_router
+from src.api.health_center import router as health_center_router
 from src.api.hostel import router as hostel_router
 from src.api.inventory import router as inventory_router
 from src.api.leaves import router as leaves_router
@@ -49,6 +50,7 @@ from src.services.department_service import DepartmentService
 from src.services.event_service import EventService
 from src.services.faculty_service import FacultyService
 from src.services.finance_service import FinanceService
+from src.services.health_service import HealthService
 from src.services.hostel_service import HostelService
 from src.services.leave_service import LeaveService
 from src.services.library_service import LibraryService
@@ -135,6 +137,10 @@ OPENAPI_TAGS = [
         "description": "Scientific lab instruments, computing clusters, circulation checkouts, and maintenance work orders.",
     },
     {
+        "name": "Campus Health & Infirmary",
+        "description": "Electronic health profiles, clinical consultation encounters, dispensary medicine stock, and medical leave certificates.",
+    },
+    {
         "name": "Reports & Analytics",
         "description": "Institutional intelligence, low-attendance risk sentinel (<75%), and automated CSV export engine.",
     },
@@ -171,6 +177,7 @@ app.include_router(scholarships_router)
 app.include_router(alumni_router)
 app.include_router(events_router)
 app.include_router(inventory_router)
+app.include_router(health_center_router)
 
 
 # Ensure directories exist and mount static assets
@@ -873,3 +880,47 @@ def view_inventory_page(
             "search": search or "",
         },
     )
+
+
+@app.get("/health-center", response_class=HTMLResponse, tags=["Web"])
+def view_health_center_page(
+    request: Request,
+    tab: str = "encounters",
+    triage: Optional[str] = None,
+    patient_type: Optional[str] = None,
+    search: Optional[str] = None,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Render campus health center, clinical consultations, and infirmary dispensary hub."""
+    encounters = HealthService.list_encounters(
+        conn,
+        patient_type=patient_type,
+        triage_severity=triage,
+        search=search,
+        limit=100,
+    )
+    profiles = HealthService.list_profiles(conn, search=search)
+    medicines = HealthService.list_dispensary_medicines(conn, search=search)
+    certificates = HealthService.list_medical_certificates(conn, search=search)
+    stats = HealthService.get_health_stats(conn)
+    students = StudentService.list_students(conn)
+    faculty_list = FacultyService.list_faculty(conn)
+    return templates.TemplateResponse(
+        request=request,
+        name="health_center.html",
+        context={
+            "active_page": "health_center",
+            "tab": tab,
+            "encounters": encounters,
+            "profiles": profiles,
+            "medicines": medicines,
+            "certificates": certificates,
+            "stats": stats,
+            "students": students,
+            "faculty": faculty_list,
+            "selected_triage": triage,
+            "selected_type": patient_type,
+            "search": search or "",
+        },
+    )
+

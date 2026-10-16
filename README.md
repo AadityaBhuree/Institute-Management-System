@@ -3,13 +3,13 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-WAL%20Mode-003B57.svg?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
-[![Tests](https://img.shields.io/badge/Pytest-132%2F132%20Passing-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Pytest-162%2F162%20Passing-success.svg)](tests/)
 [![CI](https://github.com/AadityaBhuree/Institute-Management-System/actions/workflows/ci.yml/badge.svg)](https://github.com/AadityaBhuree/Institute-Management-System/actions/workflows/ci.yml)
 [![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED.svg?logo=docker&logoColor=white)](Dockerfile)
 [![Code Style](https://img.shields.io/badge/Linter-Ruff%20Clean-black.svg)](pyproject.toml)
 [![Architecture](https://img.shields.io/badge/Architecture-Clean%20%2F%20Layered-indigo.svg)](src/)
 
-A modern, high-performance, and modular educational administration platform built with **FastAPI**, **SQLite** (WAL mode), and a responsive **Glassmorphism Web Dashboard**. Engineered for academic institutions, colleges, and university divisions to automate admissions, course scheduling, attendance registries, academic grading, bursar financial audits, lecture timetables, campus bulletins, library circulation, residential hostels, corporate placement drives, transport fleet transit logistics, scholarship grants, and alumni mentorship networks.
+A modern, high-performance, and modular educational administration platform built with **FastAPI**, **SQLite** (WAL mode), and a responsive **Glassmorphism Web Dashboard**. Engineered for academic institutions, colleges, and university divisions to automate admissions, course scheduling, attendance registries, academic grading, bursar financial audits, lecture timetables, campus bulletins, library circulation, residential hostels, corporate placement drives, transport fleet transit logistics, scholarship grants, alumni mentorship networks, scientific laboratory equipment circulation, and student infirmary healthcare services.
 
 ---
 
@@ -29,6 +29,8 @@ A modern, high-performance, and modular educational administration platform buil
 * **Scholarships, Grants & Financial Aid:** Institutional and endowment schemes, automated GPA and family income eligibility gating, bursar review decisions, and grant disbursement tracking (`/scholarships`).
 * **Alumni Network & Career Mentorship:** Graduate directory, cohort filtering, industry roles, student mentorship requests, and career guidance session tracking (`/alumni`).
 * **Campus Events & Symposiums Hub:** Institutional conferences, workshops, technical hackathons, guest lectures, scholar registrations with capacity enforcement, attendee tracking, and digital verifiable certificate issuance (`/events`).
+* **Campus Assets & Lab Equipment Hub:** Scientific lab instruments, computing clusters, circulation loans, return condition inspection, and maintenance work orders (`/inventory`).
+* **Campus Health & Infirmary Hub:** Electronic consultation encounters, vital signs, emergency contacts, blood group/allergy registry, dispensary pharmacy stock, and verifiable medical certificates (`/health-center`).
 * **Student & Faculty Portals:** Scholar self-service academic dossier (`/portal`), faculty teaching workbench (`/faculty-portal`), institutional reports & `< 75%` attendance risk sentinel (`/reports`), and official printable transcripts.
 * **Institutional Reports & CSV Data Engine:** Real-time attendance risk sentinel (< 75%), grade distributions, fiscal recovery audits, and streaming CSV downloads for scholar directories, attendance telemetry, and financial audit ledgers.
 * **Sleek Enterprise UX:** Vanilla CSS glassmorphic theme (`#090d16` & `#0f172a`), interactive modals, responsive sidebar, toast notifications, and KPI overview cards.
@@ -77,7 +79,9 @@ Institute Management System/
 │   │   ├── events.py               # Campus events, symposiums, and registration endpoints
 │   │   ├── faculty.py              # Faculty directory endpoints
 │   │   ├── finance.py              # Invoicing, receipts, and audit endpoints
+│   │   ├── health_center.py        # Clinical encounters, dispensary, and medical certificates
 │   │   ├── hostel.py               # Residential halls and bed allocation endpoints
+│   │   ├── inventory.py            # Laboratory equipment and asset circulation endpoints
 │   │   ├── leaves.py               # Leave application and approval endpoints
 │   │   ├── library.py              # Campus library and loan circulation endpoints
 │   │   ├── placements.py           # Corporate recruitment and hiring drive endpoints
@@ -91,16 +95,18 @@ Institute Management System/
 │   ├── database/
 │   │   ├── connection.py           # SQLite connection pool and atomic transaction contexts
 │   │   ├── init_db.py              # Schema deployment and seed verification
-│   │   └── schema.sql              # Relational DDL schema with 21 tables & 30 indexes
+│   │   └── schema.sql              # Relational DDL schema with 28 tables & 46 indexes
 │   ├── models/                     # Strongly-typed Pydantic schemas (v2)
 │   │   ├── academics.py            # Attendance and exam request/response schemas
 │   │   ├── alumni.py               # Alumni member and mentorship schemas
 │   │   ├── announcement.py         # Campus bulletin schemas
+│   │   ├── asset.py                # Asset, checkout, and maintenance schemas
 │   │   ├── course.py               # Course and enrollment schemas
 │   │   ├── department.py           # Department schemas
 │   │   ├── event.py                # Event and attendee registration schemas
 │   │   ├── faculty.py              # Faculty schemas
 │   │   ├── finance.py              # Fee structure, invoice, and payment schemas
+│   │   ├── health.py               # Health profile, encounter, and dispensary schemas
 │   │   ├── hostel.py               # Residential block and allocation schemas
 │   │   ├── leave.py                # Leave petition and review schemas
 │   │   ├── library.py              # Library book and loan schemas
@@ -113,12 +119,14 @@ Institute Management System/
 │   │   ├── academics_service.py    # Attendance and exam evaluation logic
 │   │   ├── alumni_service.py       # Alumni directory and mentorship matchmaking logic
 │   │   ├── announcement_service.py # Bulletin CRUD and priority query logic
+│   │   ├── asset_service.py        # Asset circulation, loans, and repair orders
 │   │   ├── course_service.py       # Course scheduling and capacity enforcement
 │   │   ├── dashboard_service.py    # Executive KPI metric aggregations
 │   │   ├── department_service.py   # Department operations
 │   │   ├── event_service.py        # Event management and attendee capacity logic
 │   │   ├── faculty_service.py      # Faculty management & teaching workbench
 │   │   ├── finance_service.py      # Invoicing, receipts, and ledger audit
+│   │   ├── health_service.py       # Clinical consultations, dispensary, and certificates
 │   │   ├── hostel_service.py       # Residential hall and room allocation logic
 │   │   ├── leave_service.py        # Absence petitions and approval workflows
 │   │   ├── library_service.py      # Book circulation and loan inventory logic
@@ -130,11 +138,7 @@ Institute Management System/
 │   │   ├── timetable_service.py    # Timetable matrix and collision avoidance logic
 │   │   └── transport_service.py    # Fleet route, vehicle, and transit pass logic
 │   └── app.py                      # FastAPI application, static mounting, and page routes
-├── static/
-│   ├── css/
-│   │   └── style.css               # Design system: Glassmorphism, animations, toast rules
-│   └── js/
-│       └── app.js                  # Frontend utilities, modal handlers, and toast notifications
+│   └── ...
 ├── templates/                      # Jinja2 SSR Templates
 │   ├── academics.html              # Attendance register and exam grading hub
 │   ├── alumni.html                 # Alumni network and career mentorship hub
@@ -145,7 +149,9 @@ Institute Management System/
 │   ├── events.html                 # Campus events and symposiums hub
 │   ├── faculty_portal.html         # Faculty instructor workbench
 │   ├── finance.html                # Invoicing, payment collection, and audit ledger
+│   ├── health_center.html          # Campus clinic, dispensary, and infirmary hub
 │   ├── hostel.html                 # Hostel and residential hall housing portal
+│   ├── inventory.html              # Campus assets and laboratory equipment hub
 │   ├── leaves.html                 # Leave management and absence approval portal
 │   ├── library.html                # Campus library catalog and loan circulation
 │   ├── placements.html             # Corporate placements and recruitment cell
@@ -158,7 +164,7 @@ Institute Management System/
 │   ├── students.html               # Admissions and student registry directory
 │   ├── timetable.html              # Weekly academic lecture timetable matrix
 │   └── transport.html              # Campus transport fleet and transit pass hub
-├── tests/                          # Automated Pytest validation suite (132 tests)
+├── tests/                          # Automated Pytest validation suite (162 tests)
 │   ├── conftest.py                 # Isolated test database runner
 │   ├── test_academics_api.py       # Attendance and examination API test cases
 │   ├── test_alumni_api.py          # Alumni network and mentorship test cases
@@ -167,7 +173,9 @@ Institute Management System/
 │   ├── test_courses_and_faculty.py # Course catalog and faculty test cases
 │   ├── test_events_api.py          # Campus events and attendee test cases
 │   ├── test_finance_api.py         # Invoices, receipts, and printable receipt tests
+│   ├── test_health_center_api.py   # Clinic encounters, dispensary, and cert tests
 │   ├── test_hostel_api.py          # Hostel blocks and bed allocation test cases
+│   ├── test_inventory_api.py       # Campus assets and lab equipment test cases
 │   ├── test_leaves_api.py          # Leave application and approval test cases
 │   ├── test_library_api.py         # Library monographs and loan test cases
 │   ├── test_placements_api.py      # Campus placements and hiring drive test cases
@@ -334,6 +342,36 @@ Institute Management System/
 | `PUT` | `/api/events/registrations/{id}/status`| Update attendance status and issue verifiable certificate |
 | `GET` | `/api/events/stats` | Event telemetry (total, upcoming, registrations, certs) |
 
+### 🔬 Campus Assets, Lab Equipment & Inventory Hub
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/inventory/assets` | Register lab instrument or equipment with sequential tag (`AST-DEPT-YYYY-XXXX`) |
+| `GET` | `/api/inventory/assets` | List campus equipment with category, room, and status filters |
+| `GET` | `/api/inventory/assets/{id}` | Retrieve individual asset equipment dossier |
+| `PUT` | `/api/inventory/assets/{id}` | Update equipment room, status, or warranty |
+| `POST` | `/api/inventory/checkouts` | Issue equipment loan checkout to scholar or faculty |
+| `PUT` | `/api/inventory/checkouts/{id}/return` | Check in returned equipment with condition grading (Auto-triggers repair if damaged) |
+| `POST` | `/api/inventory/maintenance` | Issue scheduled maintenance or calibration work order (`MNT-YYYY-XXXX`) |
+| `PUT` | `/api/inventory/maintenance/{id}/status`| Update maintenance stage (IN_PROGRESS, COMPLETED) |
+| `GET` | `/api/inventory/assets/stats` | Inventory telemetry (total assets, checked out, maintenance, valuation) |
+
+### 🏥 Campus Health, Student Clinic & Infirmary Hub
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/health-center/profiles` | Register or update student/faculty health profile with blood group & allergies |
+| `GET` | `/api/health-center/profiles` | List health profiles with blood group, allergy, and search filters |
+| `GET` | `/api/health-center/profiles/{type}/{id}` | Retrieve individual medical profile by student or faculty ID |
+| `POST` | `/api/health-center/medicines` | Catalog dispensary medicine batch with reorder thresholds (`MED-STK-XXXX`) |
+| `GET` | `/api/health-center/medicines` | List dispensary medicines with low-stock warning indicators |
+| `PUT` | `/api/health-center/medicines/{id}/stock` | Restock or adjust dispensary medicine inventory |
+| `POST` | `/api/health-center/encounters` | Log clinical consultation encounter, record vital signs, and dispense prescriptions |
+| `GET` | `/api/health-center/encounters` | Query medical encounter records with triage severity and patient type filters |
+| `GET` | `/api/health-center/encounters/{id}` | Retrieve encounter dossier with vital signs and prescription items |
+| `POST` | `/api/health-center/certificates` | Issue verifiable medical sick leave certificate (`MED-YYYY-XXXX`) |
+| `GET` | `/api/health-center/certificates` | Query issued medical sick leave certificates |
+| `PUT` | `/api/health-center/certificates/{id}/revoke`| Revoke active medical certificate |
+| `GET` | `/api/health-center/stats` | Clinic health telemetry (encounters, sick leaves, low stock alerts) |
+
 ### 📊 Institutional Reports & CSV Exports
 | Method | Endpoint | Description |
 |---|---|---|
@@ -402,6 +440,8 @@ Open **[http://localhost:8000](http://localhost:8000)** in your browser:
 * **Scholarships & Financial Aid:** `http://localhost:8000/scholarships`
 * **Alumni Mentorship Network:** `http://localhost:8000/alumni`
 * **Campus Events & Symposiums:** `http://localhost:8000/events`
+* **Assets & Lab Equipment:** `http://localhost:8000/inventory`
+* **Campus Clinic & Infirmary:** `http://localhost:8000/health-center`
 * **Fee Invoicing & Bursar Audit:** `http://localhost:8000/finance`
 * **Institutional Reports & Sentinel:** `http://localhost:8000/reports`
 * **System Settings & Hot Backup:** `http://localhost:8000/settings`
@@ -415,7 +455,7 @@ Open **[http://localhost:8000](http://localhost:8000)** in your browser:
 The test suite runs with isolated SQLite databases in temporary environments via pytest fixtures:
 
 ```bash
-# Run all 132 automated unit and integration tests
+# Run all 162 automated unit and integration tests
 pytest tests/ -v
 
 # Run Ruff linter to confirm clean code hygiene

@@ -558,4 +558,124 @@ CREATE INDEX IF NOT EXISTS idx_asset_maint_code ON asset_maintenance(maintenance
 CREATE INDEX IF NOT EXISTS idx_asset_maint_asset ON asset_maintenance(asset_id);
 CREATE INDEX IF NOT EXISTS idx_asset_maint_status ON asset_maintenance(status);
 
+-- 23. Campus Health, Student Clinic & Infirmary Hub
+CREATE TABLE IF NOT EXISTS health_profiles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    person_type TEXT NOT NULL CHECK(person_type IN ('STUDENT', 'FACULTY')),
+    student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
+    faculty_id INTEGER REFERENCES faculty(id) ON DELETE CASCADE,
+    blood_group TEXT NOT NULL CHECK(blood_group IN ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-')),
+    allergies TEXT NOT NULL DEFAULT 'None',
+    chronic_conditions TEXT NOT NULL DEFAULT 'None',
+    emergency_contact_name TEXT NOT NULL,
+    emergency_contact_phone TEXT NOT NULL,
+    emergency_contact_relation TEXT NOT NULL DEFAULT 'Parent',
+    insurance_provider TEXT,
+    insurance_policy_number TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CHECK (
+        (person_type = 'STUDENT' AND student_id IS NOT NULL AND faculty_id IS NULL) OR
+        (person_type = 'FACULTY' AND faculty_id IS NOT NULL AND student_id IS NULL)
+    ),
+    UNIQUE(student_id),
+    UNIQUE(faculty_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_health_profiles_student ON health_profiles(student_id);
+CREATE INDEX IF NOT EXISTS idx_health_profiles_faculty ON health_profiles(faculty_id);
+CREATE INDEX IF NOT EXISTS idx_health_profiles_blood ON health_profiles(blood_group);
+CREATE INDEX IF NOT EXISTS idx_health_profiles_type ON health_profiles(person_type);
+
+CREATE TABLE IF NOT EXISTS dispensary_medicines (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_code TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL CHECK(category IN ('ANALGESIC', 'ANTIBIOTIC', 'ANTIHISTAMINE', 'ANTISEPTIC', 'ANTACID', 'FIRST_AID', 'SUPPLEMENT', 'OTHER')),
+    form TEXT NOT NULL DEFAULT 'TABLET' CHECK(form IN ('TABLET', 'CAPSULE', 'SYRUP', 'OINTMENT', 'INJECTION', 'BANDAGE', 'DROPS')),
+    stock_quantity INTEGER NOT NULL DEFAULT 0 CHECK(stock_quantity >= 0),
+    unit TEXT NOT NULL DEFAULT 'Units',
+    reorder_level INTEGER NOT NULL DEFAULT 10 CHECK(reorder_level >= 0),
+    expiry_date DATE NOT NULL,
+    batch_number TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_dispensary_code ON dispensary_medicines(item_code);
+CREATE INDEX IF NOT EXISTS idx_dispensary_category ON dispensary_medicines(category);
+CREATE INDEX IF NOT EXISTS idx_dispensary_stock ON dispensary_medicines(stock_quantity);
+
+CREATE TABLE IF NOT EXISTS medical_encounters (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    encounter_code TEXT NOT NULL UNIQUE,
+    patient_type TEXT NOT NULL CHECK(patient_type IN ('STUDENT', 'FACULTY')),
+    student_id INTEGER REFERENCES students(id) ON DELETE SET NULL,
+    faculty_id INTEGER REFERENCES faculty(id) ON DELETE SET NULL,
+    visit_date DATE NOT NULL,
+    doctor_name TEXT NOT NULL,
+    chief_complaint TEXT NOT NULL,
+    symptoms TEXT,
+    diagnosis TEXT NOT NULL,
+    blood_pressure TEXT,
+    pulse_bpm INTEGER CHECK(pulse_bpm IS NULL OR (pulse_bpm > 0 AND pulse_bpm < 300)),
+    temperature_f REAL CHECK(temperature_f IS NULL OR (temperature_f > 80.0 AND temperature_f < 115.0)),
+    triage_severity TEXT NOT NULL DEFAULT 'NORMAL' CHECK(triage_severity IN ('NORMAL', 'URGENT', 'EMERGENCY')),
+    treatment_given TEXT,
+    follow_up_date DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CHECK (
+        (patient_type = 'STUDENT' AND student_id IS NOT NULL AND faculty_id IS NULL) OR
+        (patient_type = 'FACULTY' AND faculty_id IS NOT NULL AND student_id IS NULL)
+    )
+);
+
+CREATE INDEX IF NOT EXISTS idx_encounters_code ON medical_encounters(encounter_code);
+CREATE INDEX IF NOT EXISTS idx_encounters_student ON medical_encounters(student_id);
+CREATE INDEX IF NOT EXISTS idx_encounters_faculty ON medical_encounters(faculty_id);
+CREATE INDEX IF NOT EXISTS idx_encounters_date ON medical_encounters(visit_date);
+CREATE INDEX IF NOT EXISTS idx_encounters_triage ON medical_encounters(triage_severity);
+CREATE INDEX IF NOT EXISTS idx_encounters_type ON medical_encounters(patient_type);
+
+CREATE TABLE IF NOT EXISTS encounter_prescriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    encounter_id INTEGER NOT NULL REFERENCES medical_encounters(id) ON DELETE CASCADE,
+    medicine_id INTEGER REFERENCES dispensary_medicines(id) ON DELETE SET NULL,
+    medicine_name TEXT NOT NULL,
+    dosage TEXT NOT NULL,
+    frequency TEXT NOT NULL,
+    duration_days INTEGER NOT NULL DEFAULT 3 CHECK(duration_days > 0),
+    quantity_dispensed INTEGER NOT NULL DEFAULT 1 CHECK(quantity_dispensed >= 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_prescriptions_encounter ON encounter_prescriptions(encounter_id);
+CREATE INDEX IF NOT EXISTS idx_prescriptions_med ON encounter_prescriptions(medicine_id);
+
+CREATE TABLE IF NOT EXISTS medical_certificates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    certificate_number TEXT NOT NULL UNIQUE,
+    encounter_id INTEGER NOT NULL REFERENCES medical_encounters(id) ON DELETE RESTRICT,
+    patient_type TEXT NOT NULL CHECK(patient_type IN ('STUDENT', 'FACULTY')),
+    student_id INTEGER REFERENCES students(id) ON DELETE SET NULL,
+    faculty_id INTEGER REFERENCES faculty(id) ON DELETE SET NULL,
+    rest_from_date DATE NOT NULL,
+    rest_to_date DATE NOT NULL,
+    fit_to_resume_date DATE NOT NULL,
+    diagnosis_summary TEXT NOT NULL,
+    doctor_remarks TEXT,
+    status TEXT NOT NULL DEFAULT 'ISSUED' CHECK(status IN ('ISSUED', 'REVOKED')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CHECK (
+        (patient_type = 'STUDENT' AND student_id IS NOT NULL AND faculty_id IS NULL) OR
+        (patient_type = 'FACULTY' AND faculty_id IS NOT NULL AND student_id IS NULL)
+    )
+);
+
+CREATE INDEX IF NOT EXISTS idx_med_cert_num ON medical_certificates(certificate_number);
+CREATE INDEX IF NOT EXISTS idx_med_cert_encounter ON medical_certificates(encounter_id);
+CREATE INDEX IF NOT EXISTS idx_med_cert_student ON medical_certificates(student_id);
+CREATE INDEX IF NOT EXISTS idx_med_cert_faculty ON medical_certificates(faculty_id);
+CREATE INDEX IF NOT EXISTS idx_med_cert_status ON medical_certificates(status);
+
+
 

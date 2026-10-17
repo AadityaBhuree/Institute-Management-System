@@ -47,6 +47,7 @@ class StudentOut(StudentBase):
     admission_date: str
     department_name: Optional[str] = None
     department_code: Optional[str] = None
+    is_deleted: bool = False
     created_at: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

@@ -58,6 +58,19 @@ def test_health_check_endpoint(client):
     assert "db_path" not in data
 
 
+def test_cors_headers(client):
+    """Verify CORS headers are returned for allowed origins."""
+    response = client.options(
+        "/api/health",
+        headers={
+            "Origin": "http://localhost:8000",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:8000"
+
+
 def test_departments_api(client):
     """Verify listing departments."""
     response = client.get("/api/departments")

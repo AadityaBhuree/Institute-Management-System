@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -30,6 +31,7 @@ from src.api.students import router as students_router
 from src.api.timetable import router as timetable_router
 from src.api.transport import router as transport_router
 from src.core.config import (
+    ALLOWED_ORIGINS,
     APP_DESCRIPTION,
     APP_NAME,
     APP_VERSION,
@@ -156,6 +158,15 @@ app = FastAPI(
     version=APP_VERSION,
     lifespan=lifespan,
     openapi_tags=OPENAPI_TAGS,
+)
+
+# Cross-Origin Resource Sharing (CORS)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Mount API Routers

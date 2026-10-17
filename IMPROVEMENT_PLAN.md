@@ -539,16 +539,16 @@ All 18 core modules, student/faculty portals, dashboard KPIs, CSV exports, print
 
 ---
 
-### Phase 1 — Critical Fixes
+### Phase 1 — Critical Fixes (COMPLETED ✅)
 **Goal:** Fix security blockers and data integrity risks.
 
 **Tasks:**
-1. **Remove hardcoded secret key** — require `SECRET_KEY` env var, add `.env.example`
-2. **Fix SQL injection** in `system_service.py` — quote table identifiers
-3. **Remove `db_path` from health check** response
-4. **Implement soft-delete** for students (add `is_deleted` flag, modify queries)
-5. **Add CORS middleware** with configurable origins
-6. **Add basic rate limiting** with `slowapi`
+1. **Remove hardcoded secret key** — require `SECRET_KEY` env var, add `.env.example` ✅ (Configured `.env` loader, `.env.example`, and strict validation)
+2. **Fix SQL injection** in `system_service.py` — quote table identifiers ✅ (Strict alphanumeric whitelist & quoted identifier execution)
+3. **Remove `db_path` from health check** response ✅ (Cleaned `/api/health` output, added test assertion)
+4. **Implement soft-delete** for students (add `is_deleted` flag, modify queries) ✅ (Added `is_deleted` column, migration in `init_db.py`, updated service queries, added verification tests)
+5. **Add CORS middleware** with configurable origins ✅ (Added `CORSMiddleware` with `ALLOWED_ORIGINS` config and preflight test)
+6. **Add basic rate limiting** with `slowapi` ✅ (Added `slowapi` dependency, configured limiter on app, added 429 enforcement tests)
 
 ---
 

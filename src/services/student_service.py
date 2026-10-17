@@ -33,11 +33,11 @@ class StudentService:
             SELECT
                 s.id, s.enrollment_no, s.first_name, s.last_name, s.email, s.phone,
                 s.dob, s.gender, s.blood_group, s.address, s.emergency_contact,
-                s.department_id, s.current_semester, s.admission_date, s.status, s.created_at,
+                s.department_id, s.current_semester, s.admission_date, s.status, s.is_deleted, s.created_at,
                 d.name AS department_name, d.code AS department_code
             FROM students s
             JOIN departments d ON s.department_id = d.id
-            WHERE 1=1
+            WHERE s.is_deleted = 0
         """
         params: List[Any] = []
 
@@ -75,11 +75,11 @@ class StudentService:
             SELECT
                 s.id, s.enrollment_no, s.first_name, s.last_name, s.email, s.phone,
                 s.dob, s.gender, s.blood_group, s.address, s.emergency_contact,
-                s.department_id, s.current_semester, s.admission_date, s.status, s.created_at,
+                s.department_id, s.current_semester, s.admission_date, s.status, s.is_deleted, s.created_at,
                 d.name AS department_name, d.code AS department_code
             FROM students s
             JOIN departments d ON s.department_id = d.id
-            WHERE s.id = ?;
+            WHERE s.id = ? AND s.is_deleted = 0;
             """,
             (student_id,),
         )
@@ -165,15 +165,21 @@ class StudentService:
 
     @staticmethod
     def delete(conn: sqlite3.Connection, student_id: int) -> bool:
+        """Soft-delete a student record, preserving historical financial and academic ledgers."""
         with transaction(conn) as cursor:
-            cursor.execute("DELETE FROM students WHERE id = ?;", (student_id,))
+            cursor.execute(
+                "UPDATE students SET is_deleted = 1, status = 'WITHDRAWN' WHERE id = ? AND is_deleted = 0;",
+                (student_id,),
+            )
             deleted = cursor.rowcount > 0
         return deleted
 
     @staticmethod
     def get_stats(conn: sqlite3.Connection) -> Dict[str, Any]:
         cursor = conn.cursor()
-        cursor.execute("SELECT status, COUNT(*) AS count FROM students GROUP BY status;")
+        cursor.execute(
+            "SELECT status, COUNT(*) AS count FROM students WHERE is_deleted = 0 GROUP BY status;"
+        )
         status_counts = {r["status"]: r["count"] for r in cursor.fetchall()}
         cursor.close()
         return status_counts

@@ -53,6 +53,17 @@ def init_database(db_path: Path | str | None = None) -> None:
 
         # Ensure default departments exist
         with transaction(conn) as cursor:
+            # Migration check: Ensure students table has is_deleted column
+            cursor.execute("PRAGMA table_info(students);")
+            cols = [col["name"] for col in cursor.fetchall()]
+            if cols and "is_deleted" not in cols:
+                cursor.execute(
+                    "ALTER TABLE students ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT 0;"
+                )
+                cursor.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_students_is_deleted ON students(is_deleted);"
+                )
+
             for code, name, desc in DEFAULT_DEPARTMENTS:
                 cursor.execute(
                     """

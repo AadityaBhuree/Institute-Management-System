@@ -151,9 +151,23 @@ def test_delete_student(client):
     del_res = client.delete(f"/api/students/{temp_id}")
     assert del_res.status_code == 200
 
-    # Ensure student is gone
+    # Ensure student is gone from active API
     get_res = client.get(f"/api/students/{temp_id}")
     assert get_res.status_code == 404
+
+    # Ensure student record is preserved in database with is_deleted=1
+    from src.database.connection import get_connection
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, is_deleted, status FROM students WHERE id = ?;", (temp_id,))
+    row = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    assert row is not None
+    assert row["is_deleted"] == 1
+    assert row["status"] == "WITHDRAWN"
 
 
 def test_view_students_html_page(client):

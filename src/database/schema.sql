@@ -59,8 +59,11 @@ CREATE TABLE IF NOT EXISTS students (
     current_semester INTEGER NOT NULL DEFAULT 1 CHECK(current_semester BETWEEN 1 AND 8),
     admission_date DATE NOT NULL,
     status TEXT NOT NULL DEFAULT 'ENROLLED' CHECK(status IN ('ENROLLED', 'PENDING', 'PROBATION', 'SUSPENDED', 'GRADUATED', 'WITHDRAWN')),
+    is_deleted BOOLEAN NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_students_is_deleted ON students(is_deleted);
 
 -- 5. Course Enrollments
 CREATE TABLE IF NOT EXISTS course_enrollments (

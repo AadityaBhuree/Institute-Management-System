@@ -201,3 +201,40 @@ def test_view_settings_html_page(client):
     assert "Database Backup Engine" in html
     assert "Academic Departments" in html
     assert "Relational Schema Telemetry" in html
+
+
+def test_rate_limiter_configuration():
+    """Verify that the slowapi rate limiter is properly mounted on FastAPI app."""
+    from src.app import app
+
+    assert hasattr(app.state, "limiter")
+    assert app.state.limiter is not None
+
+
+def test_rate_limiting_enforcement():
+    """Verify rate limiting triggers HTTP 429 Too Many Requests when threshold is exceeded."""
+    from fastapi import FastAPI, Request
+    from fastapi.testclient import TestClient
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.middleware import SlowAPIMiddleware
+    from slowapi.util import get_remote_address
+
+    test_app = FastAPI()
+    test_limiter = Limiter(key_func=get_remote_address, default_limits=["2/minute"], enabled=True)
+    test_app.state.limiter = test_limiter
+    test_app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    test_app.add_middleware(SlowAPIMiddleware)
+
+    @test_app.get("/test-limited")
+    @test_limiter.limit("2/minute")
+    def limited_endpoint(request: Request):
+        return {"status": "ok"}
+
+    with TestClient(test_app) as tc:
+        r1 = tc.get("/test-limited")
+        assert r1.status_code == 200
+        r2 = tc.get("/test-limited")
+        assert r2.status_code == 200
+        r3 = tc.get("/test-limited")
+        assert r3.status_code == 429

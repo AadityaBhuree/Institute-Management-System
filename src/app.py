@@ -11,6 +11,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 from src.api.academics import router as academics_router
 from src.api.alumni import router as alumni_router
@@ -35,6 +39,8 @@ from src.core.config import (
     APP_DESCRIPTION,
     APP_NAME,
     APP_VERSION,
+    RATE_LIMIT_DEFAULT,
+    RATE_LIMIT_ENABLED,
     STATIC_DIR,
     TEMPLATES_DIR,
 )
@@ -159,6 +165,16 @@ app = FastAPI(
     lifespan=lifespan,
     openapi_tags=OPENAPI_TAGS,
 )
+
+# Global Rate Limiting
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=[RATE_LIMIT_DEFAULT],
+    enabled=RATE_LIMIT_ENABLED,
+)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # Cross-Origin Resource Sharing (CORS)
 app.add_middleware(

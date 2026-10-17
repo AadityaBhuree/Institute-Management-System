@@ -15,6 +15,7 @@ def setup_test_db(tmp_path_factory):
     test_db = temp_dir / "test_institute.db"
     os.environ["IMS_DB_PATH"] = str(test_db)
     os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest-session-only")
+    os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
     # Re-initialize config and schema
     import src.core.config as config

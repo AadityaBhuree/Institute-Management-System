@@ -65,6 +65,7 @@ ALLOWED_ORIGINS = [
 ]
 
 # Rate Limiting
+RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() in ("true", "1", "yes")
 RATE_LIMIT_DEFAULT = os.getenv("RATE_LIMIT_DEFAULT", "100/minute")
 
 STATIC_DIR = BASE_DIR / "static"

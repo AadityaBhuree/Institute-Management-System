@@ -527,15 +527,15 @@ All 18 core modules, student/faculty portals, dashboard KPIs, CSV exports, print
 
 ---
 
-### Phase 0 — Baseline & Safety
+### Phase 0 — Baseline & Safety (COMPLETED ✅)
 **Goal:** Verify the project runs, record current state, establish a safe starting point.
 
 **Tasks:**
-1. Verify project runs locally (`uvicorn src.app:app`)
-2. Run full test suite — confirm 162/162 passing ✅ (already verified)
-3. Run linter — confirm clean ✅ (already verified)
-4. Create Git tag/branch: `baseline-v1.0.0`
-5. Document current behavior as baseline
+1. Verify project runs locally (`src.app:app` lifespan, `/api/health`, `/`, `/students`) ✅ (Verified: HTTP 200 on all endpoints)
+2. Run full test suite — confirm 162/162 passing ✅ (Verified: 162/162 passed in 4.07s)
+3. Run linter & formatter — confirm clean ✅ (Verified: Ruff check passed, formatting normalized)
+4. Create Git tag: `v1.0.0-baseline` ✅ (Created annotated tag `v1.0.0-baseline`)
+5. Document current behavior as baseline ✅ (Recorded: 18 modules, single-role admin, raw sqlite3 connections)
 
 ---
 

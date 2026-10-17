@@ -55,6 +55,7 @@ def test_health_check_endpoint(client):
     assert data["status"] == "healthy"
     assert data["database"] == "connected"
     assert "Institute Management System" in data["app"]
+    assert "db_path" not in data
 
 
 def test_departments_api(client):

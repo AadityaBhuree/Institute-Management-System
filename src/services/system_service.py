@@ -39,8 +39,11 @@ class SystemService:
 
         table_stats: Dict[str, int] = {}
         for tbl in tables:
+            # Validate table identifier strictly to eliminate SQL injection risk
+            if not tbl.replace("_", "").isalnum():
+                continue
             try:
-                cursor.execute(f"SELECT COUNT(*) AS total FROM {tbl};")
+                cursor.execute(f'SELECT COUNT(*) AS total FROM "{tbl}";')
                 table_stats[tbl] = cursor.fetchone()["total"]
             except Exception:
                 table_stats[tbl] = 0

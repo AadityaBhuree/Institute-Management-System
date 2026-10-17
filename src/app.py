@@ -33,7 +33,6 @@ from src.core.config import (
     APP_DESCRIPTION,
     APP_NAME,
     APP_VERSION,
-    DB_PATH,
     STATIC_DIR,
     TEMPLATES_DIR,
 )
@@ -200,7 +199,6 @@ def health_check(conn: sqlite3.Connection = Depends(get_db)) -> dict:
         "app": APP_NAME,
         "version": APP_VERSION,
         "database": "connected" if result == 1 else "unhealthy",
-        "db_path": str(DB_PATH),
     }
 
 

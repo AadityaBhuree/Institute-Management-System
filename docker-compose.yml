@@ -12,7 +12,7 @@ services:
     environment:
       - IMS_DB_PATH=/app/data/ims.db
       - DEBUG=false
-      - SECRET_KEY=ims_production_secure_token_secret_key_2026
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY environment variable is required}
     volumes:
       - ./data:/app/data
     healthcheck:

@@ -62,7 +62,9 @@ class HealthService:
         while cursor.fetchone():
             count += 1
             num = f"MED-{year}-{count:04d}"
-            cursor.execute("SELECT id FROM medical_certificates WHERE certificate_number = ?;", (num,))
+            cursor.execute(
+                "SELECT id FROM medical_certificates WHERE certificate_number = ?;", (num,)
+            )
         cursor.close()
         return num
 
@@ -95,13 +97,17 @@ class HealthService:
         """Create or update a student/faculty health profile."""
         cursor = conn.cursor()
         if data.person_type == "STUDENT":
-            cursor.execute("SELECT id, first_name, last_name FROM students WHERE id = ?;", (data.student_id,))
+            cursor.execute(
+                "SELECT id, first_name, last_name FROM students WHERE id = ?;", (data.student_id,)
+            )
             student = cursor.fetchone()
             if not student:
                 cursor.close()
                 raise ValueError(f"Student with id {data.student_id} does not exist")
         else:
-            cursor.execute("SELECT id, first_name, last_name FROM faculty WHERE id = ?;", (data.faculty_id,))
+            cursor.execute(
+                "SELECT id, first_name, last_name FROM faculty WHERE id = ?;", (data.faculty_id,)
+            )
             faculty = cursor.fetchone()
             if not faculty:
                 cursor.close()
@@ -109,9 +115,13 @@ class HealthService:
 
         # Check existing
         if data.person_type == "STUDENT":
-            cursor.execute("SELECT id FROM health_profiles WHERE student_id = ?;", (data.student_id,))
+            cursor.execute(
+                "SELECT id FROM health_profiles WHERE student_id = ?;", (data.student_id,)
+            )
         else:
-            cursor.execute("SELECT id FROM health_profiles WHERE faculty_id = ?;", (data.faculty_id,))
+            cursor.execute(
+                "SELECT id FROM health_profiles WHERE faculty_id = ?;", (data.faculty_id,)
+            )
         existing = cursor.fetchone()
         cursor.close()
 
@@ -413,9 +423,7 @@ class HealthService:
     # =========================================================================
 
     @staticmethod
-    def create_encounter(
-        conn: sqlite3.Connection, data: MedicalEncounterCreate
-    ) -> Dict[str, Any]:
+    def create_encounter(conn: sqlite3.Connection, data: MedicalEncounterCreate) -> Dict[str, Any]:
         """Log a new clinical consultation with vital signs and prescription dispensation."""
         cursor = conn.cursor()
         if data.patient_type == "STUDENT":
@@ -650,7 +658,9 @@ class HealthService:
         )
         if cursor.fetchone():
             cursor.close()
-            raise ValueError(f"An active medical certificate already exists for encounter {encounter['encounter_code']}")
+            raise ValueError(
+                f"An active medical certificate already exists for encounter {encounter['encounter_code']}"
+            )
         cursor.close()
 
         cert_number = HealthService._generate_certificate_number(conn, data.rest_from_date)
@@ -717,7 +727,10 @@ class HealthService:
         """Revoke a medical certificate."""
         HealthService.get_medical_certificate(conn, certificate_id)
         with transaction(conn) as tx:
-            tx.execute("UPDATE medical_certificates SET status = 'REVOKED' WHERE id = ?;", (certificate_id,))
+            tx.execute(
+                "UPDATE medical_certificates SET status = 'REVOKED' WHERE id = ?;",
+                (certificate_id,),
+            )
         return HealthService.get_medical_certificate(conn, certificate_id)
 
     @staticmethod
@@ -789,11 +802,15 @@ class HealthService:
         total_encounters = cursor.fetchone()["cnt"]
 
         # Student visits
-        cursor.execute("SELECT COUNT(*) AS cnt FROM medical_encounters WHERE patient_type = 'STUDENT';")
+        cursor.execute(
+            "SELECT COUNT(*) AS cnt FROM medical_encounters WHERE patient_type = 'STUDENT';"
+        )
         student_visits = cursor.fetchone()["cnt"]
 
         # Faculty visits
-        cursor.execute("SELECT COUNT(*) AS cnt FROM medical_encounters WHERE patient_type = 'FACULTY';")
+        cursor.execute(
+            "SELECT COUNT(*) AS cnt FROM medical_encounters WHERE patient_type = 'FACULTY';"
+        )
         faculty_visits = cursor.fetchone()["cnt"]
 
         # Active sick leaves
@@ -808,7 +825,9 @@ class HealthService:
         active_sick_leaves = cursor.fetchone()["cnt"]
 
         # Low stock medicines
-        cursor.execute("SELECT COUNT(*) AS cnt FROM dispensary_medicines WHERE stock_quantity <= reorder_level;")
+        cursor.execute(
+            "SELECT COUNT(*) AS cnt FROM dispensary_medicines WHERE stock_quantity <= reorder_level;"
+        )
         low_stock_medicines = cursor.fetchone()["cnt"]
 
         # Total registered health profiles
@@ -816,7 +835,9 @@ class HealthService:
         total_profiles_registered = cursor.fetchone()["cnt"]
 
         # Urgent / Emergency encounters
-        cursor.execute("SELECT COUNT(*) AS cnt FROM medical_encounters WHERE triage_severity IN ('URGENT', 'EMERGENCY');")
+        cursor.execute(
+            "SELECT COUNT(*) AS cnt FROM medical_encounters WHERE triage_severity IN ('URGENT', 'EMERGENCY');"
+        )
         emergency_triage_count = cursor.fetchone()["cnt"]
 
         # Allergies recorded

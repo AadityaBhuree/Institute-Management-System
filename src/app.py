@@ -923,4 +923,3 @@ def view_health_center_page(
             "search": search or "",
         },
     )
-

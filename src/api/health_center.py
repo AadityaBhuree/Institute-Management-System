@@ -43,8 +43,12 @@ def get_health_stats(conn: sqlite3.Connection = Depends(get_db)):
 def list_health_profiles(
     person_type: Optional[str] = Query(None, description="STUDENT or FACULTY"),
     blood_group: Optional[str] = Query(None, description="A+, A-, B+, B-, AB+, AB-, O+, O-"),
-    has_allergies: Optional[bool] = Query(None, description="Filter profiles with recorded allergies"),
-    search: Optional[str] = Query(None, description="Search by name, ID, emergency contact, or condition"),
+    has_allergies: Optional[bool] = Query(
+        None, description="Filter profiles with recorded allergies"
+    ),
+    search: Optional[str] = Query(
+        None, description="Search by name, ID, emergency contact, or condition"
+    ),
     conn: sqlite3.Connection = Depends(get_db),
 ):
     """List student and faculty health profiles with demographic and condition filters."""
@@ -99,7 +103,9 @@ def list_dispensary_medicines(
         None,
         description="ANALGESIC, ANTIBIOTIC, ANTIHISTAMINE, ANTISEPTIC, ANTACID, FIRST_AID, SUPPLEMENT, OTHER",
     ),
-    low_stock_only: bool = Query(False, description="Filter only medicines at or below reorder level"),
+    low_stock_only: bool = Query(
+        False, description="Filter only medicines at or below reorder level"
+    ),
     search: Optional[str] = Query(None, description="Search by medicine name, code, or batch"),
     conn: sqlite3.Connection = Depends(get_db),
 ):
@@ -112,7 +118,9 @@ def list_dispensary_medicines(
     )
 
 
-@router.post("/medicines", response_model=DispensaryMedicineOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/medicines", response_model=DispensaryMedicineOut, status_code=status.HTTP_201_CREATED
+)
 def create_dispensary_medicine(
     data: DispensaryMedicineCreate, conn: sqlite3.Connection = Depends(get_db)
 ):
@@ -157,7 +165,9 @@ def list_medical_encounters(
     patient_type: Optional[str] = Query(None, description="STUDENT or FACULTY"),
     triage_severity: Optional[str] = Query(None, description="NORMAL, URGENT, EMERGENCY"),
     visit_date: Optional[str] = Query(None, description="ISO Date YYYY-MM-DD"),
-    search: Optional[str] = Query(None, description="Search by code, doctor, patient name, or complaint"),
+    search: Optional[str] = Query(
+        None, description="Search by code, doctor, patient name, or complaint"
+    ),
     limit: int = Query(100, ge=1, le=500),
     conn: sqlite3.Connection = Depends(get_db),
 ):
@@ -201,7 +211,9 @@ def get_medical_encounter(id: int, conn: sqlite3.Connection = Depends(get_db)):
 def list_medical_certificates(
     status_filter: Optional[str] = Query(None, alias="status", description="ISSUED or REVOKED"),
     patient_type: Optional[str] = Query(None, description="STUDENT or FACULTY"),
-    search: Optional[str] = Query(None, description="Search by certificate number, doctor, or patient"),
+    search: Optional[str] = Query(
+        None, description="Search by certificate number, doctor, or patient"
+    ),
     conn: sqlite3.Connection = Depends(get_db),
 ):
     """List issued medical sick leave certificates."""
@@ -213,7 +225,9 @@ def list_medical_certificates(
     )
 
 
-@router.post("/certificates", response_model=MedicalCertificateOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/certificates", response_model=MedicalCertificateOut, status_code=status.HTTP_201_CREATED
+)
 def issue_medical_certificate(
     data: MedicalCertificateCreate, conn: sqlite3.Connection = Depends(get_db)
 ):

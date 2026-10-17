@@ -8,6 +8,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED.svg?logo=docker&logoColor=white)](Dockerfile)
 [![Code Style](https://img.shields.io/badge/Linter-Ruff%20Clean-black.svg)](pyproject.toml)
 [![Architecture](https://img.shields.io/badge/Architecture-Clean%20%2F%20Layered-indigo.svg)](src/)
+[![Roadmap](https://img.shields.io/badge/Roadmap-Phased%20Plan-blueviolet.svg)](IMPROVEMENT_PLAN.md)
 
 A modern, high-performance, and modular educational administration platform built with **FastAPI**, **SQLite** (WAL mode), and a responsive **Glassmorphism Web Dashboard**. Engineered for academic institutions, colleges, and university divisions to automate admissions, course scheduling, attendance registries, academic grading, bursar financial audits, lecture timetables, campus bulletins, library circulation, residential hostels, corporate placement drives, transport fleet transit logistics, scholarship grants, alumni mentorship networks, scientific laboratory equipment circulation, and student infirmary healthcare services.
 
@@ -461,6 +462,26 @@ pytest tests/ -v
 # Run Ruff linter to confirm clean code hygiene
 ruff check src/ tests/ scripts/
 ```
+
+---
+
+## 🗺️ Improvement Roadmap & Architecture Plan
+
+For the comprehensive 20-section architectural review, security scorecard, vulnerability audit, and 10-phase implementation roadmap to take IMS from MVP to enterprise production readiness (5.8/10 → 8.5/10), see:
+
+👉 **[IMPROVEMENT_PLAN.md](IMPROVEMENT_PLAN.md)**
+
+Key phases outlined in the plan:
+* **Phase 0:** Baseline & Safety Checkpoint
+* **Phase 1:** Critical Fixes (Secrets, SQL Injection, Soft-Delete, CORS, Rate Limiting)
+* **Phase 2:** Architecture & Code Quality (Extract monolithic `app.py`, Structured Logging)
+* **Phase 3:** Authentication & Role-Based Access Control (Admin, Faculty, Student)
+* **Phase 7:** Security Hardening (CSRF, Headers, Audit Trail)
+* **Phase 4:** UI/UX & Mobile Responsiveness
+* **Phase 5:** Database Performance & Server-Side Pagination
+* **Phase 6:** Testing & Concurrency Reliability
+* **Phase 8:** Developer Experience & Documentation
+* **Phase 9:** Production Verification & Sign-off
 
 ---
 

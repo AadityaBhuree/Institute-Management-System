@@ -1,0 +1,5 @@
+"""Web pages rendering package."""
+
+from src.web.pages import router as pages_router
+
+__all__ = ["pages_router"]

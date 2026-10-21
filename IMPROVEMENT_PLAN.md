@@ -552,18 +552,18 @@ All 18 core modules, student/faculty portals, dashboard KPIs, CSV exports, print
 
 ---
 
-### Phase 2 — Architecture & Code Quality
+### Phase 2 — Architecture & Code Quality (COMPLETED ✅)
 **Goal:** Improve maintainability without changing behavior.
 
 **Tasks:**
-1. **Extract web routes** from `app.py` into `src/web/pages.py`
-2. **Move inline API endpoints** (departments, system, dashboard) to proper routers
-3. **Fix stale `__init__.py` exports** in `api/` and `models/`
-4. **Add structured logging** (`logging` module) across services
-5. **Fix enrollment number generation** race condition (use `MAX(id)` or UUID)
-6. **Add a `row_to_dict` helper** to eliminate repeated `dict(row)` calls
-7. **Add custom error response model** for consistent API error format
-8. **Resolve pyright type-ignore comments** by fixing import paths
+1. **Extract web routes** from `app.py` into `src/web/pages.py` ✅ (Moved all 23 Jinja2 HTML rendering endpoints to `src/web/pages.py`; reduced `app.py` from 951 to 173 lines)
+2. **Move inline API endpoints** (departments, system, dashboard) to proper routers ✅ (Created `src/api/departments.py`, `src/api/system.py`, and `src/api/dashboard.py`)
+3. **Fix stale `__init__.py` exports** in `api/` and `models/` ✅ (Exported all 21 API routers in `src/api/__init__.py` and all domain schemas in `src/models/__init__.py`)
+4. **Add structured logging** (`logging` module) across services ✅ (Created `src/core/logging_config.py`, hooked into lifespan, added structured log calls in service lifecycle)
+5. **Fix enrollment number generation** race condition (use `MAX(id)` or UUID) ✅ (Updated `_generate_enrollment_no` and `_generate_faculty_id` to use `SELECT COALESCE(MAX(id), 0) + 1`)
+6. **Add a `row_to_dict` helper** to eliminate repeated `dict(row)` calls ✅ (Implemented `row_to_dict` and `rows_to_list` in `src/database/utils.py`)
+7. **Add custom error response model** for consistent API error format ✅ (Added `ErrorResponse` and `MessageResponse` in `src/models/common.py`)
+8. **Resolve pyright type-ignore comments** by fixing import paths ✅ (Cleaned up imports in `src/database/connection.py` and `src/database/init_db.py`, verified 165/165 tests passing)
 
 ---
 

@@ -4,8 +4,8 @@ Executes the schema and inserts baseline institutional departments if not presen
 
 from pathlib import Path
 
-from src.core.config import DB_PATH  # pyright: ignore[reportMissingImports] # type: ignore
-from src.database.connection import (  # pyright: ignore[reportMissingImports] # type: ignore
+from src.core.config import DB_PATH
+from src.database.connection import (
     get_connection,
     transaction,
 )
@@ -48,22 +48,19 @@ def init_database(db_path: Path | str | None = None) -> None:
         with open(SCHEMA_FILE, "r", encoding="utf-8") as f:
             ddl_script = f.read()
 
+        # Migration check: Ensure students table has is_deleted column before creating index
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(students);")
+        cols = [col["name"] for col in cursor.fetchall()]
+        if cols and "is_deleted" not in cols:
+            cursor.execute("ALTER TABLE students ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT 0;")
+        cursor.close()
+
         # Execute DDL
         conn.executescript(ddl_script)
 
         # Ensure default departments exist
         with transaction(conn) as cursor:
-            # Migration check: Ensure students table has is_deleted column
-            cursor.execute("PRAGMA table_info(students);")
-            cols = [col["name"] for col in cursor.fetchall()]
-            if cols and "is_deleted" not in cols:
-                cursor.execute(
-                    "ALTER TABLE students ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT 0;"
-                )
-                cursor.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_students_is_deleted ON students(is_deleted);"
-                )
-
             for code, name, desc in DEFAULT_DEPARTMENTS:
                 cursor.execute(
                     """

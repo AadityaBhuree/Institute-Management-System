@@ -4,6 +4,7 @@ import sqlite3
 from datetime import date
 from typing import Any, Dict, List, Optional
 
+from src.core.logging_config import logger
 from src.database.connection import transaction
 from src.models.faculty import FacultyCreate, FacultyUpdate
 
@@ -11,10 +12,10 @@ from src.models.faculty import FacultyCreate, FacultyUpdate
 class FacultyService:
     @staticmethod
     def _generate_faculty_id(conn: sqlite3.Connection, dept_code: str) -> str:
-        """Generate a sequential institutional faculty ID."""
+        """Generate a sequential institutional faculty ID using MAX(id) to prevent collisions."""
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) AS total FROM faculty;")
-        count = cursor.fetchone()["total"] + 1
+        cursor.execute("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM faculty;")
+        count = cursor.fetchone()["next_id"]
         cursor.close()
         return f"FAC-{dept_code}-{count:03d}"
 
@@ -123,6 +124,12 @@ class FacultyService:
                 ),
             )
             created_id = t_cursor.lastrowid
+            logger.info(
+                "Created faculty member %s (ID: %s, Dept: %s)",
+                faculty_id_code,
+                created_id,
+                dept_code,
+            )
 
         return FacultyService.get_by_id(conn, created_id)
 

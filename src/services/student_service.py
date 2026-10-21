@@ -4,6 +4,7 @@ import sqlite3
 from datetime import date
 from typing import Any, Dict, List, Optional
 
+from src.core.logging_config import logger
 from src.database.connection import transaction
 from src.models.student import StudentCreate, StudentUpdate
 
@@ -11,11 +12,11 @@ from src.models.student import StudentCreate, StudentUpdate
 class StudentService:
     @staticmethod
     def _generate_enrollment_no(conn: sqlite3.Connection, dept_code: str) -> str:
-        """Generate a sequential institutional enrollment number."""
+        """Generate a sequential institutional enrollment number using MAX(id) to avoid collisions."""
         current_year = date.today().year
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) AS total FROM students;")
-        count = cursor.fetchone()["total"] + 1
+        cursor.execute("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM students;")
+        count = cursor.fetchone()["next_id"]
         cursor.close()
         return f"IMS-{current_year}-{dept_code}-{count:04d}"
 
@@ -134,6 +135,9 @@ class StudentService:
                 ),
             )
             student_id = t_cursor.lastrowid
+            logger.info(
+                "Enrolled student %s (ID: %s, Dept: %s)", enrollment_no, student_id, dept_code
+            )
 
         return StudentService.get_by_id(conn, student_id)
 

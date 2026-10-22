@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+
+{% block title %}System Settings & Database Backup Engine{% endblock %}
+{% block header_title %}System Settings & Diagnostics{% endblock %}
+{% block header_subtitle %}Administrative configuration, academic departments, telemetry, and live database backup engine{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-secondary btn-sm" onclick="triggerLiveBackup()" id="btn-trigger-backup">
+  <span>💾 Instant Live Backup</span>
+</button>
+<button class="btn btn-primary btn-sm" onclick="openDeptModal()" id="btn-open-dept-modal">
+  <span>➕ New Department</span>
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- 4 Key Telemetry Metrics -->
+<div class="metrics-grid" style="margin-bottom: 24px;">
+  <!-- Database Mode -->
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Database Engine</span>
+      <span class="metric-icon">🗄️</span>
+    </div>
+    <div class="metric-value" style="color: var(--accent-primary);" id="stat-db-engine">
+      SQLite 3
+    </div>
+    <div class="metric-footer">
+      <span>Journal Mode: <strong>{{ telemetry.journal_mode }}</strong></span>
+      <span class="badge-tag {% if telemetry.integrity_status == 'ok' %}badge-success{% else %}badge-danger{% endif %}">
+        ● Integrity: {{ telemetry.integrity_status|upper }}
+      </span>
+    </div>
+  </div>
+
+  <!-- DB Size -->
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Active Database Size</span>
+      <span class="metric-icon">💾</span>
+    </div>
+    <div class="metric-value" style="color: var(--color-success);" id="stat-db-size">
+      {{ telemetry.db_size_kb }} <span style="font-size: 1rem; color: var(--text-muted);">KB</span>
+    </div>
+    <div class="metric-footer">
+      <span>{{ telemetry.db_size_mb }} MB allocated storage</span>
+      <span class="badge-tag badge-info">Healthy</span>
+    </div>
+  </div>
+
+  <!-- Total Tables -->
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Relational Tables</span>
+      <span class="metric-icon">📑</span>
+    </div>
+    <div class="metric-value" style="color: var(--accent-secondary);" id="stat-total-tables">
+      {{ telemetry.total_tables }}
+    </div>
+    <div class="metric-footer">
+      <span>Normalized relational schema</span>
+      <span class="badge-tag badge-info">v{{ telemetry.app_version }}</span>
+    </div>
+  </div>
+
+  <!-- Live Backups -->
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Backup Snapshots</span>
+      <span class="metric-icon">🛡️</span>
+    </div>
+    <div class="metric-value" style="color: var(--color-warning);" id="stat-backups-count">
+      {{ telemetry.backups_count }}
+    </div>
+    <div class="metric-footer">
+      <span>Online hot snapshots stored</span>
+      <span class="badge-tag badge-success">Atomic</span>
+    </div>
+  </div>
+</div>
+
+<!-- Navigation Tabs for Settings & Diagnostics -->
+<div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; flex-wrap: wrap;">
+  <button class="btn btn-primary btn-sm tab-btn active" onclick="switchSettingsTab('tab-departments', this)" id="tab-btn-departments">
+    🏛️ Academic Departments ({{ departments|length }})
+  </button>
+  <button class="btn btn-secondary btn-sm tab-btn" onclick="switchSettingsTab('tab-backups', this)" id="tab-btn-backups">
+    🛡️ Database Backup Engine ({{ telemetry.backups_count }})
+  </button>
+  <button class="btn btn-secondary btn-sm tab-btn" onclick="switchSettingsTab('tab-schema', this)" id="tab-btn-schema">
+    🗄️ Relational Schema Telemetry
+  </button>
+  <button class="btn btn-secondary btn-sm tab-btn" onclick="switchSettingsTab('tab-system', this)" id="tab-btn-system">
+    ⚙️ System Configuration
+  </button>
+</div>
+
+<!-- TAB 1: Academic Departments -->
+<div id="tab-departments" class="settings-tab-panel">
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <h3 class="card-title">Institutional Academic Departments</h3>
+        <p class="card-subtitle">Configured schools, engineering departments, and faculties</p>
+      </div>
+      <div>
+        <button class="btn btn-primary btn-sm" onclick="openDeptModal()">
+          <span>➕ Add Department</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table class="data-table" id="table-departments-registry">
+        <thead>
+          <tr>
+            <th>Dept ID</th>
+            <th>Department Code</th>
+            <th>Department Name</th>
+            <th>Description</th>
+            <th>Created At</th>
+            <th>Quick Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in departments %}
+          <tr>
+            <td><code>#{{ d.id }}</code></td>
+            <td><strong><code>{{ d.code }}</code></strong></td>
+            <td><strong>{{ d.name }}</strong></td>
+            <td style="color: var(--text-muted); font-size: 0.85rem; max-width: 320px;">
+              {{ d.description or 'Standard academic discipline' }}
+            </td>
+            <td><span style="font-size: 0.85rem; color: var(--text-muted);">{{ d.created_at or 'Institutional' }}</span></td>
+            <td>
+              <a href="/courses?department_id={{ d.id }}" class="btn btn-secondary btn-sm" title="View Courses in Department">
+                📚 Courses
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: Database Backup Engine -->
+<div id="tab-backups" class="settings-tab-panel" style="display: none;">
+  <!-- Backup Action Banner -->
+  <div class="card" style="margin-bottom: 24px; padding: 24px; background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.98) 100%);">
+    <div style="display: flex; gap: 20px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+      <div>
+        <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">
+          Hot Online Database Backup Engine
+        </h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; max-width: 600px; margin: 0;">
+          Executes non-blocking atomic snapshots of the live SQLite database into <code>data/backups/</code> using Python’s native <code>sqlite3.Connection.backup</code> API. Guaranteed zero corruption and no read interruption.
+        </p>
+      </div>
+      <div>
+        <button class="btn btn-primary" onclick="triggerLiveBackup()" id="btn-run-backup-now" style="font-size: 0.95rem; padding: 12px 24px;">
+          <span>⚡ Create Live Snapshot Now</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <h3 class="card-title">Stored Database Snapshots</h3>
+        <p class="card-subtitle">Historical point-in-time recovery archives stored on disk</p>
+      </div>
+      <div id="backup-spinner" style="display: none; color: var(--accent-primary); font-size: 0.9rem; font-weight: 600;">
+        ⏳ Creating snapshot...
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table class="data-table" id="table-backup-snapshots">
+        <thead>
+          <tr>
+            <th>Snapshot Filename</th>
+            <th>File Size</th>
+            <th>Timestamp</th>
+            <th>Status</th>
+            <th>Archive Path</th>
+          </tr>
+        </thead>
+        <tbody id="backup-tbody">
+          {% if telemetry.recent_backups %}
+          {% for b in telemetry.recent_backups %}
+          <tr>
+            <td><strong><code>{{ b.filename }}</code></strong></td>
+            <td><strong>{{ b.size_kb }} KB</strong></td>
+            <td>{{ b.created_at }}</td>
+            <td><span class="badge-tag badge-success">● Verified</span></td>
+            <td><code style="font-size: 0.8rem; color: var(--text-muted);">{{ b.filepath }}</code></td>
+          </tr>
+          {% endfor %}
+          {% else %}
+          <tr id="row-no-backups">
+            <td colspan="5" style="text-align: center; padding: 36px; color: var(--text-muted);">
+              No backups created yet. Click "Create Live Snapshot Now" to generate your first backup.
+            </td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: Schema Telemetry -->
+<div id="tab-schema" class="settings-tab-panel" style="display: none;">
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+      <h3 class="card-title">Relational Tables & Record Audit</h3>
+      <p class="card-subtitle">Active entities, record volumes, and database integrity telemetry</p>
+    </div>
+
+    <div class="table-container">
+      <table class="data-table" id="table-schema-telemetry">
+        <thead>
+          <tr>
+            <th>Table Name</th>
+            <th>Entity Domain</th>
+            <th>Current Row Count</th>
+            <th>Storage Health</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for table_name, row_count in telemetry.table_stats.items() %}
+          <tr>
+            <td><strong><code>{{ table_name }}</code></strong></td>
+            <td>
+              {% if 'student' in table_name %}
+              <span class="badge-tag badge-info">Admissions & Registry</span>
+              {% elif 'faculty' in table_name or 'course' in table_name %}
+              <span class="badge-tag badge-info">Academic Curriculum</span>
+              {% elif 'attendance' in table_name or 'exam' in table_name %}
+              <span class="badge-tag badge-warning">Evaluations & Presence</span>
+              {% elif 'fee' in table_name %}
+              <span class="badge-tag badge-success">Fiscal & Bursar</span>
+              {% else %}
+              <span class="badge-tag badge-info">Core System</span>
+              {% endif %}
+            </td>
+            <td><strong style="font-size: 1.05rem;">{{ row_count }}</strong> records</td>
+            <td><span class="badge-tag badge-success">● Synchronized</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 4: System Configuration -->
+<div id="tab-system" class="settings-tab-panel" style="display: none;">
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+      <h3 class="card-title">Instance Environment & Host Configuration</h3>
+      <p class="card-subtitle">Runtime paths, framework environment, and persistence configuration</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 14px; padding: 12px 0;">
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+        <span style="color: var(--text-muted);">Application Name</span>
+        <strong>{{ telemetry.app_name }}</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+        <span style="color: var(--text-muted);">Application Release Version</span>
+        <strong>v{{ telemetry.app_version }}</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+        <span style="color: var(--text-muted);">Primary Database Filepath</span>
+        <code>{{ telemetry.db_path }}</code>
+      </div>
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+        <span style="color: var(--text-muted);">SQLite Storage Mode</span>
+        <span class="badge-tag badge-info">WAL (Write-Ahead Logging)</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+        <span style="color: var(--text-muted);">Database Integrity</span>
+        <span class="badge-tag badge-success">PRAGMA integrity_check: {{ telemetry.integrity_status }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Create New Department -->
+<div id="modal-dept" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 999; align-items: center; justify-content: center;">
+  <div class="modal-card card" style="width: 100%; max-width: 480px; padding: 24px; box-shadow: var(--shadow-glow);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h3 style="margin: 0; font-size: 1.25rem;">Register Academic Department</h3>
+      <button class="btn btn-secondary btn-sm" onclick="closeDeptModal()">✕</button>
+    </div>
+
+    <form id="form-create-dept" onsubmit="submitNewDepartment(event)">
+      <div style="margin-bottom: 16px;">
+        <label class="form-label">Department Code (e.g. AI, DATA, ARCH)</label>
+        <input type="text" id="dept-code" class="form-control" required placeholder="e.g. AI" maxlength="10" style="text-transform: uppercase;">
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label class="form-label">Department Name</label>
+        <input type="text" id="dept-name" class="form-control" required placeholder="e.g. Artificial Intelligence & Data Science">
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label class="form-label">Description (Optional)</label>
+        <textarea id="dept-desc" class="form-control" rows="3" placeholder="Department overview, specialization, or curriculum focus..."></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 12px;">
+        <button type="button" class="btn btn-secondary" onclick="closeDeptModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-save-dept">Register Department</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function switchSettingsTab(tabId, btn) {
+  document.querySelectorAll('.settings-tab-panel').forEach(function(el) {
+    el.style.display = 'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach(function(el) {
+    el.classList.remove('btn-primary', 'active');
+    el.classList.add('btn-secondary');
+  });
+
+  const target = document.getElementById(tabId);
+  if (target) {
+    target.style.display = 'block';
+  }
+  btn.classList.remove('btn-secondary');
+  btn.classList.add('btn-primary', 'active');
+}
+
+function openDeptModal() {
+  const modal = document.getElementById('modal-dept');
+  if (modal) {
+    modal.style.display = 'flex';
+  }
+}
+
+function closeDeptModal() {
+  const modal = document.getElementById('modal-dept');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
+async function submitNewDepartment(e) {
+  e.preventDefault();
+  const code = document.getElementById('dept-code').value.trim().toUpperCase();
+  const name = document.getElementById('dept-name').value.trim();
+  const description = document.getElementById('dept-desc').value.trim();
+
+  try {
+    const res = await fetch('/api/departments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code, name: name, description: description })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      alert('Error creating department: ' + (err.detail || 'Request failed'));
+      return;
+    }
+
+    alert('Department ' + code + ' created successfully!');
+    closeDeptModal();
+    window.location.reload();
+  } catch (err) {
+    alert('Network error: ' + err.message);
+  }
+}
+
+async function triggerLiveBackup() {
+  const spinner = document.getElementById('backup-spinner');
+  if (spinner) spinner.style.display = 'block';
+
+  try {
+    const res = await fetch('/api/system/backup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      alert('Backup failed: ' + (err.detail || 'Request failed'));
+      if (spinner) spinner.style.display = 'none';
+      return;
+    }
+
+    const data = await res.json();
+    alert('Live database backup created successfully!\nSnapshot: ' + data.filename + ' (' + data.size_kb + ' KB)');
+    window.location.reload();
+  } catch (err) {
+    alert('Network error: ' + err.message);
+  } finally {
+    if (spinner) spinner.style.display = 'none';
+  }
+}
+</script>
+{% endblock %}

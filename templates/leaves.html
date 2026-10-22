@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+
+{% block title %}Institutional Leave & Absence Management{% endblock %}
+{% block header_title %}Leave & Absence Management{% endblock %}
+{% block header_subtitle %}Student and faculty absence petitions, medical leaves, duty slips, and Dean review queues{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-primary" onclick="openModal('modal-apply-leave')" id="btn-open-leave-modal">
+  <span>📝 Submit Leave Application</span>
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- Telemetry Metrics Cards -->
+<div class="metrics-grid" style="margin-bottom: 24px;">
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Total Applications</span>
+      <span class="metric-icon">📑</span>
+    </div>
+    <div class="metric-value">{{ stats.total }}</div>
+    <div class="metric-footer">
+      <span>{{ stats.students }} students • {{ stats.faculty }} faculty</span>
+    </div>
+  </div>
+
+  <div class="metric-card {% if stats.pending > 0 %}card-border-warning{% endif %}">
+    <div class="metric-header">
+      <span class="metric-title">Pending Decision</span>
+      <span class="metric-icon">⏳</span>
+    </div>
+    <div class="metric-value" style="color: var(--color-warning);">{{ stats.pending }}</div>
+    <div class="metric-footer">
+      <span>Awaiting Dean / Registrar sign-off</span>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Approved Slips</span>
+      <span class="metric-icon">✅</span>
+    </div>
+    <div class="metric-value" style="color: var(--color-success);">{{ stats.approved }}</div>
+    <div class="metric-footer">
+      <span>Authorized absences</span>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Declined Petitions</span>
+      <span class="metric-icon">❌</span>
+    </div>
+    <div class="metric-value" style="color: var(--color-danger);">{{ stats.rejected }}</div>
+    <div class="metric-footer">
+      <span>Rejected applications</span>
+    </div>
+  </div>
+</div>
+
+<!-- Filters Toolbar -->
+<div class="card" style="margin-bottom: 24px; padding: 18px 24px;">
+  <form method="GET" action="/leaves" style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+    <div style="flex: 2; min-width: 200px;">
+      <label class="form-label">Search Applicant / Reason</label>
+      <input type="text" name="search" class="form-control" placeholder="Search by name or reason..." value="{{ search }}" id="input-leave-search">
+    </div>
+
+    <div style="flex: 1; min-width: 150px;">
+      <label class="form-label">Status</label>
+      <select name="status" class="form-control" onchange="this.form.submit()" id="select-leave-status">
+        <option value="">All Statuses</option>
+        <option value="PENDING" {% if selected_status == 'PENDING' %}selected{% endif %}>⏳ Pending</option>
+        <option value="APPROVED" {% if selected_status == 'APPROVED' %}selected{% endif %}>✅ Approved</option>
+        <option value="REJECTED" {% if selected_status == 'REJECTED' %}selected{% endif %}>❌ Rejected</option>
+      </select>
+    </div>
+
+    <div style="flex: 1; min-width: 150px;">
+      <label class="form-label">Applicant Role</label>
+      <select name="applicant_type" class="form-control" onchange="this.form.submit()" id="select-applicant-type">
+        <option value="">All Roles</option>
+        <option value="STUDENT" {% if selected_type == 'STUDENT' %}selected{% endif %}>🎓 Student</option>
+        <option value="FACULTY" {% if selected_type == 'FACULTY' %}selected{% endif %}>👨‍🏫 Faculty</option>
+      </select>
+    </div>
+
+    <div>
+      <button type="submit" class="btn btn-secondary">Filter</button>
+      <a href="/leaves" class="btn btn-outline" style="margin-left: 8px;">Reset</a>
+    </div>
+  </form>
+</div>
+
+<!-- Applications Table -->
+<div class="card" style="padding: 0; overflow: hidden;">
+  <div style="padding: 20px 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center;">
+    <h3 style="font-size: 1.1rem; font-weight: 600; color: #f8fafc;">Leave Applications Directory</h3>
+    <span style="font-size: 0.85rem; color: #94a3b8;">{{ leaves|length }} records found</span>
+  </div>
+
+  <div style="overflow-x: auto;">
+    <table class="table" style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Applicant</th>
+          <th>Role</th>
+          <th>Type</th>
+          <th>Duration</th>
+          <th>Reason</th>
+          <th>Status</th>
+          <th>Review Info</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if leaves %}
+        {% for l in leaves %}
+        <tr>
+          <td style="font-weight: 600; color: #94a3b8;">#{{ l.id }}</td>
+          <td>
+            <div style="font-weight: 600; color: #f8fafc;">{{ l.applicant_name }}</div>
+            <div style="font-size: 0.75rem; color: #64748b;">Ref ID: {{ l.applicant_id }}</div>
+          </td>
+          <td>
+            {% if l.applicant_type == 'STUDENT' %}
+            <span class="badge-tag" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;">🎓 Student</span>
+            {% else %}
+            <span class="badge-tag" style="background: rgba(168, 85, 247, 0.15); color: #c084fc;">👨‍🏫 Faculty</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge-tag" style="background: rgba(255, 255, 255, 0.06); color: #e2e8f0;">{{ l.leave_type }}</span>
+          </td>
+          <td>
+            <div style="font-size: 0.85rem; color: #f8fafc;">{{ l.start_date }} ➔ {{ l.end_date }}</div>
+            <div style="font-size: 0.75rem; color: #64748b;">Applied: {{ l.created_at[:10] }}</div>
+          </td>
+          <td style="max-width: 260px;">
+            <div style="font-size: 0.85rem; color: #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ l.reason }}">
+              {{ l.reason }}
+            </div>
+          </td>
+          <td>
+            {% if l.status == 'PENDING' %}
+            <span class="badge-tag badge-warning">⏳ Pending</span>
+            {% elif l.status == 'APPROVED' %}
+            <span class="badge-tag badge-success">✅ Approved</span>
+            {% else %}
+            <span class="badge-tag badge-danger">❌ Rejected</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if l.reviewed_by %}
+            <div style="font-size: 0.8rem; color: #94a3b8;">By: {{ l.reviewed_by }}</div>
+            {% if l.review_remarks %}
+            <div style="font-size: 0.75rem; color: #cbd5e1; font-style: italic;">"{{ l.review_remarks }}"</div>
+            {% endif %}
+            {% else %}
+            <span style="font-size: 0.8rem; color: #64748b;">Awaiting review</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            {% if l.status == 'PENDING' %}
+            <div style="display: flex; gap: 6px; justify-content: flex-end;">
+              <button class="btn btn-primary btn-sm" onclick="promptDecision({{ l.id }}, 'APPROVED')" title="Approve Leave">
+                ✓
+              </button>
+              <button class="btn btn-danger btn-sm" onclick="promptDecision({{ l.id }}, 'REJECTED')" title="Reject Leave">
+                ✕
+              </button>
+            </div>
+            {% else %}
+            <button class="btn btn-outline btn-sm" onclick="promptDecision({{ l.id }}, '{{ 'REJECTED' if l.status == 'APPROVED' else 'APPROVED' }}')">
+              Revise
+            </button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="9" style="text-align: center; padding: 36px; color: #94a3b8;">
+            No leave applications match the selected criteria.
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Apply Leave Modal -->
+<div id="modal-apply-leave" class="modal-backdrop" style="display: none;">
+  <div class="modal-card" style="max-width: 600px;">
+    <div class="modal-header">
+      <h3 style="color: #f8fafc; font-size: 1.25rem;">📝 Submit Leave Petition</h3>
+      <button class="modal-close" onclick="closeModal('modal-apply-leave')">✕</button>
+    </div>
+    <form id="form-apply-leave" onsubmit="submitLeavePetition(event)">
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <label class="form-label">Applicant Role *</label>
+            <select name="applicant_type" required class="form-control" id="modal-leave-role" onchange="syncApplicantDropdown()">
+              <option value="STUDENT">🎓 Student</option>
+              <option value="FACULTY">👨‍🏫 Faculty Member</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Leave Type *</label>
+            <select name="leave_type" required class="form-control" id="modal-leave-type">
+              <option value="CASUAL">Casual Absence</option>
+              <option value="SICK">Medical / Sick Leave</option>
+              <option value="ACADEMIC">Academic / Conference</option>
+              <option value="EMERGENCY">Family Emergency</option>
+              <option value="DUTY">Institutional Duty</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label">Select Person *</label>
+          <select name="person_selector" required class="form-control" id="modal-person-select" onchange="updatePersonDetails()">
+            <!-- Populated via script from students / faculty -->
+            {% for s in students %}
+            <option value="{{ s.id }}" data-type="STUDENT" data-name="{{ s.first_name }} {{ s.last_name }}">
+              [Student] {{ s.enrollment_no }} — {{ s.first_name }} {{ s.last_name }}
+            </option>
+            {% endfor %}
+            {% for f in faculty %}
+            <option value="{{ f.id }}" data-type="FACULTY" data-name="{{ f.first_name }} {{ f.last_name }}" style="display: none;">
+              [Faculty] {{ f.faculty_id }} — {{ f.first_name }} {{ f.last_name }} ({{ f.designation }})
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <label class="form-label">Start Date *</label>
+            <input type="date" name="start_date" required class="form-control" id="modal-leave-start">
+          </div>
+          <div>
+            <label class="form-label">End Date *</label>
+            <input type="date" name="end_date" required class="form-control" id="modal-leave-end">
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label">Detailed Reason & Description *</label>
+          <textarea name="reason" required rows="4" class="form-control" placeholder="Explain the grounds for absence and any emergency contact details..." id="modal-leave-reason"></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-apply-leave')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-leave">Submit Application</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Review Decision Modal -->
+<div id="modal-decision" class="modal-backdrop" style="display: none;">
+  <div class="modal-card" style="max-width: 480px;">
+    <div class="modal-header">
+      <h3 style="color: #f8fafc; font-size: 1.2rem;" id="decision-modal-title">Review Decision</h3>
+      <button class="modal-close" onclick="closeModal('modal-decision')">✕</button>
+    </div>
+    <form id="form-decision" onsubmit="submitDecision(event)">
+      <input type="hidden" id="decision-leave-id">
+      <input type="hidden" id="decision-status">
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+        <p style="color: #cbd5e1; font-size: 0.9rem;" id="decision-prompt-text"></p>
+
+        <div>
+          <label class="form-label">Review Remarks / Conditions</label>
+          <textarea id="decision-remarks" rows="3" class="form-control" placeholder="Optional comments, instructions, or rejection reasons..."></textarea>
+        </div>
+
+        <div>
+          <label class="form-label">Reviewing Official</label>
+          <input type="text" id="decision-reviewer" value="Office of Academic Dean" class="form-control">
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 16px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-decision')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="decision-confirm-btn">Confirm Decision</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function syncApplicantDropdown() {
+  const role = document.getElementById('modal-leave-role').value;
+  const select = document.getElementById('modal-person-select');
+  let firstMatch = null;
+
+  for (let opt of select.options) {
+    if (opt.getAttribute('data-type') === role) {
+      opt.style.display = 'block';
+      if (!firstMatch) firstMatch = opt;
+    } else {
+      opt.style.display = 'none';
+    }
+  }
+  if (firstMatch) select.value = firstMatch.value;
+}
+
+function promptDecision(leaveId, targetStatus) {
+  document.getElementById('decision-leave-id').value = leaveId;
+  document.getElementById('decision-status').value = targetStatus;
+  document.getElementById('decision-modal-title').innerText = targetStatus === 'APPROVED' ? '✅ Approve Leave Request' : '❌ Reject Leave Request';
+  document.getElementById('decision-prompt-text').innerText = `You are marking application #${leaveId} as ${targetStatus}. Please attach any relevant remarks below.`;
+  document.getElementById('decision-confirm-btn').className = targetStatus === 'APPROVED' ? 'btn btn-primary' : 'btn btn-danger';
+  document.getElementById('decision-confirm-btn').innerText = `Confirm ${targetStatus}`;
+  openModal('modal-decision');
+}
+
+async function submitDecision(e) {
+  e.preventDefault();
+  const leaveId = document.getElementById('decision-leave-id').value;
+  const targetStatus = document.getElementById('decision-status').value;
+  const remarks = document.getElementById('decision-remarks').value;
+  const reviewer = document.getElementById('decision-reviewer').value;
+
+  try {
+    const res = await fetch(`/api/leaves/${leaveId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: targetStatus,
+        review_remarks: remarks,
+        reviewed_by: reviewer
+      })
+    });
+    if (!res.ok) throw new Error('Failed to update leave decision');
+    showToast(`Leave application #${leaveId} marked ${targetStatus}`, 'success');
+    closeModal('modal-decision');
+    setTimeout(() => window.location.reload(), 500);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function submitLeavePetition(e) {
+  e.preventDefault();
+  const select = document.getElementById('modal-person-select');
+  const selectedOption = select.options[select.selectedIndex];
+  const payload = {
+    applicant_type: document.getElementById('modal-leave-role').value,
+    applicant_id: parseInt(selectedOption.value),
+    applicant_name: selectedOption.getAttribute('data-name'),
+    leave_type: document.getElementById('modal-leave-type').value,
+    start_date: document.getElementById('modal-leave-start').value,
+    end_date: document.getElementById('modal-leave-end').value,
+    reason: document.getElementById('modal-leave-reason').value
+  };
+
+  try {
+    const res = await fetch('/api/leaves', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to submit leave petition');
+    }
+    showToast('Leave petition submitted successfully!', 'success');
+    closeModal('modal-apply-leave');
+    setTimeout(() => window.location.reload(), 500);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+</script>
+{% endblock %}

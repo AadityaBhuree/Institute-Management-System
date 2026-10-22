@@ -1,0 +1,454 @@
+{% extends "base.html" %}
+
+{% block title %}Faculty Instructor Portal{% endblock %}
+{% block header_title %}Faculty Instructor Portal{% endblock %}
+{% block header_subtitle %}Academic workbench, course rosters, attendance logs, and examination assessments{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-secondary btn-sm" onclick="window.print()" id="btn-print-workbench">
+  <span>🖨️ Print Workbench</span>
+</button>
+<a href="/courses" class="btn btn-primary btn-sm">
+  <span>📚 Course Catalog</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Faculty Switcher Bar -->
+<div class="card" style="margin-bottom: 24px; padding: 18px 24px;">
+  <form method="GET" action="/faculty-portal" style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+    <div style="flex: 2; min-width: 260px;">
+      <label class="form-label">Select Active Faculty Instructor</label>
+      <select name="faculty_id" id="select-portal-faculty" class="form-control" onchange="this.form.submit()">
+        {% for f in all_faculty %}
+        <option value="{{ f.id }}" {% if selected_faculty_id == f.id %}selected{% endif %}>
+          {{ f.faculty_id }} — {{ f.first_name }} {{ f.last_name }} ({{ f.department_code }} • {{ f.designation }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="flex: 1; min-width: 200px;">
+      <label class="form-label">Or Search by Name / ID</label>
+      <input type="text" name="search" id="input-faculty-search" class="form-control" placeholder="Search faculty name or ID..." value="{{ search }}">
+    </div>
+
+    <div>
+      <button type="submit" class="btn btn-primary" id="btn-load-faculty">Load Instructor</button>
+    </div>
+  </form>
+</div>
+
+{% if dossier and dossier.faculty %}
+{% set f = dossier.faculty %}
+
+<!-- Faculty Identity Banner -->
+<div class="card" style="margin-bottom: 24px; padding: 24px; background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.98) 100%);">
+  <div style="display: flex; gap: 24px; align-items: center; flex-wrap: wrap;">
+    <div style="width: 76px; height: 76px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-secondary) 0%, #6366f1 100%); display: flex; align-items: center; justify-content: center; font-size: 2.2rem; box-shadow: var(--shadow-glow);">
+      🧑‍🏫
+    </div>
+    <div style="flex: 1; min-width: 260px;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--text-main);">{{ f.first_name }} {{ f.last_name }}</h2>
+        <span class="badge-tag {% if f.status == 'ACTIVE' %}badge-success{% else %}badge-info{% endif %}">
+          {{ f.status }}
+        </span>
+      </div>
+      <div style="display: flex; gap: 18px; flex-wrap: wrap; color: var(--text-muted); font-size: 0.9rem;">
+        <span><strong>Emp ID:</strong> <code style="color: var(--accent-primary);">{{ f.faculty_id }}</code></span>
+        <span><strong>Dept:</strong> {{ f.department_name }} ({{ f.department_code }})</span>
+        <span><strong>Designation:</strong> {{ f.designation }}</span>
+        {% if f.qualification %}<span><strong>Qualification:</strong> {{ f.qualification }}</span>{% endif %}
+        <span><strong>Email:</strong> {{ f.email }}</span>
+        {% if f.phone %}<span><strong>Phone:</strong> {{ f.phone }}</span>{% endif %}
+      </div>
+    </div>
+    <div>
+      <span class="badge-tag badge-info" style="font-size: 0.85rem; padding: 6px 14px;">
+        Appointment: {{ f.hire_date }}
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- 4 Key Telemetry Metrics -->
+<div class="metrics-grid" style="margin-bottom: 24px;">
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Assigned Courses</span>
+      <span class="metric-icon">📚</span>
+    </div>
+    <div class="metric-value" style="color: var(--accent-primary);" id="stat-courses-count">
+      {{ dossier.total_courses }}
+    </div>
+    <div class="metric-footer">
+      <span>Curriculum modules led</span>
+      <span class="badge-tag badge-info">Active</span>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Enrolled Scholars</span>
+      <span class="metric-icon">👥</span>
+    </div>
+    <div class="metric-value" style="color: var(--color-success);" id="stat-students-count">
+      {{ dossier.total_students }}
+    </div>
+    <div class="metric-footer">
+      <span>Scholars across courses</span>
+      <span class="badge-tag badge-success">Enrolled</span>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Examinations</span>
+      <span class="metric-icon">📝</span>
+    </div>
+    <div class="metric-value" style="color: var(--accent-secondary);" id="stat-exams-count">
+      {{ dossier.total_exams }}
+    </div>
+    <div class="metric-footer">
+      <span>Assessments scheduled</span>
+      <span class="badge-tag badge-info">Midterm/Final</span>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Attendance Entries</span>
+      <span class="metric-icon">📅</span>
+    </div>
+    <div class="metric-value" style="color: var(--color-warning);" id="stat-attendance-count">
+      {{ dossier.total_attendance_records }}
+    </div>
+    <div class="metric-footer">
+      <span>Class sessions verified</span>
+      <span class="badge-tag badge-warning">Logged</span>
+    </div>
+  </div>
+</div>
+
+<!-- Navigation Tabs for Faculty Workbench -->
+<div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+  <button class="btn btn-primary btn-sm tab-btn active" onclick="switchFacultyTab('tab-courses', this)" id="tab-btn-courses">
+    📚 Assigned Courses ({{ dossier.total_courses }})
+  </button>
+  <button class="btn btn-secondary btn-sm tab-btn" onclick="switchFacultyTab('tab-roster', this)" id="tab-btn-roster">
+    👥 Student Roster ({{ dossier.students|length }})
+  </button>
+  <button class="btn btn-secondary btn-sm tab-btn" onclick="switchFacultyTab('tab-exams', this)" id="tab-btn-exams">
+    📝 Examinations & Grading ({{ dossier.total_exams }})
+  </button>
+  <button class="btn btn-secondary btn-sm tab-btn" onclick="switchFacultyTab('tab-attendance', this)" id="tab-btn-attendance">
+    📅 Attendance Registry ({{ dossier.attendance_logs|length }})
+  </button>
+</div>
+
+<!-- TAB 1: Assigned Courses -->
+<div id="tab-courses" class="tab-content-panel">
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <h3 class="card-title">My Assigned Course Curriculum</h3>
+        <p class="card-subtitle">Active subjects, capacity metrics, and student enrollments</p>
+      </div>
+      <div>
+        <a href="/academics" class="btn btn-secondary btn-sm">Take Attendance</a>
+      </div>
+    </div>
+
+    {% if dossier.courses %}
+    <div class="table-container">
+      <table class="data-table" id="table-faculty-courses">
+        <thead>
+          <tr>
+            <th>Course Code</th>
+            <th>Course Title</th>
+            <th>Department</th>
+            <th>Semester</th>
+            <th>Credits</th>
+            <th>Enrollment / Capacity</th>
+            <th>Capacity Load</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in dossier.courses %}
+          {% set load_pct = ((c.enrolled_count / c.capacity) * 100)|round|int if c.capacity > 0 else 0 %}
+          <tr>
+            <td><strong><code>{{ c.code }}</code></strong></td>
+            <td>
+              <div style="font-weight: 600;">{{ c.title }}</div>
+              {% if c.syllabus_summary %}
+              <div style="font-size: 0.8rem; color: var(--text-muted); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                {{ c.syllabus_summary }}
+              </div>
+              {% endif %}
+            </td>
+            <td><span class="badge-tag badge-info">{{ c.department_code }}</span></td>
+            <td>Sem {{ c.semester }}</td>
+            <td>{{ c.credits }} Credits</td>
+            <td><strong>{{ c.enrolled_count }}</strong> / {{ c.capacity }}</td>
+            <td style="min-width: 140px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="flex: 1; background: rgba(255,255,255,0.08); height: 8px; border-radius: 4px; overflow: hidden;">
+                  <div style="width: {{ [load_pct, 100]|min }}%; height: 100%; background: {% if load_pct >= 90 %}var(--color-danger){% elif load_pct >= 75 %}var(--color-warning){% else %}var(--color-success){% endif %};"></div>
+                </div>
+                <span style="font-size: 0.8rem; font-weight: 700;">{{ load_pct }}%</span>
+              </div>
+            </td>
+            <td>
+              <button class="btn btn-secondary btn-sm" onclick="filterRosterByCourse('{{ c.code }}')" title="View Students Enrolled">
+                👥 View Roster
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 48px; color: var(--text-muted);">
+      <p style="font-size: 1.1rem; margin-bottom: 8px;">No courses currently assigned to this instructor.</p>
+      <p style="font-size: 0.85rem;">Assign courses from the <a href="/courses" style="color: var(--accent-primary);">Course Catalog</a>.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- TAB 2: Student Roster -->
+<div id="tab-roster" class="tab-content-panel" style="display: none;">
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <h3 class="card-title">Enrolled Student Roster</h3>
+        <p class="card-subtitle">Scholars enrolled in your assigned courses</p>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <input type="text" id="roster-table-filter" class="form-control" style="font-size: 0.85rem; padding: 6px 12px; width: 220px;" placeholder="Filter scholars..." onkeyup="filterRosterTable()">
+      </div>
+    </div>
+
+    {% if dossier.students %}
+    <div class="table-container">
+      <table class="data-table" id="table-faculty-roster">
+        <thead>
+          <tr>
+            <th>Enrollment No</th>
+            <th>Student Name</th>
+            <th>Course</th>
+            <th>Academic Year</th>
+            <th>Current Sem</th>
+            <th>Email</th>
+            <th>Enrollment Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in dossier.students %}
+          <tr data-course="{{ s.course_code }}">
+            <td><strong><code>{{ s.enrollment_no }}</code></strong></td>
+            <td>
+              <a href="/portal?student_id={{ s.student_id }}" style="color: var(--text-main); font-weight: 600; text-decoration: none;">
+                {{ s.first_name }} {{ s.last_name }}
+              </a>
+            </td>
+            <td>
+              <span class="badge-tag badge-info">{{ s.course_code }}</span>
+              <span style="font-size: 0.85rem; color: var(--text-muted); margin-left: 4px;">{{ s.course_title }}</span>
+            </td>
+            <td>{{ s.academic_year }}</td>
+            <td>Sem {{ s.current_semester }}</td>
+            <td><a href="mailto:{{ s.email }}" style="color: var(--text-muted); text-decoration: none;">{{ s.email }}</a></td>
+            <td>
+              <span class="badge-tag {% if s.enrollment_status == 'ACTIVE' %}badge-success{% else %}badge-info{% endif %}">
+                {{ s.enrollment_status }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 48px; color: var(--text-muted);">
+      <p style="font-size: 1.1rem; margin-bottom: 8px;">No students currently enrolled in your courses.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- TAB 3: Examinations & Grading -->
+<div id="tab-exams" class="tab-content-panel" style="display: none;">
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <h3 class="card-title">Scheduled Examinations & Grade Registry</h3>
+        <p class="card-subtitle">Exams, weightages, and grading progress for your curriculum</p>
+      </div>
+      <div>
+        <a href="/academics" class="btn btn-primary btn-sm">Enter Exam Grades</a>
+      </div>
+    </div>
+
+    {% if dossier.exams %}
+    <div class="table-container">
+      <table class="data-table" id="table-faculty-exams">
+        <thead>
+          <tr>
+            <th>Assessment Title</th>
+            <th>Course</th>
+            <th>Type</th>
+            <th>Date</th>
+            <th>Max Marks</th>
+            <th>Pass Marks</th>
+            <th>Weightage</th>
+            <th>Evaluated</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in dossier.exams %}
+          <tr>
+            <td><strong>{{ e.title }}</strong></td>
+            <td><span class="badge-tag badge-info">{{ e.course_code }}</span> {{ e.course_title }}</td>
+            <td><span class="badge-tag badge-warning">{{ e.exam_type }}</span></td>
+            <td>{{ e.exam_date }}</td>
+            <td><strong>{{ e.max_marks }}</strong></td>
+            <td>{{ e.passing_marks }}</td>
+            <td>{{ e.weightage_percent }}%</td>
+            <td>
+              <span class="badge-tag {% if e.evaluated_count > 0 %}badge-success{% else %}badge-danger{% endif %}">
+                {{ e.evaluated_count }} Evaluated
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 48px; color: var(--text-muted);">
+      <p style="font-size: 1.1rem; margin-bottom: 8px;">No examinations scheduled yet for your courses.</p>
+      <p style="font-size: 0.85rem;">Create assessments from the <a href="/academics" style="color: var(--accent-primary);">Academics Management Hub</a>.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- TAB 4: Attendance Registry -->
+<div id="tab-attendance" class="tab-content-panel" style="display: none;">
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <h3 class="card-title">Recent Attendance Records</h3>
+        <p class="card-subtitle">Latest verified classroom presence records under your courses</p>
+      </div>
+      <div>
+        <a href="/academics" class="btn btn-primary btn-sm">Take Daily Attendance</a>
+      </div>
+    </div>
+
+    {% if dossier.attendance_logs %}
+    <div class="table-container">
+      <table class="data-table" id="table-faculty-attendance">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Course</th>
+            <th>Enrollment No</th>
+            <th>Student Name</th>
+            <th>Status</th>
+            <th>Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in dossier.attendance_logs %}
+          <tr>
+            <td>{{ a.attendance_date }}</td>
+            <td><span class="badge-tag badge-info">{{ a.course_code }}</span></td>
+            <td><code>{{ a.enrollment_no }}</code></td>
+            <td>{{ a.first_name }} {{ a.last_name }}</td>
+            <td>
+              {% if a.status == 'PRESENT' %}
+              <span class="badge-tag badge-success">● Present</span>
+              {% elif a.status == 'LATE' %}
+              <span class="badge-tag badge-warning">● Late</span>
+              {% elif a.status == 'EXCUSED' %}
+              <span class="badge-tag badge-info">● Excused</span>
+              {% else %}
+              <span class="badge-tag badge-danger">● Absent</span>
+              {% endif %}
+            </td>
+            <td><span style="color: var(--text-muted); font-size: 0.85rem;">{{ a.remarks or '—' }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 48px; color: var(--text-muted);">
+      <p style="font-size: 1.1rem; margin-bottom: 8px;">No attendance sessions recorded yet for your courses.</p>
+      <p style="font-size: 0.85rem;">Log attendance in the <a href="/academics" style="color: var(--accent-primary);">Academics Hub</a>.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% else %}
+<div class="card" style="text-align: center; padding: 64px 24px;">
+  <div style="font-size: 3rem; margin-bottom: 16px;">🧑‍🏫</div>
+  <h3 style="font-size: 1.4rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">No Faculty Instructor Selected</h3>
+  <p style="color: var(--text-muted); max-width: 480px; margin: 0 auto 20px;">
+    Please select an active faculty member from the dropdown above or enter a search query to load their teaching workbench.
+  </p>
+  <a href="/courses" class="btn btn-primary">Go to Faculty Directory</a>
+</div>
+{% endif %}
+
+<script>
+function switchFacultyTab(tabId, btn) {
+  document.querySelectorAll('.tab-content-panel').forEach(function(el) {
+    el.style.display = 'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach(function(el) {
+    el.classList.remove('btn-primary', 'active');
+    el.classList.add('btn-secondary');
+  });
+
+  const target = document.getElementById(tabId);
+  if (target) {
+    target.style.display = 'block';
+  }
+  btn.classList.remove('btn-secondary');
+  btn.classList.add('btn-primary', 'active');
+}
+
+function filterRosterByCourse(courseCode) {
+  const rosterTabBtn = document.getElementById('tab-btn-roster');
+  if (rosterTabBtn) {
+    switchFacultyTab('tab-roster', rosterTabBtn);
+  }
+  const input = document.getElementById('roster-table-filter');
+  if (input) {
+    input.value = courseCode;
+    filterRosterTable();
+  }
+}
+
+function filterRosterTable() {
+  const input = document.getElementById('roster-table-filter');
+  const filter = input.value.toUpperCase();
+  const rows = document.querySelectorAll('#table-faculty-roster tbody tr');
+  rows.forEach(function(row) {
+    const text = row.textContent || row.innerText;
+    if (text.toUpperCase().indexOf(filter) > -1) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+</script>
+{% endblock %}

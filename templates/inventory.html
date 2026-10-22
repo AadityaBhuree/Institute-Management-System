@@ -1,0 +1,1025 @@
+{% extends "base.html" %}
+
+{% block title %}Campus Assets & Lab Equipment | IMS Enterprise{% endblock %}
+{% block header_title %}Campus Assets & Lab Equipment Hub{% endblock %}
+{% block header_subtitle %}Scientific instrumentation registry, computing clusters, circulation checkouts, and preventative maintenance schedules{% endblock %}
+
+{% block header_actions %}
+<div style="display: flex; gap: 10px; flex-wrap: wrap;">
+  <button class="btn btn-secondary" onclick="openModal('modal-checkout-asset')" id="btn-open-checkout">
+    <span>📦 Checkout Equipment</span>
+  </button>
+  <button class="btn btn-outline" onclick="openModal('modal-schedule-maintenance')" id="btn-open-maintenance">
+    <span>🛠️ Schedule Service</span>
+  </button>
+  <button class="btn btn-primary" onclick="openModal('modal-register-asset')" id="btn-open-register-asset">
+    <span>+ Register Asset</span>
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Inventory Telemetry Metrics Grid -->
+<div class="metrics-grid" style="margin-bottom: 24px;">
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Total Capital Valuation</span>
+      <span class="metric-icon">💰</span>
+    </div>
+    <div class="metric-value" style="color: var(--color-success);">
+      ${{ "{:,.2f}".format(stats.total_valuation) }}
+    </div>
+    <div class="metric-footer">
+      <span>Cumulative inventory valuation</span>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Total Equipment & Assets</span>
+      <span class="metric-icon">🔬</span>
+    </div>
+    <div class="metric-value">{{ stats.total_assets }}</div>
+    <div class="metric-footer">
+      <span>{{ stats.available_assets }} operational & available</span>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Active Circulation Loans</span>
+      <span class="metric-icon">📦</span>
+    </div>
+    <div class="metric-value" style="color: #38bdf8;">
+      {{ stats.active_checkouts }}
+      {% if stats.overdue_checkouts > 0 %}
+      <span style="font-size: 0.9rem; color: var(--color-danger); font-weight: normal; margin-left: 6px;">
+        ({{ stats.overdue_checkouts }} overdue)
+      </span>
+      {% endif %}
+    </div>
+    <div class="metric-footer">
+      <span>Checked out to scholars & faculty</span>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Maintenance & Servicing</span>
+      <span class="metric-icon">🛠️</span>
+    </div>
+    <div class="metric-value" style="color: var(--color-warning);">
+      {{ stats.in_maintenance }}
+    </div>
+    <div class="metric-footer">
+      <span>Undergoing calibration or repair</span>
+    </div>
+  </div>
+</div>
+
+<!-- Tabs Navigation -->
+<div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 12px; flex-wrap: wrap;">
+  <button class="btn btn-secondary" onclick="switchInventoryTab('tab-assets')" id="btn-tab-assets" style="font-weight: 600;">
+    🔬 Equipment Registry ({{ assets|length }})
+  </button>
+  <button class="btn btn-outline" onclick="switchInventoryTab('tab-checkouts')" id="btn-tab-checkouts" style="font-weight: 600;">
+    📋 Circulation Loans ({{ checkouts|length }})
+  </button>
+  <button class="btn btn-outline" onclick="switchInventoryTab('tab-maintenance')" id="btn-tab-maintenance" style="font-weight: 600;">
+    🛠️ Maintenance & Calibration ({{ maintenance|length }})
+  </button>
+</div>
+
+<!-- Tab 1: Equipment Registry -->
+<div id="tab-assets" class="inventory-tab-content">
+  <!-- Search & Filter Form -->
+  <div class="card" style="margin-bottom: 24px; padding: 16px 20px;">
+    <form method="GET" action="/inventory" style="display: flex; flex-wrap: wrap; gap: 14px; align-items: center;">
+      <div style="flex: 1; min-width: 220px;">
+        <input
+          type="text"
+          name="search"
+          value="{{ search }}"
+          class="form-control"
+          placeholder="🔍 Search asset name, tag, serial, room..."
+          id="filter-search-input"
+        />
+      </div>
+      <div style="min-width: 170px;">
+        <select name="category" class="form-control" id="filter-category-select">
+          <option value="">All Categories</option>
+          <option value="LAB_EQUIPMENT" {% if selected_category == 'LAB_EQUIPMENT' %}selected{% endif %}>Lab Equipment</option>
+          <option value="COMPUTING" {% if selected_category == 'COMPUTING' %}selected{% endif %}>Computing & Servers</option>
+          <option value="AV_MULTIMEDIA" {% if selected_category == 'AV_MULTIMEDIA' %}selected{% endif %}>AV & Multimedia</option>
+          <option value="RESEARCH_INSTRUMENT" {% if selected_category == 'RESEARCH_INSTRUMENT' %}selected{% endif %}>Research Instruments</option>
+          <option value="FURNITURE" {% if selected_category == 'FURNITURE' %}selected{% endif %}>Furniture & Fixtures</option>
+          <option value="OTHER" {% if selected_category == 'OTHER' %}selected{% endif %}>Other</option>
+        </select>
+      </div>
+      <div style="min-width: 150px;">
+        <select name="status" class="form-control" id="filter-status-select">
+          <option value="">All Statuses</option>
+          <option value="AVAILABLE" {% if selected_status == 'AVAILABLE' %}selected{% endif %}>Available</option>
+          <option value="CHECKED_OUT" {% if selected_status == 'CHECKED_OUT' %}selected{% endif %}>Checked Out</option>
+          <option value="MAINTENANCE" {% if selected_status == 'MAINTENANCE' %}selected{% endif %}>In Maintenance</option>
+          <option value="DECOMMISSIONED" {% if selected_status == 'DECOMMISSIONED' %}selected{% endif %}>Decommissioned</option>
+        </select>
+      </div>
+      <div style="min-width: 170px;">
+        <select name="department_id" class="form-control" id="filter-dept-select">
+          <option value="">All Departments</option>
+          {% for d in departments %}
+          <option value="{{ d.id }}" {% if selected_dept == d.id %}selected{% endif %}>{{ d.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" id="btn-apply-filters">
+        <span>Filter</span>
+      </button>
+      {% if search or selected_category or selected_status or selected_dept %}
+      <a href="/inventory" class="btn btn-outline" style="text-decoration: none;" id="btn-clear-filters">
+        <span>Reset</span>
+      </a>
+      {% endif %}
+    </form>
+  </div>
+
+  <!-- Assets Ledger Table -->
+  <div class="card" style="padding: 0; overflow: hidden;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="font-size: 1.05rem; font-weight: 600; margin: 0;">Institutional Equipment & Instruments</h3>
+      <span class="badge-tag">{{ assets|length }} assets cataloged</span>
+    </div>
+    {% if assets %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Asset Tag</th>
+            <th>Equipment Name & Specs</th>
+            <th>Category</th>
+            <th>Location / Lab Room</th>
+            <th>Department</th>
+            <th>Valuation</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in assets %}
+          <tr id="asset-row-{{ a.id }}">
+            <td>
+              <span class="badge-tag" style="font-family: monospace; font-size: 0.85rem; font-weight: 700; color: #38bdf8;">
+                {{ a.asset_tag }}
+              </span>
+            </td>
+            <td>
+              <div style="font-weight: 600; color: #f8fafc;">{{ a.name }}</div>
+              <div style="font-size: 0.8rem; color: #94a3b8;">
+                {% if a.manufacturer %}{{ a.manufacturer }}{% endif %}
+                {% if a.model_number %} • Mod: {{ a.model_number }}{% endif %}
+                {% if a.serial_number %} • S/N: <span style="font-family: monospace;">{{ a.serial_number }}</span>{% endif %}
+              </div>
+            </td>
+            <td>
+              <span class="badge-tag" style="background: rgba(255, 255, 255, 0.06); font-size: 0.78rem;">
+                {{ a.category }}
+              </span>
+            </td>
+            <td>
+              <span style="color: #e2e8f0; font-size: 0.88rem;">📍 {{ a.lab_room }}</span>
+            </td>
+            <td>
+              <span style="font-size: 0.85rem; color: #cbd5e1;">{{ a.department_name or 'General Campus' }}</span>
+            </td>
+            <td style="font-family: monospace; font-weight: 600; color: #4ade80;">
+              ${{ "{:,.2f}".format(a.purchase_cost) }}
+            </td>
+            <td>
+              {% if a.status == 'AVAILABLE' %}
+              <span class="badge-tag badge-success">● Available</span>
+              {% elif a.status == 'CHECKED_OUT' %}
+              <span class="badge-tag" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4);">
+                ● Checked Out
+              </span>
+              {% elif a.status == 'MAINTENANCE' %}
+              <span class="badge-tag badge-danger">● In Maintenance</span>
+              {% else %}
+              <span class="badge-tag" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8;">
+                ● {{ a.status }}
+              </span>
+              {% endif %}
+            </td>
+            <td>
+              <div style="display: flex; gap: 6px;">
+                {% if a.status == 'AVAILABLE' %}
+                <button
+                  class="btn btn-outline"
+                  style="padding: 4px 10px; font-size: 0.8rem;"
+                  onclick="quickCheckoutAsset({{ a.id }}, '{{ a.asset_tag }}', '{{ a.name|replace("'", "\\'") }}')"
+                  title="Checkout Asset"
+                >
+                  📦 Checkout
+                </button>
+                <button
+                  class="btn btn-outline"
+                  style="padding: 4px 10px; font-size: 0.8rem;"
+                  onclick="quickScheduleMaintenance({{ a.id }}, '{{ a.asset_tag }}', '{{ a.name|replace("'", "\\'") }}')"
+                  title="Schedule Maintenance"
+                >
+                  🛠️ Service
+                </button>
+                {% elif a.status == 'CHECKED_OUT' %}
+                <button
+                  class="btn btn-secondary"
+                  style="padding: 4px 10px; font-size: 0.8rem;"
+                  onclick="switchInventoryTab('tab-checkouts')"
+                  title="View Loan in Circulation Tab"
+                >
+                  👁️ View Loan
+                </button>
+                {% elif a.status == 'MAINTENANCE' %}
+                <button
+                  class="btn btn-outline"
+                  style="padding: 4px 10px; font-size: 0.8rem;"
+                  onclick="switchInventoryTab('tab-maintenance')"
+                  title="View Ticket in Maintenance Tab"
+                >
+                  🛠️ View Ticket
+                </button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="padding: 48px; text-align: center; color: #94a3b8;">
+      <div style="font-size: 2.5rem; margin-bottom: 12px;">🔬</div>
+      <div style="font-size: 1.1rem; font-weight: 600; color: #f8fafc; margin-bottom: 6px;">No equipment records found</div>
+      <p style="margin: 0; font-size: 0.9rem;">Adjust filters or click "+ Register Asset" to catalog instruments and computing hardware.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Tab 2: Circulation Loans Ledger -->
+<div id="tab-checkouts" class="inventory-tab-content" style="display: none;">
+  <div class="card" style="padding: 0; overflow: hidden;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="font-size: 1.05rem; font-weight: 600; margin: 0;">Equipment Loans & Circulation Ledger</h3>
+      <button class="btn btn-primary" onclick="openModal('modal-checkout-asset')">+ New Checkout</button>
+    </div>
+    {% if checkouts %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Slip Code</th>
+            <th>Asset Details</th>
+            <th>Borrower</th>
+            <th>Checkout Date</th>
+            <th>Due Date</th>
+            <th>Return Date</th>
+            <th>Condition</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in checkouts %}
+          <tr id="checkout-row-{{ c.id }}">
+            <td>
+              <span class="badge-tag" style="font-family: monospace; font-size: 0.82rem; font-weight: 700; color: #a78bfa;">
+                {{ c.checkout_code }}
+              </span>
+            </td>
+            <td>
+              <div style="font-weight: 600; color: #f8fafc;">{{ c.asset_name }}</div>
+              <div style="font-size: 0.8rem; font-family: monospace; color: #38bdf8;">{{ c.asset_tag }}</div>
+            </td>
+            <td>
+              <div style="font-weight: 600; color: #e2e8f0;">{{ c.borrower_name or 'Unassigned' }}</div>
+              <div style="font-size: 0.8rem; color: #94a3b8;">
+                {{ c.borrower_type }} • {{ c.borrower_identifier or '' }}
+              </div>
+            </td>
+            <td style="font-size: 0.88rem;">{{ c.checkout_date }}</td>
+            <td style="font-size: 0.88rem;">
+              <span style="{% if c.is_overdue %}color: var(--color-danger); font-weight: 700;{% endif %}">
+                {{ c.due_date }}
+              </span>
+              {% if c.is_overdue %}
+              <span class="badge-tag badge-danger" style="font-size: 0.7rem; padding: 2px 6px; margin-left: 4px;">OVERDUE</span>
+              {% endif %}
+            </td>
+            <td style="font-size: 0.88rem; color: #94a3b8;">
+              {{ c.returned_date or '—' }}
+            </td>
+            <td>
+              <div style="font-size: 0.82rem;">
+                <span style="color: #cbd5e1;">Out: {{ c.condition_out }}</span>
+                {% if c.condition_in %}
+                <br/><span style="color: {% if c.condition_in == 'DAMAGED' %}var(--color-danger){% else %}var(--color-success){% endif %}; font-weight: 600;">
+                  In: {{ c.condition_in }}
+                </span>
+                {% endif %}
+              </div>
+            </td>
+            <td>
+              {% if c.status == 'ACTIVE' %}
+                {% if c.is_overdue %}
+                <span class="badge-tag badge-danger">● Overdue</span>
+                {% else %}
+                <span class="badge-tag" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4);">
+                  ● Active
+                </span>
+                {% endif %}
+              {% elif c.status == 'RETURNED' %}
+              <span class="badge-tag badge-success">● Returned</span>
+              {% else %}
+              <span class="badge-tag">{{ c.status }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if c.status == 'ACTIVE' %}
+              <button
+                class="btn btn-outline"
+                style="padding: 4px 10px; font-size: 0.8rem;"
+                onclick="openReturnModal({{ c.id }}, '{{ c.checkout_code }}', '{{ c.asset_name|replace("'", "\\'") }}')"
+              >
+                ↩️ Return
+              </button>
+              {% else %}
+              <span style="color: #64748b; font-size: 0.82rem;">Settled</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="padding: 48px; text-align: center; color: #94a3b8;">
+      <div style="font-size: 2.5rem; margin-bottom: 12px;">📋</div>
+      <div style="font-size: 1.1rem; font-weight: 600; color: #f8fafc; margin-bottom: 6px;">No circulation checkouts recorded</div>
+      <p style="margin: 0; font-size: 0.9rem;">Check out equipment to active scholars and instructors using the checkout button.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Tab 3: Maintenance & Calibration Ledger -->
+<div id="tab-maintenance" class="inventory-tab-content" style="display: none;">
+  <div class="card" style="padding: 0; overflow: hidden;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="font-size: 1.05rem; font-weight: 600; margin: 0;">Calibration & Maintenance Work Orders</h3>
+      <button class="btn btn-outline" onclick="openModal('modal-schedule-maintenance')">+ Schedule Service</button>
+    </div>
+    {% if maintenance %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Ticket Code</th>
+            <th>Asset Details</th>
+            <th>Service Type</th>
+            <th>Scheduled Date</th>
+            <th>Completed Date</th>
+            <th>Technician</th>
+            <th>Incurred Cost</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in maintenance %}
+          <tr id="maint-row-{{ m.id }}">
+            <td>
+              <span class="badge-tag" style="font-family: monospace; font-size: 0.82rem; font-weight: 700; color: #f59e0b;">
+                {{ m.maintenance_code }}
+              </span>
+            </td>
+            <td>
+              <div style="font-weight: 600; color: #f8fafc;">{{ m.asset_name }}</div>
+              <div style="font-size: 0.8rem; font-family: monospace; color: #38bdf8;">{{ m.asset_tag }}</div>
+            </td>
+            <td>
+              <span class="badge-tag" style="background: rgba(255, 255, 255, 0.06); font-size: 0.78rem;">
+                {{ m.maintenance_type }}
+              </span>
+            </td>
+            <td style="font-size: 0.88rem;">{{ m.scheduled_date }}</td>
+            <td style="font-size: 0.88rem; color: #94a3b8;">{{ m.completed_date or '—' }}</td>
+            <td style="font-size: 0.88rem; color: #e2e8f0;">{{ m.technician_name }}</td>
+            <td style="font-family: monospace; font-weight: 600; color: #4ade80;">
+              ${{ "{:,.2f}".format(m.cost) }}
+            </td>
+            <td>
+              {% if m.status == 'COMPLETED' %}
+              <span class="badge-tag badge-success">● Completed</span>
+              {% elif m.status == 'IN_PROGRESS' %}
+              <span class="badge-tag badge-danger">● In Progress</span>
+              {% elif m.status == 'SCHEDULED' %}
+              <span class="badge-tag" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">● Scheduled</span>
+              {% else %}
+              <span class="badge-tag">{{ m.status }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if m.status != 'COMPLETED' and m.status != 'CANCELLED' %}
+              <button
+                class="btn btn-outline"
+                style="padding: 4px 10px; font-size: 0.8rem;"
+                onclick="openMaintStatusModal({{ m.id }}, '{{ m.maintenance_code }}', '{{ m.status }}', {{ m.cost }})"
+              >
+                ⚙️ Update
+              </button>
+              {% else %}
+              <span style="color: #64748b; font-size: 0.82rem;">Resolved</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="padding: 48px; text-align: center; color: #94a3b8;">
+      <div style="font-size: 2.5rem; margin-bottom: 12px;">🛠️</div>
+      <div style="font-size: 1.1rem; font-weight: 600; color: #f8fafc; margin-bottom: 6px;">No maintenance tickets found</div>
+      <p style="margin: 0; font-size: 0.9rem;">Schedule calibration or preventative servicing using the schedule button.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Modal 1: Register Asset -->
+<div class="modal" id="modal-register-asset">
+  <div class="modal-content" style="max-width: 650px;">
+    <div class="modal-header">
+      <h3 class="modal-title">🔬 Register Campus Asset / Lab Instrument</h3>
+      <button class="modal-close" onclick="closeModal('modal-register-asset')">&times;</button>
+    </div>
+    <form id="form-register-asset" onsubmit="handleRegisterAssetSubmit(event)">
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label class="form-label">Equipment / Asset Name *</label>
+            <input type="text" name="name" required class="form-control" placeholder="e.g. Tektronix 4-Channel Digital Oscilloscope" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category *</label>
+            <select name="category" required class="form-control">
+              <option value="LAB_EQUIPMENT">Lab Equipment</option>
+              <option value="COMPUTING">Computing & Servers</option>
+              <option value="AV_MULTIMEDIA">AV & Multimedia</option>
+              <option value="RESEARCH_INSTRUMENT">Research Instrument</option>
+              <option value="FURNITURE">Furniture & Fixtures</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Department</label>
+            <select name="department_id" class="form-control">
+              <option value="">General Campus</option>
+              {% for d in departments %}
+              <option value="{{ d.id }}">{{ d.name }} ({{ d.code }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Lab Room / Location *</label>
+            <input type="text" name="lab_room" required class="form-control" placeholder="e.g. VLSI Design Lab - Room 204" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Serial Number</label>
+            <input type="text" name="serial_number" class="form-control" placeholder="e.g. SN-TEK-992018" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Model Number</label>
+            <input type="text" name="model_number" class="form-control" placeholder="e.g. TBS2000B" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Manufacturer / Brand</label>
+            <input type="text" name="manufacturer" class="form-control" placeholder="e.g. Tektronix Inc." />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Purchase Date *</label>
+            <input type="date" name="purchase_date" required class="form-control" id="reg-purchase-date" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Purchase Cost ($ / USD) *</label>
+            <input type="number" step="0.01" min="0" name="purchase_cost" required class="form-control" placeholder="e.g. 1850.00" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Warranty Expiry Date</label>
+            <input type="date" name="warranty_expiry" class="form-control" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-register-asset')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-asset">Catalog Asset</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal 2: Checkout Asset -->
+<div class="modal" id="modal-checkout-asset">
+  <div class="modal-content" style="max-width: 550px;">
+    <div class="modal-header">
+      <h3 class="modal-title">📦 Checkout Equipment</h3>
+      <button class="modal-close" onclick="closeModal('modal-checkout-asset')">&times;</button>
+    </div>
+    <form id="form-checkout-asset" onsubmit="handleCheckoutSubmit(event)">
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+        <div class="form-group">
+          <label class="form-label">Select Equipment / Asset *</label>
+          <select name="asset_id" required class="form-control" id="select-checkout-asset">
+            <option value="">-- Choose Available Asset --</option>
+            {% for a in assets %}
+            {% if a.status == 'AVAILABLE' %}
+            <option value="{{ a.id }}">{{ a.name }} ({{ a.asset_tag }} • {{ a.lab_room }})</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Borrower Type *</label>
+          <select name="borrower_type" required class="form-control" id="select-borrower-type" onchange="toggleBorrowerSelector()">
+            <option value="STUDENT">Active Student Scholar</option>
+            <option value="FACULTY">Faculty Instructor</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="group-borrower-student">
+          <label class="form-label">Select Student *</label>
+          <select name="student_id" class="form-control" id="select-checkout-student">
+            <option value="">-- Choose Student --</option>
+            {% for s in students %}
+            {% if s.status != 'WITHDRAWN' and s.status != 'SUSPENDED' %}
+            <option value="{{ s.id }}">
+              {{ s.first_name }} {{ s.last_name }} ({{ s.enrollment_no }} • {{ s.department_code }})
+            </option>
+            {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group" id="group-borrower-faculty" style="display: none;">
+          <label class="form-label">Select Faculty Instructor *</label>
+          <select name="faculty_id" class="form-control" id="select-checkout-faculty">
+            <option value="">-- Choose Faculty Member --</option>
+            {% for f in faculty %}
+            {% if f.status == 'ACTIVE' %}
+            <option value="{{ f.id }}">
+              {{ f.first_name }} {{ f.last_name }} ({{ f.faculty_id }} • {{ f.department_code }})
+            </option>
+            {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div class="form-group">
+            <label class="form-label">Checkout Date *</label>
+            <input type="date" name="checkout_date" required class="form-control" id="checkout-date-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Expected Due Date *</label>
+            <input type="date" name="due_date" required class="form-control" id="checkout-due-date-input" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Condition on Checkout</label>
+          <select name="condition_out" class="form-control">
+            <option value="NEW">New</option>
+            <option value="EXCELLENT">Excellent</option>
+            <option value="GOOD" selected>Good</option>
+            <option value="FAIR">Fair</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Circulation Notes / Project Purpose</label>
+          <textarea name="notes" class="form-control" rows="2" placeholder="e.g. Capstone laboratory experimentation in Room 204"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-checkout-asset')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-checkout">Confirm Checkout</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal 3: Return Asset -->
+<div class="modal" id="modal-return-asset">
+  <div class="modal-content" style="max-width: 480px;">
+    <div class="modal-header">
+      <h3 class="modal-title">↩️ Return Equipment</h3>
+      <button class="modal-close" onclick="closeModal('modal-return-asset')">&times;</button>
+    </div>
+    <form id="form-return-asset" onsubmit="handleReturnSubmit(event)">
+      <input type="hidden" id="return-checkout-id" />
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="padding: 12px; background: rgba(255, 255, 255, 0.04); border-radius: 8px; font-size: 0.9rem;">
+          <div><strong>Checkout Slip:</strong> <span id="return-slip-code" style="color: #38bdf8; font-family: monospace;"></span></div>
+          <div><strong>Asset:</strong> <span id="return-asset-name" style="color: #f8fafc;"></span></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Return Date *</label>
+          <input type="date" id="return-date-input" required class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Inspected Return Condition *</label>
+          <select id="return-condition-select" required class="form-control">
+            <option value="EXCELLENT">Excellent</option>
+            <option value="GOOD" selected>Good</option>
+            <option value="FAIR">Fair</option>
+            <option value="DAMAGED">DAMAGED (Auto-routes to Maintenance)</option>
+          </select>
+          <span style="font-size: 0.78rem; color: #94a3b8; display: block; margin-top: 4px;">
+            ⚠️ If returned as "DAMAGED", the asset automatically transitions to MAINTENANCE status.
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Return Notes</label>
+          <textarea id="return-notes-input" class="form-control" rows="2" placeholder="Inspection remarks or defect description..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-return-asset')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-return">Confirm Return</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal 4: Schedule Maintenance -->
+<div class="modal" id="modal-schedule-maintenance">
+  <div class="modal-content" style="max-width: 550px;">
+    <div class="modal-header">
+      <h3 class="modal-title">🛠️ Schedule Equipment Maintenance</h3>
+      <button class="modal-close" onclick="closeModal('modal-schedule-maintenance')">&times;</button>
+    </div>
+    <form id="form-schedule-maintenance" onsubmit="handleScheduleMaintenanceSubmit(event)">
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+        <div class="form-group">
+          <label class="form-label">Select Equipment / Asset *</label>
+          <select name="asset_id" required class="form-control" id="select-maint-asset">
+            <option value="">-- Choose Asset --</option>
+            {% for a in assets %}
+            {% if a.status != 'CHECKED_OUT' %}
+            <option value="{{ a.id }}">{{ a.name }} ({{ a.asset_tag }} • Status: {{ a.status }})</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div class="form-group">
+            <label class="form-label">Maintenance Type *</label>
+            <select name="maintenance_type" required class="form-control">
+              <option value="CALIBRATION">Routine Calibration</option>
+              <option value="PREVENTATIVE">Preventative Service</option>
+              <option value="REPAIR">Emergency Repair</option>
+              <option value="FIRMWARE_UPGRADE">Firmware / Software Upgrade</option>
+              <option value="INSPECTION">Safety Inspection</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Scheduled Date *</label>
+            <input type="date" name="scheduled_date" required class="form-control" id="maint-sched-date" />
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div class="form-group">
+            <label class="form-label">Technician / Vendor Name *</label>
+            <input type="text" name="technician_name" required class="form-control" placeholder="e.g. Apex Instrument Services" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Estimated / Incurred Cost ($)</label>
+            <input type="number" step="0.01" min="0" name="cost" value="0.00" class="form-control" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Initial Status</label>
+          <select name="status" class="form-control">
+            <option value="SCHEDULED">Scheduled</option>
+            <option value="IN_PROGRESS">In Progress (Immediate Maintenance)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Service Description / Diagnostic Details</label>
+          <textarea name="resolution_notes" class="form-control" rows="2" placeholder="Calibration specifications or fault diagnosis..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-schedule-maintenance')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-maint">Book Service</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal 5: Update Maintenance Status -->
+<div class="modal" id="modal-maintenance-status">
+  <div class="modal-content" style="max-width: 480px;">
+    <div class="modal-header">
+      <h3 class="modal-title">⚙️ Update Service Ticket</h3>
+      <button class="modal-close" onclick="closeModal('modal-maintenance-status')">&times;</button>
+    </div>
+    <form id="form-update-maintenance-status" onsubmit="handleUpdateMaintStatusSubmit(event)">
+      <input type="hidden" id="status-maint-id" />
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="padding: 12px; background: rgba(255, 255, 255, 0.04); border-radius: 8px; font-size: 0.9rem;">
+          <div><strong>Ticket:</strong> <span id="status-maint-code" style="color: #f59e0b; font-family: monospace;"></span></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Select New Status *</label>
+          <select id="select-maint-new-status" required class="form-control">
+            <option value="SCHEDULED">SCHEDULED</option>
+            <option value="IN_PROGRESS">IN_PROGRESS</option>
+            <option value="COMPLETED">COMPLETED (Restores Asset to Available)</option>
+            <option value="CANCELLED">CANCELLED</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Final Servicing Cost ($)</label>
+          <input type="number" step="0.01" min="0" id="status-maint-cost" class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Technician Resolution / Calibration Notes</label>
+          <textarea id="status-maint-notes" class="form-control" rows="2" placeholder="Calibration certificate number or parts replaced..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-maintenance-status')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-maint-status">Save Resolution</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Set default dates
+  document.addEventListener('DOMContentLoaded', () => {
+    const today = new Date().toISOString().split('T')[0];
+    const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
+
+    const regDate = document.getElementById('reg-purchase-date');
+    if (regDate) regDate.value = today;
+
+    const chkDate = document.getElementById('checkout-date-input');
+    if (chkDate) chkDate.value = today;
+
+    const dueDate = document.getElementById('checkout-due-date-input');
+    if (dueDate) dueDate.value = nextWeek;
+
+    const retDate = document.getElementById('return-date-input');
+    if (retDate) retDate.value = today;
+
+    const schedDate = document.getElementById('maint-sched-date');
+    if (schedDate) schedDate.value = today;
+  });
+
+  function switchInventoryTab(tabId) {
+    document.querySelectorAll('.inventory-tab-content').forEach(el => el.style.display = 'none');
+    document.getElementById(tabId).style.display = 'block';
+
+    const btnAssets = document.getElementById('btn-tab-assets');
+    const btnCheckouts = document.getElementById('btn-tab-checkouts');
+    const btnMaint = document.getElementById('btn-tab-maintenance');
+
+    btnAssets.className = tabId === 'tab-assets' ? 'btn btn-secondary' : 'btn btn-outline';
+    btnCheckouts.className = tabId === 'tab-checkouts' ? 'btn btn-secondary' : 'btn btn-outline';
+    btnMaint.className = tabId === 'tab-maintenance' ? 'btn btn-secondary' : 'btn btn-outline';
+  }
+
+  function toggleBorrowerSelector() {
+    const bType = document.getElementById('select-borrower-type').value;
+    const gStudent = document.getElementById('group-borrower-student');
+    const gFaculty = document.getElementById('group-borrower-faculty');
+
+    if (bType === 'STUDENT') {
+      gStudent.style.display = 'block';
+      gFaculty.style.display = 'none';
+      document.getElementById('select-checkout-student').required = true;
+      document.getElementById('select-checkout-faculty').required = false;
+    } else {
+      gStudent.style.display = 'none';
+      gFaculty.style.display = 'block';
+      document.getElementById('select-checkout-student').required = false;
+      document.getElementById('select-checkout-faculty').required = true;
+    }
+  }
+
+  function quickCheckoutAsset(assetId, assetTag, assetName) {
+    const sel = document.getElementById('select-checkout-asset');
+    if (sel) {
+      sel.value = assetId;
+    }
+    openModal('modal-checkout-asset');
+  }
+
+  function quickScheduleMaintenance(assetId, assetTag, assetName) {
+    const sel = document.getElementById('select-maint-asset');
+    if (sel) {
+      sel.value = assetId;
+    }
+    openModal('modal-schedule-maintenance');
+  }
+
+  function openReturnModal(checkoutId, checkoutCode, assetName) {
+    document.getElementById('return-checkout-id').value = checkoutId;
+    document.getElementById('return-slip-code').textContent = checkoutCode;
+    document.getElementById('return-asset-name').textContent = assetName;
+    openModal('modal-return-asset');
+  }
+
+  function openMaintStatusModal(maintId, maintCode, currentStatus, cost) {
+    document.getElementById('status-maint-id').value = maintId;
+    document.getElementById('status-maint-code').textContent = maintCode;
+    document.getElementById('select-maint-new-status').value = currentStatus;
+    document.getElementById('status-maint-cost').value = cost || 0;
+    openModal('modal-maintenance-status');
+  }
+
+  async function handleRegisterAssetSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+
+    const payload = {
+      name: formData.get('name'),
+      category: formData.get('category'),
+      department_id: formData.get('department_id') ? parseInt(formData.get('department_id')) : null,
+      lab_room: formData.get('lab_room'),
+      serial_number: formData.get('serial_number') || null,
+      model_number: formData.get('model_number') || null,
+      manufacturer: formData.get('manufacturer') || null,
+      purchase_date: formData.get('purchase_date'),
+      purchase_cost: parseFloat(formData.get('purchase_cost')),
+      warranty_expiry: formData.get('warranty_expiry') || null,
+      status: 'AVAILABLE'
+    };
+
+    try {
+      const res = await fetch('/api/inventory/assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Failed to catalog asset');
+      }
+      showToast('Asset cataloged successfully: ' + data.asset_tag, 'success');
+      closeModal('modal-register-asset');
+      setTimeout(() => window.location.reload(), 600);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function handleCheckoutSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const bType = formData.get('borrower_type');
+
+    const payload = {
+      asset_id: parseInt(formData.get('asset_id')),
+      borrower_type: bType,
+      student_id: bType === 'STUDENT' ? parseInt(formData.get('student_id')) : null,
+      faculty_id: bType === 'FACULTY' ? parseInt(formData.get('faculty_id')) : null,
+      checkout_date: formData.get('checkout_date'),
+      due_date: formData.get('due_date'),
+      condition_out: formData.get('condition_out') || 'GOOD',
+      notes: formData.get('notes') || null
+    };
+
+    try {
+      const res = await fetch('/api/inventory/checkouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Failed to checkout asset');
+      }
+      showToast('Checkout approved: ' + data.checkout_code, 'success');
+      closeModal('modal-checkout-asset');
+      setTimeout(() => window.location.reload(), 600);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function handleReturnSubmit(e) {
+    e.preventDefault();
+    const checkoutId = document.getElementById('return-checkout-id').value;
+    const payload = {
+      returned_date: document.getElementById('return-date-input').value,
+      condition_in: document.getElementById('return-condition-select').value,
+      notes: document.getElementById('return-notes-input').value || null
+    };
+
+    try {
+      const res = await fetch('/api/inventory/checkouts/' + checkoutId + '/return', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Failed to process equipment return');
+      }
+      showToast('Equipment return recorded successfully', 'success');
+      closeModal('modal-return-asset');
+      setTimeout(() => window.location.reload(), 600);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function handleScheduleMaintenanceSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+
+    const payload = {
+      asset_id: parseInt(formData.get('asset_id')),
+      maintenance_type: formData.get('maintenance_type'),
+      scheduled_date: formData.get('scheduled_date'),
+      technician_name: formData.get('technician_name'),
+      cost: parseFloat(formData.get('cost') || '0.0'),
+      status: formData.get('status') || 'SCHEDULED',
+      resolution_notes: formData.get('resolution_notes') || null
+    };
+
+    try {
+      const res = await fetch('/api/inventory/maintenance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Failed to schedule maintenance');
+      }
+      showToast('Service scheduled: ' + data.maintenance_code, 'success');
+      closeModal('modal-schedule-maintenance');
+      setTimeout(() => window.location.reload(), 600);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function handleUpdateMaintStatusSubmit(e) {
+    e.preventDefault();
+    const maintId = document.getElementById('status-maint-id').value;
+    const payload = {
+      status: document.getElementById('select-maint-new-status').value,
+      cost: parseFloat(document.getElementById('status-maint-cost').value || '0.0'),
+      resolution_notes: document.getElementById('status-maint-notes').value || null
+    };
+
+    try {
+      const res = await fetch('/api/inventory/maintenance/' + maintId + '/status', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Failed to update maintenance status');
+      }
+      showToast('Service ticket updated: ' + data.status, 'success');
+      closeModal('modal-maintenance-status');
+      setTimeout(() => window.location.reload(), 600);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+</script>
+{% endblock %}

@@ -28,6 +28,15 @@ from src.models.asset import (
     AssetReturnUpdate,
     AssetStatsOut,
 )
+from src.models.auth import (
+    AuditLogResponse,
+    LoginRequest,
+    LoginResponse,
+    UserCreate,
+    UserResponse,
+    UserRole,
+    UserStatus,
+)
 from src.models.common import ErrorResponse, MessageResponse
 from src.models.course import CourseCreate, CourseOut, CourseUpdate, EnrollmentCreate
 from src.models.department import DepartmentCreate, DepartmentOut
@@ -111,6 +120,14 @@ __all__ = [
     # Common
     "ErrorResponse",
     "MessageResponse",
+    # Authentication & Identity
+    "UserRole",
+    "UserStatus",
+    "UserCreate",
+    "UserResponse",
+    "LoginRequest",
+    "LoginResponse",
+    "AuditLogResponse",
     # Departments
     "DepartmentCreate",
     "DepartmentOut",

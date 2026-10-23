@@ -5,7 +5,9 @@ import sqlite3
 from fastapi import APIRouter, Depends
 
 from src.core.config import APP_NAME, APP_VERSION
+from src.core.security import require_role
 from src.database.connection import get_db
+from src.services.auth_service import AuthService
 from src.services.system_service import SystemService
 
 router = APIRouter(tags=["System"])
@@ -33,12 +35,27 @@ def get_system_telemetry(conn: sqlite3.Connection = Depends(get_db)):
 
 
 @router.post("/api/system/backup")
-def create_system_backup(conn: sqlite3.Connection = Depends(get_db)):
-    """Perform hot online SQLite database backup snapshot."""
-    return SystemService.create_backup(conn)
+def create_system_backup(
+    conn: sqlite3.Connection = Depends(get_db),
+    admin_user: dict = Depends(require_role("admin")),
+):
+    """Perform hot online SQLite database backup snapshot (Admin only)."""
+    result = SystemService.create_backup(conn)
+    AuthService.log_audit(
+        conn,
+        action="SYSTEM_BACKUP",
+        resource="system",
+        resource_id=result.get("filename"),
+        user_id=admin_user.get("id"),
+        username=admin_user.get("username"),
+        details=f"Database snapshot generated: {result.get('filename')} ({result.get('size_kb')} KB)",
+    )
+    return result
 
 
 @router.get("/api/system/backups")
-def list_system_backups():
-    """List all available database snapshots in data/backups/."""
+def list_system_backups(
+    admin_user: dict = Depends(require_role("admin")),
+):
+    """List all available database snapshots in data/backups/ (Admin only)."""
     return SystemService.list_backups()

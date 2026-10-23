@@ -40,6 +40,12 @@ DEFAULT_DEPARTMENTS = [
     ),
 ]
 
+DEFAULT_USERS = [
+    ("admin", "admin@institute.edu", "admin123", "admin"),
+    ("faculty", "faculty@institute.edu", "faculty123", "faculty"),
+    ("student", "student@institute.edu", "student123", "student"),
+]
+
 
 def init_database(db_path: Path | str | None = None) -> None:
     """Initialize database tables and initial baseline reference records."""
@@ -70,6 +76,35 @@ def init_database(db_path: Path | str | None = None) -> None:
                     SET name = excluded.name, description = excluded.description;
                     """,
                     (code, name, desc),
+                )
+
+            # Ensure default users exist
+            from src.core.security import hash_password
+
+            for username, email, raw_password, role in DEFAULT_USERS:
+                cursor.execute(
+                    "SELECT id FROM users WHERE username = ? OR email = ?;",
+                    (username, email),
+                )
+                if not cursor.fetchone():
+                    pw_hash = hash_password(raw_password)
+                    cursor.execute(
+                        """
+                        INSERT INTO users (username, email, password_hash, role, status)
+                        VALUES (?, ?, ?, ?, 'active');
+                        """,
+                        (username, email, pw_hash, role),
+                    )
+
+            # Log system initialization if audit_logs is empty
+            cursor.execute("SELECT COUNT(*) AS total FROM audit_logs;")
+            row = cursor.fetchone()
+            if row and row["total"] == 0:
+                cursor.execute(
+                    """
+                    INSERT INTO audit_logs (username, action, resource, details)
+                    VALUES ('system', 'SYSTEM_INIT', 'database', 'Database initialized with baseline schemas and credentials');
+                    """
                 )
     finally:
         conn.close()

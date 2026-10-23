@@ -133,8 +133,21 @@
         </div>
         <div class="header-right">
           <span class="badge-tag badge-success">● Term: 2026-27</span>
+          {% if current_user %}
+            <span class="badge-tag" style="background: rgba(99, 102, 241, 0.2); border: 1px solid var(--accent-primary); color: #c7d2fe;">
+              👤 {{ current_user.username }} ({{ current_user.role|capitalize }})
+            </span>
+            <a href="/logout" class="btn-action" style="padding: 6px 12px; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); color: var(--text-muted);">
+              <span>🚪</span> Sign Out
+            </a>
+          {% else %}
+            <a href="/login" class="btn-action" style="padding: 6px 12px; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; background: var(--accent-primary); color: #ffffff; border-radius: var(--radius-sm);">
+              <span>🔑</span> Sign In
+            </a>
+          {% endif %}
           {% block header_actions %}{% endblock %}
         </div>
+
       </header>
 
       <main class="content-wrapper">

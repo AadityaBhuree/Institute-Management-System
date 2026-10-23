@@ -16,6 +16,7 @@ from slowapi.util import get_remote_address
 from src.api.academics import router as academics_router
 from src.api.alumni import router as alumni_router
 from src.api.announcements import router as announcements_router
+from src.api.auth import router as auth_router
 from src.api.courses import router as courses_router
 from src.api.dashboard import router as dashboard_router
 from src.api.departments import router as departments_router
@@ -57,6 +58,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 OPENAPI_TAGS = [
+    {
+        "name": "Authentication & Identity",
+        "description": "User login, session token issuance, RBAC permissions, and compliance audit trail.",
+    },
     {
         "name": "Students & Admissions",
         "description": "Admissions registry, student demographics, enrollment ID generation, and dossier profiles.",
@@ -172,6 +177,7 @@ app.add_middleware(
 )
 
 # Mount REST API Routers
+app.include_router(auth_router)
 app.include_router(students_router)
 app.include_router(courses_router)
 app.include_router(faculty_router)

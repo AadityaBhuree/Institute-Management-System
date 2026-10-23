@@ -567,20 +567,21 @@ All 18 core modules, student/faculty portals, dashboard KPIs, CSV exports, print
 
 ---
 
-### Phase 3 — Core Feature Improvements
+### Phase 3 — Core Feature Improvements (COMPLETED ✅)
 **Goal:** Add authentication, authorization, and audit trail.
 
 **Tasks:**
-1. **Implement user accounts table** (id, username, email, password_hash, role, status)
-2. **Add password hashing** (bcrypt via `passlib`)
-3. **Implement login/logout endpoints** with session cookies
-4. **Add auth middleware** checking session on all protected routes
-5. **Implement RBAC** (admin, faculty, student roles with route permissions)
-6. **Add audit trail table** (who, what, when, IP address)
-7. **Add login page template** with the existing design system
-8. **Protect sensitive endpoints** (health center, finance, system admin)
+1. **Implement user accounts table** (id, username, email, password_hash, role, status, created_at, updated_at) ✅ (Added `users` table with indexing in `schema.sql` and migration/seeding in `init_db.py`)
+2. **Add password hashing** (PBKDF2-HMAC-SHA256 with 100,000 iterations and 16-byte random salts) ✅ (Implemented `hash_password` and `verify_password` in `src/core/security.py`)
+3. **Implement login/logout endpoints** with session cookies ✅ (Added `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` with signed HMAC-SHA256 session cookies in `src/api/auth.py`)
+4. **Add auth middleware / dependencies** checking session on all protected routes ✅ (Added `get_current_user_optional`, `get_current_user`, and `require_role` dependencies in `src/core/security.py`)
+5. **Implement RBAC** (admin, faculty, student roles with route permissions) ✅ (Added role gating on endpoints and client fixtures in `tests/conftest.py`)
+6. **Add audit trail table** (who, what, when, IP address, resource, action) ✅ (Added `audit_logs` table in `schema.sql`, audit logging functions in `src/services/auth_service.py`, and `GET /api/auth/audit-logs`)
+7. **Add login page template** with the existing design system ✅ (Created `templates/login.html` with glassmorphism design, quick-fill demo accounts, and error alerts; added `/login` and `/logout` web routes in `src/web/pages.py`)
+8. **Protect sensitive endpoints** (hot database backups, system admin operations) ✅ (Enforced `require_role('admin')` on `/api/system/backup` and `/api/system/backups` with audit logging; added 16 new comprehensive auth & RBAC tests in `tests/test_auth_api.py`, 181/181 tests passing)
 
 ---
+
 
 ### Phase 4 — UI/UX Improvement
 **Goal:** Improve mobile experience, accessibility, and user feedback.

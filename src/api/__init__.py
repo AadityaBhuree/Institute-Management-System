@@ -3,6 +3,7 @@
 from src.api.academics import router as academics_router
 from src.api.alumni import router as alumni_router
 from src.api.announcements import router as announcements_router
+from src.api.auth import router as auth_router
 from src.api.courses import router as courses_router
 from src.api.dashboard import router as dashboard_router
 from src.api.departments import router as departments_router
@@ -26,6 +27,7 @@ __all__ = [
     "academics_router",
     "alumni_router",
     "announcements_router",
+    "auth_router",
     "courses_router",
     "dashboard_router",
     "departments_router",

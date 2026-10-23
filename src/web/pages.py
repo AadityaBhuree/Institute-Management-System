@@ -6,15 +6,22 @@ import sqlite3
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from src.core.config import TEMPLATES_DIR
+from src.core.security import (
+    DEFAULT_SESSION_MAX_AGE,
+    SESSION_COOKIE_NAME,
+    create_session_token,
+    get_current_user_optional,
+)
 from src.database.connection import get_db
 from src.services.academics_service import AcademicsService
 from src.services.alumni_service import AlumniService
 from src.services.announcement_service import AnnouncementService
 from src.services.asset_service import AssetService
+from src.services.auth_service import AuthService
 from src.services.course_service import CourseService
 from src.services.dashboard_service import DashboardService
 from src.services.department_service import DepartmentService
@@ -39,8 +46,122 @@ TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
+@router.get("/login", response_class=HTMLResponse)
+def view_login_page(
+    request: Request,
+    next: Optional[str] = None,
+    error: Optional[str] = None,
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+):
+    """Render the user authentication and login interface."""
+    if current_user:
+        return RedirectResponse(url=next or "/", status_code=status.HTTP_303_SEE_OTHER)
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={
+            "active_page": "login",
+            "next": next or "/",
+            "error": error,
+            "current_user": current_user,
+        },
+    )
+
+
+@router.post("/login", response_class=HTMLResponse)
+async def handle_login_form(
+    request: Request,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """Handle traditional HTML form submission for login."""
+    body_bytes = await request.body()
+    import urllib.parse
+
+    form_dict = urllib.parse.parse_qs(body_bytes.decode("utf-8", errors="replace"))
+    username = form_dict.get("username", [""])[0].strip()
+    password = form_dict.get("password", [""])[0].strip()
+    next_url = form_dict.get("next", ["/"])[0].strip() or "/"
+
+    user = AuthService.authenticate(conn, username, password)
+    ip_addr = request.client.host if request.client else None
+
+    if not user:
+        AuthService.log_audit(
+            conn,
+            action="LOGIN_FAILED",
+            resource="web_auth",
+            details=f"Failed web login attempt for '{username}'.",
+            ip_address=ip_addr,
+        )
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={
+                "active_page": "login",
+                "next": next_url,
+                "error": "Invalid username or password.",
+                "username": username,
+            },
+            status_code=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    AuthService.update_last_login(conn, user["id"])
+    token = create_session_token(
+        user_id=user["id"],
+        username=user["username"],
+        role=user["role"],
+    )
+    AuthService.log_audit(
+        conn,
+        action="LOGIN_SUCCESS",
+        resource="web_auth",
+        resource_id=str(user["id"]),
+        user_id=user["id"],
+        username=user["username"],
+        details=f"User '{user['username']}' logged in via web portal.",
+        ip_address=ip_addr,
+    )
+
+    response = RedirectResponse(url=next_url, status_code=status.HTTP_303_SEE_OTHER)
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        samesite="lax",
+        max_age=DEFAULT_SESSION_MAX_AGE,
+        path="/",
+    )
+    return response
+
+
+@router.get("/logout")
+def handle_logout_page(
+    request: Request,
+    conn: sqlite3.Connection = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+):
+    """Clear session cookie and redirect to login page."""
+    if current_user:
+        AuthService.log_audit(
+            conn,
+            action="LOGOUT",
+            resource="web_auth",
+            resource_id=str(current_user["id"]),
+            user_id=current_user["id"],
+            username=current_user["username"],
+            details=f"User '{current_user['username']}' logged out via web portal.",
+        )
+    response = RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    response.delete_cookie(key=SESSION_COOKIE_NAME, path="/")
+    return response
+
+
 @router.get("/", response_class=HTMLResponse)
-def view_dashboard(request: Request, conn: sqlite3.Connection = Depends(get_db)):
+def view_dashboard(
+    request: Request,
+    conn: sqlite3.Connection = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+):
     """Render the executive overview dashboard."""
     summary = DashboardService.get_kpi_summary(conn)
     return templates.TemplateResponse(
@@ -49,6 +170,7 @@ def view_dashboard(request: Request, conn: sqlite3.Connection = Depends(get_db))
         context={
             "active_page": "dashboard",
             "summary": summary,
+            "current_user": current_user,
         },
     )
 

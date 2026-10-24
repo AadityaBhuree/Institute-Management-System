@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}500 Internal Server Disruption{% endblock %}
+{% block header_title %}Server Disruption{% endblock %}
+{% block header_subtitle %}HTTP 500 — An internal system exception was encountered{% endblock %}
+
+{% block content %}
+<div class="error-page-container">
+  <div class="error-card">
+    <div class="error-badge error-badge-500" aria-hidden="true">500</div>
+    <h1 class="error-title">Institutional Server Disruption</h1>
+    <p class="error-description">
+      An unexpected condition prevented the academic ERP server from fulfilling your request. The anomaly has been registered in the system diagnostics log.
+    </p>
+    <div class="error-actions">
+      <button onclick="window.location.reload()" class="btn btn-primary" type="button">
+        <span aria-hidden="true">🔄</span> Retry Request
+      </button>
+      <a href="/" class="btn btn-secondary">
+        <span aria-hidden="true">🏛️</span> Return to Dashboard
+      </a>
+      <a href="/settings" class="btn btn-secondary">
+        <span aria-hidden="true">⚙️</span> System Diagnostics
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

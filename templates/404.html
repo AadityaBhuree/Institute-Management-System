@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}404 Page Not Located{% endblock %}
+{% block header_title %}Resource Not Found{% endblock %}
+{% block header_subtitle %}HTTP 404 — The requested path could not be resolved{% endblock %}
+
+{% block content %}
+<div class="error-page-container">
+  <div class="error-card">
+    <div class="error-badge" aria-hidden="true">404</div>
+    <h1 class="error-title">Page or Record Not Found</h1>
+    <p class="error-description">
+      The administrative view, student dossier, or operation you attempted to access does not exist in the institutional registry or may have been relocated.
+    </p>
+    <div class="error-actions">
+      <a href="/" class="btn btn-primary">
+        <span aria-hidden="true">📊</span> Return to Dashboard
+      </a>
+      <a href="/students" class="btn btn-secondary">
+        <span aria-hidden="true">🎓</span> Scholar Registry
+      </a>
+      <button onclick="window.history.back()" class="btn btn-secondary" type="button">
+        <span aria-hidden="true">↩️</span> Go Back
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}

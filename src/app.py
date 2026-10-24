@@ -2,16 +2,19 @@
 Orchestrates static assets, Jinja2 template rendering, REST API routes, and database lifespan.
 """
 
+import logging
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from src.api.academics import router as academics_router
 from src.api.alumni import router as alumni_router
@@ -45,8 +48,10 @@ from src.core.config import (
     STATIC_DIR,
 )
 from src.core.logging_config import setup_logging
+from src.core.security import SESSION_COOKIE_NAME, verify_session_token
 from src.database.init_db import init_database
 from src.web.pages import router as pages_router
+from src.web.pages import templates
 
 
 @asynccontextmanager
@@ -166,6 +171,68 @@ limiter = Limiter(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+
+
+def _extract_user_from_request(request: Request) -> Optional[dict]:
+    """Gracefully extract basic user details for template headers during exception handling."""
+    try:
+        token = request.cookies.get(SESSION_COOKIE_NAME)
+        if token:
+            payload = verify_session_token(token)
+            if payload:
+                return {"username": payload.get("sub"), "role": payload.get("role")}
+    except Exception:
+        pass
+    return None
+
+
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """Handle HTTP exceptions: render glassmorphism error templates for web requests, JSON for API."""
+    accept = request.headers.get("accept", "")
+    is_api = request.url.path.startswith("/api/")
+    if exc.status_code == 404 and "text/html" in accept and not is_api:
+        user = _extract_user_from_request(request)
+        return templates.TemplateResponse(
+            request=request,
+            name="404.html",
+            context={"active_page": None, "current_user": user},
+            status_code=404,
+        )
+    if exc.status_code == 500 and "text/html" in accept and not is_api:
+        user = _extract_user_from_request(request)
+        return templates.TemplateResponse(
+            request=request,
+            name="500.html",
+            context={"active_page": None, "current_user": user},
+            status_code=500,
+        )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=exc.headers,
+    )
+
+
+@app.exception_handler(Exception)
+async def custom_500_exception_handler(request: Request, exc: Exception):
+    """Catch-all unhandled server error handler: log error and render 500 error template for HTML."""
+    logging.getLogger("ims").exception("Unhandled server exception: %s", exc)
+    accept = request.headers.get("accept", "")
+    is_api = request.url.path.startswith("/api/")
+    if "text/html" in accept and not is_api:
+        user = _extract_user_from_request(request)
+        return templates.TemplateResponse(
+            request=request,
+            name="500.html",
+            context={"active_page": None, "current_user": user},
+            status_code=500,
+        )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
+
 
 # Cross-Origin Resource Sharing (CORS)
 app.add_middleware(

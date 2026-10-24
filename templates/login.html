@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In | Institute Management System</title>
+  <meta name="description" content="Secure administrative access to IMS Enterprise Academic Portal">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    .auth-page-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: radial-gradient(circle at 50% 30%, rgba(99, 102, 241, 0.15) 0%, transparent 60%),
+                  radial-gradient(circle at 80% 80%, rgba(14, 165, 233, 0.1) 0%, transparent 50%),
+                  var(--bg-primary);
+    }
+    .auth-card {
+      width: 100%;
+      max-width: 440px;
+      background: var(--bg-surface);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-xl);
+      padding: 36px 32px;
+      box-shadow: var(--shadow-lg), 0 0 30px rgba(99, 102, 241, 0.2);
+    }
+    .auth-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .auth-logo {
+      font-size: 42px;
+      display: inline-block;
+      margin-bottom: 12px;
+      filter: drop-shadow(0 4px 10px rgba(99, 102, 241, 0.4));
+    }
+    .auth-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.5px;
+    }
+    .auth-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .form-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+    .form-input {
+      width: 100%;
+      padding: 12px 14px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-main);
+      font-size: 14px;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+    .form-input:focus {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .alert-error {
+      background: var(--color-danger-bg);
+      border: 1px solid var(--color-danger);
+      color: #fca5a5;
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-submit {
+      width: 100%;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-hover));
+      color: #ffffff;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm), 0 2px 8px rgba(99, 102, 241, 0.35);
+      transition: all 0.2s ease;
+      margin-top: 8px;
+    }
+    .btn-submit:hover {
+      filter: brightness(1.1);
+      box-shadow: var(--shadow-md), 0 4px 14px rgba(99, 102, 241, 0.5);
+      transform: translateY(-1px);
+    }
+    .demo-credentials-box {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border-subtle);
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .demo-title {
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-size: 11px;
+    }
+    .demo-buttons-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .btn-demo {
+      padding: 6px 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-size: 11px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+    .btn-demo:hover {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: var(--accent-primary);
+      color: var(--text-main);
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-page-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-logo">🏛️</div>
+        <h1 class="auth-title">IMS Enterprise</h1>
+        <p class="auth-subtitle">Academic & Institutional ERP Portal</p>
+      </div>
+
+      {% if error %}
+      <div class="alert-error" role="alert" style="margin-bottom: 16px;">
+        <span>⚠️</span>
+        <span>{{ error }}</span>
+      </div>
+      {% endif %}
+
+      <form action="/login" method="POST" class="auth-form" id="login-form">
+        <input type="hidden" name="next" value="{{ next or '/' }}">
+        
+        <div class="form-group">
+          <label for="username" class="form-label">Username or Institutional Email</label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            class="form-input"
+            value="{{ username or '' }}"
+            placeholder="e.g. admin or admin@institute.edu"
+            required
+            autocomplete="username"
+            autofocus
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="password" class="form-label">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            class="form-input"
+            placeholder="••••••••••••"
+            required
+            autocomplete="current-password"
+          >
+        </div>
+
+        <button type="submit" class="btn-submit" id="btn-login-submit">
+          Sign In to Portal
+        </button>
+      </form>
+
+      <div class="demo-credentials-box">
+        <div class="demo-title">⚡ Quick Demo Accounts</div>
+        <div class="demo-buttons-grid">
+          <button type="button" class="btn-demo" onclick="fillCredentials('admin', 'admin123')">
+            👑 Admin
+          </button>
+          <button type="button" class="btn-demo" onclick="fillCredentials('faculty', 'faculty123')">
+            🧑‍🏫 Faculty
+          </button>
+          <button type="button" class="btn-demo" onclick="fillCredentials('student', 'student123')">
+            👨‍🎓 Student
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function fillCredentials(user, pass) {
+      document.getElementById('username').value = user;
+      document.getElementById('password').value = pass;
+    }
+  </script>
+</body>
+</html>

@@ -9,116 +9,123 @@
   {% block head %}{% endblock %}
 </head>
 <body>
+  <!-- Skip to main content link for screen readers & keyboard navigation -->
+  <a href="#main-content" class="skip-to-content">Skip to main content</a>
+
+  <!-- Mobile Drawer Backdrop Overlay -->
+  <div id="sidebar-overlay" class="sidebar-overlay" aria-hidden="true"></div>
+
   <div class="app-layout">
     <!-- Sidebar Navigation -->
-    <aside class="app-sidebar">
+    <aside class="app-sidebar" id="app-sidebar" aria-label="Sidebar Navigation">
       <div class="brand-section">
-        <div class="brand-logo">🏛️</div>
+        <div class="brand-logo" aria-hidden="true">🏛️</div>
         <div class="brand-text">
           <h1>IMS Enterprise</h1>
           <p>Academic Portal</p>
         </div>
+        <button id="sidebar-close-btn" class="sidebar-close-btn" aria-label="Close navigation sidebar" type="button">&times;</button>
       </div>
 
-      <nav class="nav-menu">
+      <nav class="nav-menu" aria-label="Institutional Navigation Menu">
         <div class="nav-label">Core Operations</div>
-        <a href="/" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}" id="nav-dashboard">
-          <span class="nav-icon">📊</span>
+        <a href="/" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}" id="nav-dashboard" {% if active_page == 'dashboard' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">📊</span>
           <span>Overview Dashboard</span>
         </a>
-        <a href="/students" class="nav-item {% if active_page == 'students' %}active{% endif %}" id="nav-students">
-          <span class="nav-icon">🎓</span>
+        <a href="/students" class="nav-item {% if active_page == 'students' %}active{% endif %}" id="nav-students" {% if active_page == 'students' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">🎓</span>
           <span>Admissions & Registry</span>
         </a>
-        <a href="/portal" class="nav-item {% if active_page == 'portal' %}active{% endif %}" id="nav-portal">
-          <span class="nav-icon">👨‍🎓</span>
+        <a href="/portal" class="nav-item {% if active_page == 'portal' %}active{% endif %}" id="nav-portal" {% if active_page == 'portal' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">👨‍🎓</span>
           <span>Scholar Portal</span>
         </a>
-        <a href="/faculty-portal" class="nav-item {% if active_page == 'faculty_portal' %}active{% endif %}" id="nav-faculty-portal">
-          <span class="nav-icon">🧑‍🏫</span>
+        <a href="/faculty-portal" class="nav-item {% if active_page == 'faculty_portal' %}active{% endif %}" id="nav-faculty-portal" {% if active_page == 'faculty_portal' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">🧑‍🏫</span>
           <span>Faculty Portal</span>
         </a>
-        <a href="/courses" class="nav-item {% if active_page == 'courses' %}active{% endif %}" id="nav-courses">
-          <span class="nav-icon">📚</span>
+        <a href="/courses" class="nav-item {% if active_page == 'courses' %}active{% endif %}" id="nav-courses" {% if active_page == 'courses' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">📚</span>
           <span>Faculty & Courses</span>
         </a>
 
         <div class="nav-label">Academic Operations</div>
-        <a href="/academics" class="nav-item {% if active_page == 'academics' %}active{% endif %}" id="nav-academics">
-          <span class="nav-icon">📝</span>
+        <a href="/academics" class="nav-item {% if active_page == 'academics' %}active{% endif %}" id="nav-academics" {% if active_page == 'academics' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">📝</span>
           <span>Attendance & Exams</span>
         </a>
-        <a href="/timetable" class="nav-item {% if active_page == 'timetable' %}active{% endif %}" id="nav-timetable">
-          <span class="nav-icon">🗓️</span>
+        <a href="/timetable" class="nav-item {% if active_page == 'timetable' %}active{% endif %}" id="nav-timetable" {% if active_page == 'timetable' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">🗓️</span>
           <span>Lecture Timetable</span>
         </a>
-        <a href="/announcements" class="nav-item {% if active_page == 'announcements' %}active{% endif %}" id="nav-announcements">
-          <span class="nav-icon">📢</span>
+        <a href="/announcements" class="nav-item {% if active_page == 'announcements' %}active{% endif %}" id="nav-announcements" {% if active_page == 'announcements' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">📢</span>
           <span>Campus Notices</span>
         </a>
 
         <div class="nav-label">Campus Life & Placements</div>
-        <a href="/library" class="nav-item {% if active_page == 'library' %}active{% endif %}" id="nav-library">
-          <span class="nav-icon">📖</span>
+        <a href="/library" class="nav-item {% if active_page == 'library' %}active{% endif %}" id="nav-library" {% if active_page == 'library' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">📖</span>
           <span>Library & Loans</span>
         </a>
-        <a href="/hostel" class="nav-item {% if active_page == 'hostel' %}active{% endif %}" id="nav-hostel">
-          <span class="nav-icon">🏠</span>
+        <a href="/hostel" class="nav-item {% if active_page == 'hostel' %}active{% endif %}" id="nav-hostel" {% if active_page == 'hostel' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">🏠</span>
           <span>Hostel & Housing</span>
         </a>
-        <a href="/placements" class="nav-item {% if active_page == 'placements' %}active{% endif %}" id="nav-placements">
-          <span class="nav-icon">💼</span>
+        <a href="/placements" class="nav-item {% if active_page == 'placements' %}active{% endif %}" id="nav-placements" {% if active_page == 'placements' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">💼</span>
           <span>Corporate Placements</span>
         </a>
-        <a href="/events" class="nav-item {% if active_page == 'events' %}active{% endif %}" id="nav-events">
-          <span class="nav-icon">🎪</span>
+        <a href="/events" class="nav-item {% if active_page == 'events' %}active{% endif %}" id="nav-events" {% if active_page == 'events' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">🎪</span>
           <span>Events & Symposiums</span>
         </a>
 
         <div class="nav-label">Logistics & Scholar Advancement</div>
-        <a href="/transport" class="nav-item {% if active_page == 'transport' %}active{% endif %}" id="nav-transport">
-          <span class="nav-icon">🚌</span>
+        <a href="/transport" class="nav-item {% if active_page == 'transport' %}active{% endif %}" id="nav-transport" {% if active_page == 'transport' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">🚌</span>
           <span>Transport Fleet</span>
         </a>
-        <a href="/scholarships" class="nav-item {% if active_page == 'scholarships' %}active{% endif %}" id="nav-scholarships">
-          <span class="nav-icon">🎓</span>
+        <a href="/scholarships" class="nav-item {% if active_page == 'scholarships' %}active{% endif %}" id="nav-scholarships" {% if active_page == 'scholarships' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">🎓</span>
           <span>Scholarships & Aid</span>
         </a>
-        <a href="/alumni" class="nav-item {% if active_page == 'alumni' %}active{% endif %}" id="nav-alumni">
-          <span class="nav-icon">🤝</span>
+        <a href="/alumni" class="nav-item {% if active_page == 'alumni' %}active{% endif %}" id="nav-alumni" {% if active_page == 'alumni' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">🤝</span>
           <span>Alumni Network</span>
         </a>
-        <a href="/inventory" class="nav-item {% if active_page == 'inventory' %}active{% endif %}" id="nav-inventory">
-          <span class="nav-icon">🔬</span>
+        <a href="/inventory" class="nav-item {% if active_page == 'inventory' %}active{% endif %}" id="nav-inventory" {% if active_page == 'inventory' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">🔬</span>
           <span>Assets & Lab Inventory</span>
         </a>
-        <a href="/health-center" class="nav-item {% if active_page == 'health_center' %}active{% endif %}" id="nav-health-center">
-          <span class="nav-icon">🏥</span>
+        <a href="/health-center" class="nav-item {% if active_page == 'health_center' %}active{% endif %}" id="nav-health-center" {% if active_page == 'health_center' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">🏥</span>
           <span>Campus Clinic & Infirmary</span>
         </a>
 
         <div class="nav-label">Administration & Governance</div>
-        <a href="/leaves" class="nav-item {% if active_page == 'leaves' %}active{% endif %}" id="nav-leaves">
-          <span class="nav-icon">📋</span>
+        <a href="/leaves" class="nav-item {% if active_page == 'leaves' %}active{% endif %}" id="nav-leaves" {% if active_page == 'leaves' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">📋</span>
           <span>Leave Management</span>
         </a>
-        <a href="/finance" class="nav-item {% if active_page == 'finance' %}active{% endif %}" id="nav-finance">
-          <span class="nav-icon">💳</span>
+        <a href="/finance" class="nav-item {% if active_page == 'finance' %}active{% endif %}" id="nav-finance" {% if active_page == 'finance' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">💳</span>
           <span>Fee Invoicing & Audit</span>
         </a>
-        <a href="/reports" class="nav-item {% if active_page == 'reports' %}active{% endif %}" id="nav-reports">
-          <span class="nav-icon">📊</span>
+        <a href="/reports" class="nav-item {% if active_page == 'reports' %}active{% endif %}" id="nav-reports" {% if active_page == 'reports' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">📊</span>
           <span>Reports & Analytics</span>
         </a>
-        <a href="/settings" class="nav-item {% if active_page == 'settings' %}active{% endif %}" id="nav-settings">
-          <span class="nav-icon">⚙️</span>
+        <a href="/settings" class="nav-item {% if active_page == 'settings' %}active{% endif %}" id="nav-settings" {% if active_page == 'settings' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">⚙️</span>
           <span>System Settings</span>
         </a>
       </nav>
 
       <div class="sidebar-footer">
         <div class="system-status">
-          <span class="status-dot"></span>
+          <span class="status-dot" aria-hidden="true"></span>
           <span>System Healthy • v1.0</span>
         </div>
       </div>
@@ -126,38 +133,45 @@
 
     <!-- Main Content Stream -->
     <div class="app-main">
-      <header class="app-header">
-        <div class="header-left">
-          <h2>{% block header_title %}Overview Dashboard{% endblock %}</h2>
-          <p>{% block header_subtitle %}Real-time administrative telemetry and key operations{% endblock %}</p>
+      <header class="app-header" role="banner">
+        <div class="header-left d-flex align-center gap-3">
+          <button id="mobile-menu-toggle" class="mobile-menu-btn" aria-label="Open navigation menu" aria-expanded="false" aria-controls="app-sidebar" type="button">
+            <span class="bar" aria-hidden="true"></span>
+            <span class="bar" aria-hidden="true"></span>
+            <span class="bar" aria-hidden="true"></span>
+          </button>
+          <div>
+            <h2>{% block header_title %}Overview Dashboard{% endblock %}</h2>
+            <p>{% block header_subtitle %}Real-time administrative telemetry and key operations{% endblock %}</p>
+          </div>
         </div>
         <div class="header-right">
           <span class="badge-tag badge-success">● Term: 2026-27</span>
           {% if current_user %}
-            <span class="badge-tag" style="background: rgba(99, 102, 241, 0.2); border: 1px solid var(--accent-primary); color: #c7d2fe;">
-              👤 {{ current_user.username }} ({{ current_user.role|capitalize }})
+            <span class="user-badge">
+              <span aria-hidden="true">👤</span> {{ current_user.username }} ({{ current_user.role|capitalize }})
             </span>
-            <a href="/logout" class="btn-action" style="padding: 6px 12px; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); color: var(--text-muted);">
-              <span>🚪</span> Sign Out
+            <a href="/logout" class="btn-signout" aria-label="Sign Out">
+              <span aria-hidden="true">🚪</span> Sign Out
             </a>
           {% else %}
-            <a href="/login" class="btn-action" style="padding: 6px 12px; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; background: var(--accent-primary); color: #ffffff; border-radius: var(--radius-sm);">
-              <span>🔑</span> Sign In
+            <a href="/login" class="btn-signin" aria-label="Sign In">
+              <span aria-hidden="true">🔑</span> Sign In
             </a>
           {% endif %}
           {% block header_actions %}{% endblock %}
         </div>
-
       </header>
 
-      <main class="content-wrapper">
+      <main class="content-wrapper" id="main-content" role="main" tabindex="-1">
         {% block content %}{% endblock %}
       </main>
     </div>
   </div>
 
-  <div id="toast-container"></div>
+  <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
   <script src="/static/js/app.js"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
+

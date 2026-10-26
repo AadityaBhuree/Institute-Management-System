@@ -5,8 +5,10 @@ from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from src.core.security import require_role
 from src.database.connection import get_db
 from src.models.timetable import TimetableSlotCreate, TimetableSlotOut
+from src.services.auth_service import AuthService
 from src.services.timetable_service import TimetableService
 
 router = APIRouter(prefix="/api/timetable", tags=["Academic Timetable"])
@@ -66,12 +68,25 @@ def create_timetable_slot(
 
 
 @router.delete("/{id}", status_code=status.HTTP_200_OK)
-def delete_timetable_slot(id: int, conn: sqlite3.Connection = Depends(get_db)):
-    """Remove a lecture timetable slot."""
+def delete_timetable_slot(
+    id: int,
+    conn: sqlite3.Connection = Depends(get_db),
+    current_user: dict = Depends(require_role("admin")),
+):
+    """Remove a lecture timetable slot (Admin only)."""
     deleted = TimetableService.delete_slot(conn, id)
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Timetable slot #{id} not found",
         )
+    AuthService.log_audit(
+        conn,
+        action="DELETE_TIMETABLE_SLOT",
+        resource="timetable",
+        resource_id=str(id),
+        user_id=current_user.get("id"),
+        username=current_user.get("username"),
+        details=f"Deleted lecture slot #{id}.",
+    )
     return {"message": f"Timetable slot #{id} deleted successfully"}

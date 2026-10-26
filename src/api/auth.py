@@ -15,6 +15,7 @@ from src.core.security import (
     get_current_user_optional,
     require_role,
 )
+from src.core.security_hardening import login_limiter
 from src.database.connection import get_db
 from src.models.auth import (
     AuditLogResponse,
@@ -42,9 +43,18 @@ def login(
 ):
     """Authenticate user with username/email and password, returning signed session token and setting HTTP-only cookie."""
     ip_addr = request.client.host if request.client else None
+
+    # Check brute-force lockout
+    if login_limiter.is_locked(credentials.username, ip_addr):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many failed login attempts. Please wait 5 minutes before trying again.",
+        )
+
     user = AuthService.authenticate(conn, credentials.username, credentials.password)
 
     if not user:
+        login_limiter.record_failure(credentials.username, ip_addr)
         AuthService.log_audit(
             conn,
             action="LOGIN_FAILED",
@@ -57,6 +67,9 @@ def login(
             detail="Invalid username or password.",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Authentication succeeded - reset failed attempts
+    login_limiter.record_success(credentials.username, ip_addr)
 
     # Update last login timestamp
     AuthService.update_last_login(conn, user["id"])

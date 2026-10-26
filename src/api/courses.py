@@ -5,8 +5,10 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from src.core.security import require_role
 from src.database.connection import get_db
 from src.models.course import CourseCreate, CourseOut, CourseUpdate, EnrollmentCreate
+from src.services.auth_service import AuthService
 from src.services.course_service import CourseService
 
 router = APIRouter(prefix="/api/courses", tags=["Courses & Curriculum"])
@@ -109,12 +111,22 @@ def list_enrolled_students(
 def delete_course(
     course_id: int,
     conn: sqlite3.Connection = Depends(get_db),
+    current_user: dict = Depends(require_role("admin")),
 ):
-    """Delete a course catalog unit."""
+    """Delete a course catalog unit (Admin only)."""
     success = CourseService.delete(conn, course_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Course with ID {course_id} not found.",
         )
+    AuthService.log_audit(
+        conn,
+        action="DELETE_COURSE",
+        resource="courses",
+        resource_id=str(course_id),
+        user_id=current_user.get("id"),
+        username=current_user.get("username"),
+        details=f"Purged course unit #{course_id} from catalog.",
+    )
     return {"message": "Course unit deleted successfully.", "id": course_id}

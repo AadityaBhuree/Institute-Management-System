@@ -68,5 +68,20 @@ ALLOWED_ORIGINS = [
 RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() in ("true", "1", "yes")
 RATE_LIMIT_DEFAULT = os.getenv("RATE_LIMIT_DEFAULT", "100/minute")
 
+# Security & Hardening Configuration
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+ENABLE_DOCS = os.getenv(
+    "ENABLE_DOCS", "true" if ENVIRONMENT != "production" else "false"
+).lower() in (
+    "true",
+    "1",
+    "yes",
+)
+MAX_REQUEST_SIZE_BYTES = int(
+    os.getenv("MAX_REQUEST_SIZE_BYTES", str(10 * 1024 * 1024))
+)  # 10 MB default
+LOGIN_MAX_ATTEMPTS = int(os.getenv("LOGIN_MAX_ATTEMPTS", "5"))
+LOGIN_LOCKOUT_SECONDS = int(os.getenv("LOGIN_LOCKOUT_SECONDS", "300"))  # 5 minutes
+
 STATIC_DIR = BASE_DIR / "static"
 TEMPLATES_DIR = BASE_DIR / "templates"

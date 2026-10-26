@@ -5,9 +5,11 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from src.core.security import require_role
 from src.database.connection import get_db
 from src.models.announcement import AnnouncementCreate, AnnouncementOut
 from src.services.announcement_service import AnnouncementService
+from src.services.auth_service import AuthService
 
 router = APIRouter(prefix="/api/announcements", tags=["Announcements"])
 
@@ -75,12 +77,25 @@ def toggle_announcement_active(
 
 
 @router.delete("/{id}", status_code=status.HTTP_200_OK)
-def delete_announcement(id: int, conn: sqlite3.Connection = Depends(get_db)):
-    """Remove an announcement notice."""
+def delete_announcement(
+    id: int,
+    conn: sqlite3.Connection = Depends(get_db),
+    current_user: dict = Depends(require_role("admin")),
+):
+    """Remove an announcement notice (Admin only)."""
     deleted = AnnouncementService.delete(conn, id)
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Announcement #{id} not found",
         )
+    AuthService.log_audit(
+        conn,
+        action="DELETE_ANNOUNCEMENT",
+        resource="announcements",
+        resource_id=str(id),
+        user_id=current_user.get("id"),
+        username=current_user.get("username"),
+        details=f"Removed announcement notice #{id}.",
+    )
     return {"message": f"Announcement #{id} deleted successfully"}

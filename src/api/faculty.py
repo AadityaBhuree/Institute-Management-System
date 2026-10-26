@@ -5,8 +5,10 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from src.core.security import require_role
 from src.database.connection import get_db
 from src.models.faculty import FacultyCreate, FacultyOut, FacultyUpdate
+from src.services.auth_service import AuthService
 from src.services.faculty_service import FacultyService
 
 router = APIRouter(prefix="/api/faculty", tags=["Faculty"])
@@ -75,14 +77,24 @@ def update_faculty(
 def delete_faculty(
     faculty_id: int,
     conn: sqlite3.Connection = Depends(get_db),
+    current_user: dict = Depends(require_role("admin")),
 ):
-    """Delete a faculty member."""
+    """Delete a faculty member (Admin only)."""
     success = FacultyService.delete(conn, faculty_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Faculty member ID {faculty_id} not found.",
         )
+    AuthService.log_audit(
+        conn,
+        action="DELETE_FACULTY",
+        resource="faculty",
+        resource_id=str(faculty_id),
+        user_id=current_user.get("id"),
+        username=current_user.get("username"),
+        details=f"Purged faculty record #{faculty_id} from directory.",
+    )
     return {"message": "Faculty member removed from directory.", "id": faculty_id}
 
 

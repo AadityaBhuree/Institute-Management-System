@@ -44,6 +44,7 @@ router = APIRouter(tags=["Web"])
 
 TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+templates.env.autoescape = True
 
 
 @router.get("/login", response_class=HTMLResponse)

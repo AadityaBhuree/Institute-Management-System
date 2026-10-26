@@ -43,12 +43,18 @@ from src.core.config import (
     APP_DESCRIPTION,
     APP_NAME,
     APP_VERSION,
+    ENABLE_DOCS,
+    MAX_REQUEST_SIZE_BYTES,
     RATE_LIMIT_DEFAULT,
     RATE_LIMIT_ENABLED,
     STATIC_DIR,
 )
 from src.core.logging_config import setup_logging
 from src.core.security import SESSION_COOKIE_NAME, verify_session_token
+from src.core.security_hardening import (
+    RequestBodySizeLimitMiddleware,
+    SecurityHeadersMiddleware,
+)
 from src.database.init_db import init_database
 from src.web.pages import router as pages_router
 from src.web.pages import templates
@@ -160,6 +166,9 @@ app = FastAPI(
     version=APP_VERSION,
     lifespan=lifespan,
     openapi_tags=OPENAPI_TAGS,
+    docs_url="/docs" if ENABLE_DOCS else None,
+    redoc_url="/redoc" if ENABLE_DOCS else None,
+    openapi_url="/openapi.json" if ENABLE_DOCS else None,
 )
 
 # Global Rate Limiting
@@ -234,7 +243,12 @@ async def custom_500_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Cross-Origin Resource Sharing (CORS)
+# Security Hardening & Cross-Origin Resource Sharing (CORS) Middlewares
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(
+    RequestBodySizeLimitMiddleware,
+    max_body_bytes=MAX_REQUEST_SIZE_BYTES,
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,

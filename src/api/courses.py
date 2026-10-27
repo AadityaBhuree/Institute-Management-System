@@ -19,14 +19,18 @@ def list_courses(
     department_id: Optional[int] = Query(None, description="Filter by department ID"),
     semester: Optional[int] = Query(None, description="Filter by semester (1-8)"),
     search: Optional[str] = Query(None, description="Search course by code or title"),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     conn: sqlite3.Connection = Depends(get_db),
 ):
-    """Retrieve course catalog units with occupancy indicators."""
+    """Retrieve course catalog units with occupancy indicators and pagination."""
     return CourseService.list_courses(
         conn,
         department_id=department_id,
         semester=semester,
         search=search,
+        limit=limit,
+        offset=offset,
     )
 
 

@@ -165,11 +165,15 @@ CREATE INDEX IF NOT EXISTS idx_enrollment_student ON course_enrollments(student_
 CREATE INDEX IF NOT EXISTS idx_enrollment_course ON course_enrollments(course_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_course_date ON attendance_records(course_id, attendance_date);
 CREATE INDEX IF NOT EXISTS idx_attendance_student ON attendance_records(student_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_student_course ON attendance_records(student_id, course_id);
 CREATE INDEX IF NOT EXISTS idx_exam_course ON examinations(course_id);
 CREATE INDEX IF NOT EXISTS idx_exam_results_exam ON exam_results(exam_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_student ON fee_invoices(student_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_status ON fee_invoices(status);
+CREATE INDEX IF NOT EXISTS idx_invoices_status_due ON fee_invoices(status, due_date);
 CREATE INDEX IF NOT EXISTS idx_payments_invoice ON fee_payments(invoice_id);
+CREATE INDEX IF NOT EXISTS idx_students_deleted_dept ON students(is_deleted, department_id);
+CREATE INDEX IF NOT EXISTS idx_courses_dept_sem ON courses(department_id, semester);
 
 -- 12. Campus Announcements Bulletin Board
 CREATE TABLE IF NOT EXISTS announcements (

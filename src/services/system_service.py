@@ -48,9 +48,13 @@ class SystemService:
             except Exception:
                 table_stats[tbl] = 0
 
-        cursor.close()
-
         backups = SystemService.list_backups()
+
+        from src.core.cache import cache
+        from src.database.connection import get_pool_stats
+
+        pool_stats = get_pool_stats()
+        cache_stats = cache.stats()
 
         return {
             "app_name": APP_NAME,
@@ -65,6 +69,8 @@ class SystemService:
             "table_stats": table_stats,
             "backups_count": len(backups),
             "recent_backups": backups[:10],
+            "connection_pool": pool_stats,
+            "cache": cache_stats,
         }
 
     @staticmethod

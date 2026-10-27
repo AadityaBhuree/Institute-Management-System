@@ -1,27 +1,44 @@
-"""Dashboard analytics and KPI aggregation service."""
+"""Dashboard analytics and KPI aggregation service with query consolidation and TTL caching."""
 
 import sqlite3
 from typing import Any, Dict
 
+from src.core.cache import cache
+
+DASHBOARD_KPI_CACHE_KEY = "dashboard:kpi_summary"
+
 
 class DashboardService:
     @staticmethod
-    def get_kpi_summary(conn: sqlite3.Connection) -> Dict[str, Any]:
+    def invalidate_cache() -> None:
+        """Clear cached executive KPI summary."""
+        cache.delete(DASHBOARD_KPI_CACHE_KEY)
+
+    @staticmethod
+    def get_kpi_summary(conn: sqlite3.Connection, force_refresh: bool = False) -> Dict[str, Any]:
+        """Aggregate executive KPI metrics with query consolidation and in-memory TTL caching."""
+        if not force_refresh:
+            cached = cache.get(DASHBOARD_KPI_CACHE_KEY)
+            if cached is not None:
+                return cached
+
         cursor = conn.cursor()
 
-        # 1. Total Students
-        cursor.execute("SELECT COUNT(*) AS count FROM students;")
-        total_students = cursor.fetchone()["count"]
+        # 1. Consolidated Counts (Students, Active Faculty, Courses)
+        cursor.execute(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM students WHERE is_deleted = 0) AS total_students,
+                (SELECT COUNT(*) FROM faculty WHERE status = 'ACTIVE') AS total_faculty,
+                (SELECT COUNT(*) FROM courses) AS total_courses;
+            """
+        )
+        counts_row = cursor.fetchone()
+        total_students = counts_row["total_students"]
+        total_faculty = counts_row["total_faculty"]
+        total_courses = counts_row["total_courses"]
 
-        # 2. Total Faculty
-        cursor.execute("SELECT COUNT(*) AS count FROM faculty WHERE status = 'ACTIVE';")
-        total_faculty = cursor.fetchone()["count"]
-
-        # 3. Total Courses
-        cursor.execute("SELECT COUNT(*) AS count FROM courses;")
-        total_courses = cursor.fetchone()["count"]
-
-        # 4. Financial KPI
+        # 2. Financial KPI Aggregations
         cursor.execute(
             """
             SELECT
@@ -39,7 +56,7 @@ class DashboardService:
             round((total_collected / total_invoiced * 100), 1) if total_invoiced > 0 else 0.0
         )
 
-        # 5. Today's / Latest Attendance Rate
+        # 3. Latest Attendance Rate
         cursor.execute(
             """
             SELECT
@@ -56,31 +73,32 @@ class DashboardService:
             round((present_att / total_att * 100), 1) if total_att and total_att > 0 else 92.4
         )
 
-        # 6. Students per Department
+        # 4. Students per Department Distribution
         cursor.execute(
             """
             SELECT d.code, d.name, COUNT(s.id) AS student_count
             FROM departments d
-            LEFT JOIN students s ON s.department_id = d.id
+            LEFT JOIN students s ON s.department_id = d.id AND s.is_deleted = 0
             GROUP BY d.id
             ORDER BY student_count DESC;
             """
         )
         dept_dist = [dict(row) for row in cursor.fetchall()]
 
-        # 7. Recent Admissions
+        # 5. Recent Admissions
         cursor.execute(
             """
             SELECT s.id, s.enrollment_no, s.first_name || ' ' || s.last_name AS full_name,
                    d.code AS dept_code, s.admission_date, s.status
             FROM students s
             JOIN departments d ON s.department_id = d.id
+            WHERE s.is_deleted = 0
             ORDER BY s.id DESC LIMIT 5;
             """
         )
         recent_admissions = [dict(row) for row in cursor.fetchall()]
 
-        # 8. Recent Payments
+        # 6. Recent Payments
         cursor.execute(
             """
             SELECT p.payment_no, p.amount, p.payment_method, p.payment_date,
@@ -95,7 +113,7 @@ class DashboardService:
 
         cursor.close()
 
-        return {
+        result = {
             "total_students": total_students,
             "total_faculty": total_faculty,
             "total_courses": total_courses,
@@ -108,3 +126,7 @@ class DashboardService:
             "recent_admissions": recent_admissions,
             "recent_payments": recent_payments,
         }
+
+        # Cache with 120s TTL
+        cache.set(DASHBOARD_KPI_CACHE_KEY, result, ttl_seconds=120.0)
+        return result

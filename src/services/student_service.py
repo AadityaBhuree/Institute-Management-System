@@ -69,6 +69,41 @@ class StudentService:
         return [dict(row) for row in rows]
 
     @staticmethod
+    def count_students(
+        conn: sqlite3.Connection,
+        department_id: Optional[int] = None,
+        status: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> int:
+        """Count total students matching criteria for pagination."""
+        cursor = conn.cursor()
+        query = "SELECT COUNT(*) AS total FROM students s WHERE s.is_deleted = 0"
+        params: List[Any] = []
+
+        if department_id:
+            query += " AND s.department_id = ?"
+            params.append(department_id)
+
+        if status:
+            query += " AND s.status = ?"
+            params.append(status.upper())
+
+        if search:
+            query += """ AND (
+                s.first_name LIKE ? OR
+                s.last_name LIKE ? OR
+                s.email LIKE ? OR
+                s.enrollment_no LIKE ?
+            )"""
+            term = f"%{search}%"
+            params.extend([term, term, term, term])
+
+        cursor.execute(query, params)
+        total = cursor.fetchone()["total"]
+        cursor.close()
+        return total
+
+    @staticmethod
     def get_by_id(conn: sqlite3.Connection, student_id: int) -> Optional[Dict[str, Any]]:
         cursor = conn.cursor()
         cursor.execute(

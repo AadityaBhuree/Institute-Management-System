@@ -2,17 +2,21 @@
 
 import datetime
 import sqlite3
+import time
 import uuid
 from typing import Any, Dict, List, Optional
 
 from src.database.connection import transaction
 from src.models.finance import FeeInvoiceCreate, FeeStructureCreate, PaymentCreate
 
+_last_overdue_sync_timestamp: float = 0.0
+
 
 class FinanceService:
     @staticmethod
-    def _sync_overdue_invoices(conn: sqlite3.Connection) -> None:
+    def sync_overdue_invoices(conn: sqlite3.Connection) -> int:
         """Mark invoices past due date as OVERDUE if not already PAID or CANCELLED."""
+        global _last_overdue_sync_timestamp
         today_str = datetime.date.today().isoformat()
         cursor = conn.cursor()
         cursor.execute(
@@ -24,8 +28,24 @@ class FinanceService:
             """,
             (today_str,),
         )
+        updated = cursor.rowcount
         conn.commit()
         cursor.close()
+        _last_overdue_sync_timestamp = time.time()
+        return updated
+
+    @staticmethod
+    def sync_overdue_invoices_if_needed(
+        conn: sqlite3.Connection, min_interval_seconds: float = 3600.0
+    ) -> int:
+        """Throttled sync avoiding recurring write transactions during high-frequency read requests."""
+        global _last_overdue_sync_timestamp
+        if time.time() - _last_overdue_sync_timestamp < min_interval_seconds:
+            return 0
+        return FinanceService.sync_overdue_invoices(conn)
+
+    # Backward compatibility alias
+    _sync_overdue_invoices = sync_overdue_invoices
 
     @staticmethod
     def create_fee_structure(
@@ -170,7 +190,7 @@ class FinanceService:
         limit: int = 50,
         offset: int = 0,
     ) -> List[Dict[str, Any]]:
-        FinanceService._sync_overdue_invoices(conn)
+        FinanceService.sync_overdue_invoices_if_needed(conn)
         cursor = conn.cursor()
         query = """
             SELECT fi.*,
@@ -209,8 +229,47 @@ class FinanceService:
         return [dict(r) for r in rows]
 
     @staticmethod
+    def count_invoices(
+        conn: sqlite3.Connection,
+        student_id: Optional[int] = None,
+        status: Optional[str] = None,
+        department_id: Optional[int] = None,
+        search: Optional[str] = None,
+    ) -> int:
+        """Count total invoices matching criteria for pagination."""
+        cursor = conn.cursor()
+        query = """
+            SELECT COUNT(fi.id) AS total
+            FROM fee_invoices fi
+            JOIN students s ON fi.student_id = s.id
+            WHERE 1=1
+        """
+        params: List[Any] = []
+        if student_id:
+            query += " AND fi.student_id = ?"
+            params.append(student_id)
+        if status:
+            query += " AND fi.status = ?"
+            params.append(status.upper())
+        if department_id:
+            query += " AND s.department_id = ?"
+            params.append(department_id)
+        if search:
+            query += (
+                " AND (fi.invoice_no LIKE ? OR s.first_name LIKE ? "
+                "OR s.last_name LIKE ? OR s.enrollment_no LIKE ?)"
+            )
+            term = f"%{search}%"
+            params.extend([term, term, term, term])
+
+        cursor.execute(query, params)
+        total = cursor.fetchone()["total"]
+        cursor.close()
+        return total
+
+    @staticmethod
     def get_invoice_by_id(conn: sqlite3.Connection, invoice_id: int) -> Optional[Dict[str, Any]]:
-        FinanceService._sync_overdue_invoices(conn)
+        FinanceService.sync_overdue_invoices_if_needed(conn)
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -363,7 +422,7 @@ class FinanceService:
 
     @staticmethod
     def get_financial_summary(conn: sqlite3.Connection) -> Dict[str, Any]:
-        FinanceService._sync_overdue_invoices(conn)
+        FinanceService.sync_overdue_invoices_if_needed(conn)
         cursor = conn.cursor()
 
         cursor.execute(

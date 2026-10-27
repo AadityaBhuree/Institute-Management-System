@@ -14,6 +14,8 @@ class CourseService:
         department_id: Optional[int] = None,
         semester: Optional[int] = None,
         search: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
     ) -> List[Dict[str, Any]]:
         cursor = conn.cursor()
         query = """
@@ -44,11 +46,42 @@ class CourseService:
             term = f"%{search}%"
             params.extend([term, term])
 
-        query += " ORDER BY c.semester ASC, c.code ASC;"
+        query += " ORDER BY c.semester ASC, c.code ASC LIMIT ? OFFSET ?;"
+        params.extend([limit, offset])
         cursor.execute(query, params)
         rows = cursor.fetchall()
         cursor.close()
         return [dict(row) for row in rows]
+
+    @staticmethod
+    def count_courses(
+        conn: sqlite3.Connection,
+        department_id: Optional[int] = None,
+        semester: Optional[int] = None,
+        search: Optional[str] = None,
+    ) -> int:
+        """Count total courses matching criteria for pagination."""
+        cursor = conn.cursor()
+        query = "SELECT COUNT(*) AS total FROM courses c WHERE 1=1"
+        params: List[Any] = []
+
+        if department_id:
+            query += " AND c.department_id = ?"
+            params.append(department_id)
+
+        if semester:
+            query += " AND c.semester = ?"
+            params.append(semester)
+
+        if search:
+            query += " AND (c.code LIKE ? OR c.title LIKE ?)"
+            term = f"%{search}%"
+            params.extend([term, term])
+
+        cursor.execute(query, params)
+        total = cursor.fetchone()["total"]
+        cursor.close()
+        return total
 
     @staticmethod
     def get_by_id(conn: sqlite3.Connection, course_id: int) -> Optional[Dict[str, Any]]:

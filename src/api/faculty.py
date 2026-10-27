@@ -19,14 +19,18 @@ def list_faculty(
     department_id: Optional[int] = Query(None, description="Filter by department ID"),
     status: Optional[str] = Query(None, description="Filter by status"),
     search: Optional[str] = Query(None, description="Search faculty by name or ID"),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     conn: sqlite3.Connection = Depends(get_db),
 ):
-    """Retrieve faculty members roster."""
+    """Retrieve faculty members roster with dynamic filtering and pagination."""
     return FacultyService.list_faculty(
         conn,
         department_id=department_id,
         status=status,
         search=search,
+        limit=limit,
+        offset=offset,
     )
 
 

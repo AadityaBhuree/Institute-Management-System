@@ -7,6 +7,7 @@ from pathlib import Path
 from src.core.config import DB_PATH
 from src.database.connection import (
     get_connection,
+    release_connection,
     transaction,
 )
 
@@ -107,7 +108,7 @@ def init_database(db_path: Path | str | None = None) -> None:
                     """
                 )
     finally:
-        conn.close()
+        release_connection(conn, db_path)
 
 
 if __name__ == "__main__":

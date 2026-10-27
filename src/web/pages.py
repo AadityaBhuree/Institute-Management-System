@@ -182,14 +182,33 @@ def view_students_page(
     department_id: Optional[int] = None,
     status: Optional[str] = None,
     search: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20,
     conn: sqlite3.Connection = Depends(get_db),
 ):
-    """Render the interactive student registry and admissions page."""
+    """Render the interactive student registry and admissions page with server-side pagination."""
+    import math
+
+    page = max(1, page)
+    page_size = max(5, min(100, page_size))
+    total_count = StudentService.count_students(
+        conn,
+        department_id=department_id,
+        status=status,
+        search=search,
+    )
+    total_pages = max(1, math.ceil(total_count / page_size))
+    if page > total_pages:
+        page = total_pages
+    offset = (page - 1) * page_size
+
     students = StudentService.list_students(
         conn,
         department_id=department_id,
         status=status,
         search=search,
+        limit=page_size,
+        offset=offset,
     )
     departments = DepartmentService.list_all(conn)
     return templates.TemplateResponse(
@@ -202,6 +221,16 @@ def view_students_page(
             "selected_dept": department_id,
             "selected_status": status,
             "search": search,
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total_count": total_count,
+                "total_pages": total_pages,
+                "has_prev": page > 1,
+                "has_next": page < total_pages,
+                "prev_page": page - 1,
+                "next_page": page + 1,
+            },
         },
     )
 
@@ -284,16 +313,35 @@ def view_courses_page(
     department_id: Optional[int] = None,
     semester: Optional[int] = None,
     search: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20,
     conn: sqlite3.Connection = Depends(get_db),
 ):
-    """Render the course catalog and faculty roster management page."""
-    courses = CourseService.list_courses(
+    """Render the course catalog and faculty roster management page with pagination."""
+    import math
+
+    page = max(1, page)
+    page_size = max(5, min(100, page_size))
+    total_count = CourseService.count_courses(
         conn,
         department_id=department_id,
         semester=semester,
         search=search,
     )
-    faculty_members = FacultyService.list_faculty(conn)
+    total_pages = max(1, math.ceil(total_count / page_size))
+    if page > total_pages:
+        page = total_pages
+    offset = (page - 1) * page_size
+
+    courses = CourseService.list_courses(
+        conn,
+        department_id=department_id,
+        semester=semester,
+        search=search,
+        limit=page_size,
+        offset=offset,
+    )
+    faculty_members = FacultyService.list_faculty(conn, limit=100)
     departments = DepartmentService.list_all(conn)
     return templates.TemplateResponse(
         request=request,
@@ -306,6 +354,16 @@ def view_courses_page(
             "selected_dept": department_id,
             "selected_sem": semester,
             "search": search,
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total_count": total_count,
+                "total_pages": total_pages,
+                "has_prev": page > 1,
+                "has_next": page < total_pages,
+                "prev_page": page - 1,
+                "next_page": page + 1,
+            },
         },
     )
 
@@ -335,20 +393,39 @@ def view_finance_page(
     status: Optional[str] = None,
     department_id: Optional[int] = None,
     search: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20,
     conn: sqlite3.Connection = Depends(get_db),
 ):
-    """Render the institutional bursar portal, fee invoicing, and audit ledger."""
+    """Render the institutional bursar portal, fee invoicing, and audit ledger with pagination."""
+    import math
+
+    page = max(1, page)
+    page_size = max(5, min(100, page_size))
+    total_count = FinanceService.count_invoices(
+        conn,
+        status=status,
+        department_id=department_id,
+        search=search,
+    )
+    total_pages = max(1, math.ceil(total_count / page_size))
+    if page > total_pages:
+        page = total_pages
+    offset = (page - 1) * page_size
+
     summary = FinanceService.get_financial_summary(conn)
     invoices = FinanceService.list_invoices(
         conn,
         status=status,
         department_id=department_id,
         search=search,
+        limit=page_size,
+        offset=offset,
     )
     structures = FinanceService.list_fee_structures(conn)
-    payments = FinanceService.list_payments(conn, limit=100)
+    payments = FinanceService.list_payments(conn, limit=50)
     departments = DepartmentService.list_all(conn)
-    students = StudentService.list_students(conn, limit=200)
+    students = StudentService.list_students(conn, limit=100)
     return templates.TemplateResponse(
         request=request,
         name="finance.html",
@@ -363,6 +440,16 @@ def view_finance_page(
             "selected_status": status,
             "selected_dept": department_id,
             "search": search,
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total_count": total_count,
+                "total_pages": total_pages,
+                "has_prev": page > 1,
+                "has_next": page < total_pages,
+                "prev_page": page - 1,
+                "next_page": page + 1,
+            },
         },
     )
 

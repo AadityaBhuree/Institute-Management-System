@@ -25,6 +25,8 @@ class FacultyService:
         department_id: Optional[int] = None,
         status: Optional[str] = None,
         search: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
     ) -> List[Dict[str, Any]]:
         cursor = conn.cursor()
         query = """
@@ -58,11 +60,48 @@ class FacultyService:
             term = f"%{search}%"
             params.extend([term, term, term, term, term])
 
-        query += " ORDER BY f.id DESC;"
+        query += " ORDER BY f.id DESC LIMIT ? OFFSET ?;"
+        params.extend([limit, offset])
         cursor.execute(query, params)
         rows = cursor.fetchall()
         cursor.close()
         return [dict(row) for row in rows]
+
+    @staticmethod
+    def count_faculty(
+        conn: sqlite3.Connection,
+        department_id: Optional[int] = None,
+        status: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> int:
+        """Count total faculty matching criteria for pagination."""
+        cursor = conn.cursor()
+        query = "SELECT COUNT(*) AS total FROM faculty f WHERE 1=1"
+        params: List[Any] = []
+
+        if department_id:
+            query += " AND f.department_id = ?"
+            params.append(department_id)
+
+        if status:
+            query += " AND f.status = ?"
+            params.append(status.upper())
+
+        if search:
+            query += """ AND (
+                f.first_name LIKE ? OR
+                f.last_name LIKE ? OR
+                f.email LIKE ? OR
+                f.faculty_id LIKE ? OR
+                f.designation LIKE ?
+            )"""
+            term = f"%{search}%"
+            params.extend([term, term, term, term, term])
+
+        cursor.execute(query, params)
+        total = cursor.fetchone()["total"]
+        cursor.close()
+        return total
 
     @staticmethod
     def get_by_id(conn: sqlite3.Connection, faculty_id: int) -> Optional[Dict[str, Any]]:

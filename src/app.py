@@ -65,7 +65,30 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan context manager for startup and shutdown routines."""
     setup_logging()
     init_database()
+
+    # Startup: Run overdue invoice synchronization in background
+    try:
+        from src.database.connection import get_connection, release_connection
+        from src.services.finance_service import FinanceService
+
+        startup_conn = get_connection()
+        try:
+            synced = FinanceService.sync_overdue_invoices(startup_conn)
+            if synced > 0:
+                logging.getLogger("ims").info(
+                    "Synchronized %d overdue invoices on startup.", synced
+                )
+        finally:
+            release_connection(startup_conn)
+    except Exception as e:
+        logging.getLogger("ims").warning("Overdue sync on startup skipped: %s", e)
+
     yield
+
+    # Shutdown: Close database connection pool
+    from src.database.connection import close_pool
+
+    close_pool()
 
 
 OPENAPI_TAGS = [

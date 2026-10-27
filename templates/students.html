@@ -102,6 +102,29 @@
       </tbody>
     </table>
   </div>
+
+  {% if pagination and pagination.total_pages > 1 %}
+  <div class="pagination-bar" aria-label="Students pagination">
+    <div class="pagination-info">
+      Showing page <strong>{{ pagination.page }}</strong> of <strong>{{ pagination.total_pages }}</strong> ({{ pagination.total_count }} total scholars)
+    </div>
+    <div class="pagination-controls">
+      {% if pagination.has_prev %}
+      <a class="pagination-btn" href="?page={{ pagination.prev_page }}&department_id={{ selected_dept or '' }}&status={{ selected_status or '' }}&search={{ search or '' }}" aria-label="Previous page">&laquo; Prev</a>
+      {% else %}
+      <span class="pagination-btn disabled" aria-disabled="true">&laquo; Prev</span>
+      {% endif %}
+
+      <span class="pagination-btn active" aria-current="page">{{ pagination.page }}</span>
+
+      {% if pagination.has_next %}
+      <a class="pagination-btn" href="?page={{ pagination.next_page }}&department_id={{ selected_dept or '' }}&status={{ selected_status or '' }}&search={{ search or '' }}" aria-label="Next page">Next &raquo;</a>
+      {% else %}
+      <span class="pagination-btn disabled" aria-disabled="true">Next &raquo;</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 </div>
 
 <!-- Modal: Register New Student Admission -->

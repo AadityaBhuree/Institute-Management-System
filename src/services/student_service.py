@@ -11,13 +11,14 @@ from src.models.student import StudentCreate, StudentUpdate
 
 class StudentService:
     @staticmethod
-    def _generate_enrollment_no(conn: sqlite3.Connection, dept_code: str) -> str:
+    def _generate_enrollment_no(conn: sqlite3.Connection | sqlite3.Cursor, dept_code: str) -> str:
         """Generate a sequential institutional enrollment number using MAX(id) to avoid collisions."""
         current_year = date.today().year
-        cursor = conn.cursor()
+        cursor = conn.cursor() if hasattr(conn, "cursor") else conn
         cursor.execute("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM students;")
         count = cursor.fetchone()["next_id"]
-        cursor.close()
+        if hasattr(conn, "cursor"):
+            cursor.close()
         return f"IMS-{current_year}-{dept_code}-{count:04d}"
 
     @staticmethod
@@ -134,7 +135,6 @@ class StudentService:
             raise ValueError(f"Department with ID {student_in.department_id} does not exist.")
 
         dept_code = dept_row["code"]
-        enrollment_no = StudentService._generate_enrollment_no(conn, dept_code)
         admission_date = student_in.admission_date or str(date.today())
 
         # Check for unique email
@@ -142,8 +142,10 @@ class StudentService:
         if cursor.fetchone():
             cursor.close()
             raise ValueError(f"Student with email '{student_in.email}' is already registered.")
+        cursor.close()
 
         with transaction(conn) as t_cursor:
+            enrollment_no = StudentService._generate_enrollment_no(t_cursor, dept_code)
             t_cursor.execute(
                 """
                 INSERT INTO students (

@@ -2,12 +2,33 @@
 
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class StudentBase(BaseModel):
     first_name: str = Field(..., min_length=2, max_length=50)
     last_name: str = Field(..., min_length=1, max_length=50)
+
+    @field_validator("first_name", mode="before")
+    @classmethod
+    def validate_first_name(cls, v: str) -> str:
+        if isinstance(v, str):
+            stripped = v.strip()
+            if len(stripped) < 2:
+                raise ValueError("First name must contain at least 2 non-whitespace characters")
+            return stripped
+        return v
+
+    @field_validator("last_name", mode="before")
+    @classmethod
+    def validate_last_name(cls, v: str) -> str:
+        if isinstance(v, str):
+            stripped = v.strip()
+            if len(stripped) < 1:
+                raise ValueError("Last name must contain at least 1 non-whitespace character")
+            return stripped
+        return v
+
     email: str = Field(..., pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
     phone: Optional[str] = Field(None, max_length=20)
     dob: Optional[str] = Field(None, description="YYYY-MM-DD")

@@ -11,12 +11,13 @@ from src.models.faculty import FacultyCreate, FacultyUpdate
 
 class FacultyService:
     @staticmethod
-    def _generate_faculty_id(conn: sqlite3.Connection, dept_code: str) -> str:
+    def _generate_faculty_id(conn: sqlite3.Connection | sqlite3.Cursor, dept_code: str) -> str:
         """Generate a sequential institutional faculty ID using MAX(id) to prevent collisions."""
-        cursor = conn.cursor()
+        cursor = conn.cursor() if hasattr(conn, "cursor") else conn
         cursor.execute("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM faculty;")
         count = cursor.fetchone()["next_id"]
-        cursor.close()
+        if hasattr(conn, "cursor"):
+            cursor.close()
         return f"FAC-{dept_code}-{count:03d}"
 
     @staticmethod
@@ -133,15 +134,16 @@ class FacultyService:
             raise ValueError(f"Department with ID {faculty_in.department_id} does not exist.")
 
         dept_code = dept_row["code"]
-        faculty_id_code = FacultyService._generate_faculty_id(conn, dept_code)
         hire_date = faculty_in.hire_date or str(date.today())
 
         cursor.execute("SELECT id FROM faculty WHERE email = ?;", (faculty_in.email,))
         if cursor.fetchone():
             cursor.close()
             raise ValueError(f"Faculty with email '{faculty_in.email}' already exists.")
+        cursor.close()
 
         with transaction(conn) as t_cursor:
+            faculty_id_code = FacultyService._generate_faculty_id(t_cursor, dept_code)
             t_cursor.execute(
                 """
                 INSERT INTO faculty (

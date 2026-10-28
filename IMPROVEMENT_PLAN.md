@@ -613,17 +613,17 @@ All 18 core modules, student/faculty portals, dashboard KPIs, CSV exports, print
 
 ---
 
-### Phase 6 — Testing & Reliability
+### Phase 6 — Testing & Reliability (COMPLETED ✅)
 **Goal:** Increase test confidence in critical paths.
 
 **Tasks:**
-1. **Add service-layer unit tests** for business logic (enrollment number gen, payment flow)
-2. **Add concurrent request tests** for enrollment number uniqueness
-3. **Add transaction rollback tests** for failed operations
-4. **Add auth/authorization tests** (now that auth exists from Phase 3)
-5. **Add edge-case tests** (empty strings, max lengths, Unicode names)
-6. **Add 404/500 page rendering tests**
-7. **Increase CI coverage** — add coverage reporting to GitHub Actions
+1. **Add service-layer unit tests** for business logic (enrollment number gen, payment flow, collision detection, inventory tracking) ✅ (Created `tests/test_service_layer_unit.py` testing StudentService, FinanceService, TimetableService, PlacementService, LibraryService, and HealthService directly)
+2. **Add concurrent request tests** for enrollment number uniqueness ✅ (Created `tests/test_concurrency_and_transactions.py` with multi-threaded student enrollments via `ThreadPoolExecutor` and atomic transaction-locked sequence generation in `StudentService` and `FacultyService`)
+3. **Add transaction rollback tests** for failed operations ✅ (Added tests verifying application exceptions and SQLite integrity constraint violations trigger automatic rollback without leaking state)
+4. **Add auth/authorization tests** (privilege escalation, tamper rejection, token expiry) ✅ (Verified session token tampering rejection, RBAC backup gating, audit log protection, and rate limiting in `tests/test_auth_api.py` and `tests/test_security_hardening.py`)
+5. **Add edge-case tests** (empty strings, whitespace-only, boundary lengths, Unicode names) ✅ (Created `tests/test_edge_cases_and_validation.py` verifying Devanagari, Chinese, Arabic, accented Latin, Pydantic field validators stripping whitespace, boundary limits, and malformed payload rejection)
+6. **Add 404/500 page rendering tests** ✅ (Expanded `tests/test_ui_error_pages.py` with API 500 JSON preservation, web 404/500 glassmorphism rendering, and 405 Method Not Allowed handling)
+7. **Increase CI coverage** — add coverage reporting to GitHub Actions ✅ (Configured `pytest-cov`, coverage settings in `pyproject.toml`, updated `.github/workflows/ci.yml` with coverage artifact upload, achieving **89% overall test coverage** with **231/231 passing tests**)
 
 ---
 

@@ -93,3 +93,27 @@ def test_static_assets_contain_phase4_styles_and_scripts(client: TestClient):
     assert "initFormValidationAndLoading" in js
     assert "setButtonLoading" in js
     assert "validateSingleField" in js
+
+
+def test_api_500_error_returns_json():
+    """Verify that unhandled server exceptions on API endpoints return structured JSON, not HTML."""
+    from src.app import app
+
+    @app.get("/api/test-server-error-probe")
+    def trigger_api_fault():
+        raise RuntimeError("Simulated unhandled API exception")
+
+    with TestClient(app, raise_server_exceptions=False) as tc:
+        response = tc.get("/api/test-server-error-probe", headers={"Accept": "application/json"})
+        assert response.status_code == 500
+        assert "application/json" in response.headers["content-type"]
+        data = response.json()
+        assert "detail" in data
+        assert data["detail"] == "Internal server error"
+
+
+def test_method_not_allowed_handling(client: TestClient):
+    """Verify that using an unsupported HTTP method returns 405 Method Not Allowed."""
+    # DELETE to GET-only health check endpoint
+    res = client.delete("/api/health")
+    assert res.status_code == 405

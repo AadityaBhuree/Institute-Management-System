@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-WAL%20Mode-003B57.svg?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
-[![Tests](https://img.shields.io/badge/Pytest-210%2F210%20Passing-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Pytest-231%2F231%20Passing-success.svg)](tests/)
 [![CI](https://github.com/AadityaBhuree/Institute-Management-System/actions/workflows/ci.yml/badge.svg)](https://github.com/AadityaBhuree/Institute-Management-System/actions/workflows/ci.yml)
 [![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED.svg?logo=docker&logoColor=white)](Dockerfile)
 [![Code Style](https://img.shields.io/badge/Linter-Ruff%20Clean-black.svg)](pyproject.toml)
@@ -456,12 +456,72 @@ Open **[http://localhost:8000](http://localhost:8000)** in your browser:
 The test suite runs with isolated SQLite databases in temporary environments via pytest fixtures:
 
 ```bash
-# Run all 162 automated unit and integration tests
+# Run all 231 automated unit, integration, and concurrency tests
 pytest tests/ -v
 
 # Run Ruff linter to confirm clean code hygiene
-ruff check src/ tests/ scripts/
+ruff check .
+
+# Verify formatting
+ruff format --check .
 ```
+
+---
+
+## 🛠️ Developer Experience & Makefile Commands
+
+For developer convenience, standard tasks can be executed via `make`:
+
+| Command | Purpose |
+| :--- | :--- |
+| `make dev` | Launch FastAPI development server with hot reload on port 8000 |
+| `make test` | Run complete Pytest test suite (231 tests) |
+| `make test-cov` | Run test suite with coverage report |
+| `make lint` | Run Ruff linter checks across all source directories |
+| `make format` | Automatically format all Python code with Ruff |
+| `make check` | Execute linter, format check, and test suite in sequence |
+| `make seed` | Populate database with realistic institutional demo datasets |
+| `make backup` | Trigger an atomic hot point-in-time SQLite database backup |
+| `make docker-build` | Build the production multi-stage Docker container |
+
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for developer onboarding guidelines, branching strategies, and PR checklists.
+See **[CHANGELOG.md](CHANGELOG.md)** for detailed version history.
+
+---
+
+## ❓ Troubleshooting & FAQ
+
+<details>
+<summary><b>1. "CRITICAL SECURITY CONFIGURATION ERROR: 'SECRET_KEY' environment variable is not set"</b></summary>
+
+Ensure you have a `.env` file copied from `.env.example`:
+```bash
+cp .env.example .env
+```
+Generate a secure random key using Python:
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+Place that key in `.env` as `SECRET_KEY=<your_generated_key>`. In development/testing environments, setting `DEBUG=true` or running under `pytest` automatically provides a fallback dev key.
+</details>
+
+<details>
+<summary><b>2. How do I reset or re-seed the SQLite database?</b></summary>
+
+Delete the local SQLite database file in `data/` and run the seeder:
+```bash
+rm data/institute.db
+python scripts/seed_demo_data.py
+```
+</details>
+
+<details>
+<summary><b>3. Why is rate limiting or login lockout triggering during local tests?</b></summary>
+
+Rate limiting and login lockout can be configured or bypassed in `.env`:
+- `RATE_LIMIT_ENABLED=false` to disable global IP rate limiting during load tests.
+- `LOGIN_MAX_ATTEMPTS=20` to increase failed login thresholds.
+</details>
 
 ---
 

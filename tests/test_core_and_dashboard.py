@@ -238,3 +238,52 @@ def test_rate_limiting_enforcement():
         assert r2.status_code == 200
         r3 = tc.get("/test-limited")
         assert r3.status_code == 429
+
+
+def test_system_database_restore_flow(client):
+    """Verify taking a snapshot, creating new records, restoring snapshot, and validating rollback."""
+    # 1. Take a backup snapshot
+    backup_res = client.post("/api/system/backup")
+    assert backup_res.status_code == 200
+    snapshot_filename = backup_res.json()["filename"]
+
+    # 2. Add a new department
+    new_dept_payload = {
+        "code": "RESTORE",
+        "name": "Temporary Department For Restore Verification",
+        "description": "Will be wiped out by restore operation",
+    }
+    create_res = client.post("/api/departments", json=new_dept_payload)
+    assert create_res.status_code == 201
+
+    # Verify department exists
+    dept_check = client.get("/api/departments")
+    assert any(d["code"] == "RESTORE" for d in dept_check.json())
+
+    # 3. Restore snapshot
+    restore_res = client.post("/api/system/restore", json={"filename": snapshot_filename})
+    assert restore_res.status_code == 200
+    restore_data = restore_res.json()
+    assert restore_data["status"] == "RESTORED"
+    assert restore_data["filename"] == snapshot_filename
+
+    # 4. Verify department is gone (state reverted to pre-snapshot state)
+    dept_after = client.get("/api/departments")
+    assert not any(d["code"] == "RESTORE" for d in dept_after.json())
+
+
+def test_system_database_restore_validation(client):
+    """Verify input validation and error handling on restore endpoint."""
+    # Missing filename
+    res_empty = client.post("/api/system/restore", json={})
+    assert res_empty.status_code == 400
+
+    # Path traversal attack attempt
+    res_traversal = client.post("/api/system/restore", json={"filename": "../../../etc/passwd"})
+    assert res_traversal.status_code == 400
+
+    # Non-existent backup file
+    res_404 = client.post(
+        "/api/system/restore", json={"filename": "ims_backup_nonexistent_9999.db"}
+    )
+    assert res_404.status_code == 404

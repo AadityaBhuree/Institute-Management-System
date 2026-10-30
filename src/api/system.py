@@ -2,7 +2,7 @@
 
 import sqlite3
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from src.core.config import APP_NAME, APP_VERSION
 from src.core.security import require_role
@@ -59,3 +59,32 @@ def list_system_backups(
 ):
     """List all available database snapshots in data/backups/ (Admin only)."""
     return SystemService.list_backups()
+
+
+@router.post("/api/system/restore")
+def restore_system_backup(
+    payload: dict,
+    conn: sqlite3.Connection = Depends(get_db),
+    admin_user: dict = Depends(require_role("admin")),
+):
+    """Restore active database state from a point-in-time snapshot (Admin only)."""
+    filename = payload.get("filename")
+    if not filename:
+        raise HTTPException(status_code=400, detail="Missing required 'filename' field.")
+    try:
+        result = SystemService.restore_backup(conn, filename)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    AuthService.log_audit(
+        conn,
+        action="SYSTEM_RESTORE",
+        resource="system",
+        resource_id=filename,
+        user_id=admin_user.get("id"),
+        username=admin_user.get("username"),
+        details=f"Database state restored from snapshot: {filename}",
+    )
+    return result

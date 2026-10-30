@@ -2,6 +2,7 @@
 
 import sqlite3
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List
 
 from src.core.config import APP_NAME, APP_VERSION, DATA_DIR, DB_PATH
@@ -122,3 +123,46 @@ class SystemService:
 
         backups.sort(key=lambda x: x["created_at"], reverse=True)
         return backups
+
+    @staticmethod
+    def restore_backup(conn: sqlite3.Connection, backup_filename: str) -> Dict[str, Any]:
+        """Atomically restore active database state from a specified backup snapshot.
+
+        Validates snapshot filename, checks snapshot integrity, and utilizes
+        the native SQLite backup API in reverse to hot-restore state.
+        """
+        clean_filename = Path(backup_filename).name
+        if clean_filename != backup_filename or not clean_filename.endswith(".db"):
+            raise ValueError("Invalid backup filename format. Must be a .db file name.")
+
+        backup_filepath = BACKUPS_DIR / clean_filename
+        if not backup_filepath.is_file():
+            raise FileNotFoundError(
+                f"Backup file '{clean_filename}' does not exist in backups directory."
+            )
+
+        # Verify backup integrity
+        source_conn = sqlite3.connect(str(backup_filepath))
+        try:
+            cur = source_conn.cursor()
+            cur.execute("PRAGMA integrity_check;")
+            integrity_row = cur.fetchone()
+            if not integrity_row or integrity_row[0] != "ok":
+                raise ValueError("Backup file failed integrity verification.")
+
+            # Hot-restore active database using reverse backup
+            source_conn.backup(conn)
+        finally:
+            source_conn.close()
+
+        # Invalidate TTL cache to prevent stale query cache reads
+        from src.core.cache import cache
+
+        cache.clear()
+
+        return {
+            "filename": clean_filename,
+            "filepath": str(backup_filepath),
+            "restored_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "status": "RESTORED",
+        }

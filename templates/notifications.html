@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Institutional Notifications & Alert Dispatch Center{% endblock %}
+{% block header_title %}Notifications & Alert Dispatch Center{% endblock %}
+{% block header_subtitle %}Real-time institutional alerts, academic sentinel notices, bursar fee holds, and emergency broadcasts{% endblock %}
+
+{% block header_actions %}
+<div style="display: flex; gap: 12px; align-items: center;">
+  <button class="btn btn-secondary" onclick="markAllNotificationsRead()" id="btn-mark-all-read">
+    <span>✓ Mark All Read</span>
+  </button>
+  <button class="btn btn-primary" onclick="openModal('modal-new-notification')" id="btn-open-notification-modal">
+    <span>🔔 Broadcast Alert</span>
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Quick Filter Toolbar -->
+<div class="card" style="margin-bottom: 24px; padding: 18px 24px;">
+  <form method="GET" action="/notifications" style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+    <div style="flex: 1; min-width: 170px;">
+      <label class="form-label" for="select-role-filter">Target Audience</label>
+      <select name="role" class="form-control" onchange="this.form.submit()" id="select-role-filter">
+        <option value="ALL" {% if selected_role == 'ALL' %}selected{% endif %}>👥 All Audiences</option>
+        <option value="ADMIN" {% if selected_role == 'ADMIN' %}selected{% endif %}>🛡️ Administrators</option>
+        <option value="FACULTY" {% if selected_role == 'FACULTY' %}selected{% endif %}>👨‍🏫 Faculty Instructors</option>
+        <option value="STUDENT" {% if selected_role == 'STUDENT' %}selected{% endif %}>🎓 Students</option>
+      </select>
+    </div>
+
+    <div style="display: flex; align-items: center; padding-bottom: 8px;">
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" name="unread_only" value="true" {% if unread_only %}checked{% endif %} onchange="this.form.submit()" id="chk-unread-only">
+        <span style="font-size: 0.9rem; color: var(--color-text);">Show Unread Alerts Only ({{ unread_count }})</span>
+      </label>
+    </div>
+
+    <div>
+      <a href="/notifications" class="btn btn-outline" style="margin-left: 8px;">Reset Filters</a>
+    </div>
+  </form>
+</div>
+
+<!-- Notification Feed -->
+{% if notifications %}
+<div style="display: flex; flex-direction: column; gap: 16px;">
+  {% for item in notifications %}
+  <div class="card" id="notification-card-{{ item.id }}" style="padding: 20px 24px; border-left: 4px solid {% if item.priority == 'URGENT' %}#ef4444{% elif item.priority == 'HIGH' %}#f59e0b{% elif item.priority == 'NORMAL' %}var(--color-primary){% else %}var(--color-text-muted){% endif %}; opacity: {% if item.is_read %}0.75{% else %}1.0{% endif %}; background: {% if not item.is_read %}rgba(99, 102, 241, 0.04){% endif %}; transition: all 0.2s ease;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 250px;">
+        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap;">
+          <span class="badge badge-{% if item.priority == 'URGENT' %}danger{% elif item.priority == 'HIGH' %}warning{% else %}primary{% endif %}">
+            {{ item.priority }}
+          </span>
+          <span class="badge badge-secondary">{{ item.category }}</span>
+          <span class="badge" style="background: rgba(255,255,255,0.06); font-size: 0.75rem;">Audience: {{ item.recipient_role }}</span>
+          {% if not item.is_read %}
+          <span class="badge badge-success" style="font-size: 0.75rem;">NEW</span>
+          {% endif %}
+          <span style="font-size: 0.8rem; color: var(--color-text-muted); margin-left: auto;">{{ item.created_at }}</span>
+        </div>
+        <h3 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #fff;">{{ item.title }}</h3>
+        <p style="margin: 0; color: var(--color-text-muted); line-height: 1.5; font-size: 0.95rem;">{{ item.message }}</p>
+      </div>
+
+      <div style="display: flex; gap: 8px; align-items: center;">
+        {% if item.action_url %}
+        <a href="{{ item.action_url }}" class="btn btn-secondary btn-sm" style="font-size: 0.85rem;">View Action ↗</a>
+        {% endif %}
+        {% if not item.is_read %}
+        <button class="btn btn-outline btn-sm" onclick="markNotificationRead({{ item.id }})" id="btn-read-{{ item.id }}" style="font-size: 0.85rem;">
+          Mark Read
+        </button>
+        {% else %}
+        <span style="font-size: 0.8rem; color: var(--color-text-muted);">✓ Read</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="text-align: center; padding: 48px 24px;">
+  <div style="font-size: 3rem; margin-bottom: 16px;">📭</div>
+  <h3 style="margin-bottom: 8px;">No Notifications Found</h3>
+  <p style="color: var(--color-text-muted);">There are currently no alerts or broadcasts matching your selected criteria.</p>
+</div>
+{% endif %}
+
+<!-- Modal: New Broadcast Notification -->
+<div id="modal-new-notification" class="modal-overlay" style="display: none;">
+  <div class="modal-container" style="max-width: 550px;">
+    <div class="modal-header">
+      <h3 style="margin: 0;">Broadcast Institutional Notification</h3>
+      <button class="modal-close" onclick="closeModal('modal-new-notification')">&times;</button>
+    </div>
+    <form id="form-broadcast-notification" onsubmit="submitNotification(event)">
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+        <div class="form-group">
+          <label class="form-label" for="notif-title">Title *</label>
+          <input type="text" id="notif-title" class="form-control" required placeholder="e.g. Campus Network Maintenance Tonight">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label" for="notif-category">Category *</label>
+            <select id="notif-category" class="form-control" required>
+              <option value="GENERAL">General Notice</option>
+              <option value="ACADEMIC">Academic</option>
+              <option value="FINANCE">Finance & Bursar</option>
+              <option value="HEALTH">Health Center</option>
+              <option value="PLACEMENT">Placements</option>
+              <option value="SYSTEM">System & Infra</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="notif-priority">Priority *</label>
+            <select id="notif-priority" class="form-control" required>
+              <option value="LOW">Low</option>
+              <option value="NORMAL" selected>Normal</option>
+              <option value="HIGH">High</option>
+              <option value="URGENT">Urgent Alert</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="notif-role">Target Audience *</label>
+          <select id="notif-role" class="form-control" required>
+            <option value="ALL">Everyone (Campus-wide)</option>
+            <option value="STUDENT">Students Only</option>
+            <option value="FACULTY">Faculty Only</option>
+            <option value="ADMIN">Administrators Only</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="notif-action-url">Action Link (Optional)</label>
+          <input type="text" id="notif-action-url" class="form-control" placeholder="e.g. /portal or /announcements">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="notif-message">Message Content *</label>
+          <textarea id="notif-message" class="form-control" rows="4" required placeholder="Detailed bulletin content..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; padding: 16px 24px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-new-notification')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-notification">Broadcast Notice</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+async function markNotificationRead(id) {
+  try {
+    const res = await fetch(`/api/notifications/${id}/read`, { method: 'PUT' });
+    if (res.ok) {
+      window.location.reload();
+    }
+  } catch (err) {
+    console.error('Error marking notification read:', err);
+  }
+}
+
+async function markAllNotificationsRead() {
+  const role = document.getElementById('select-role-filter').value;
+  try {
+    const res = await fetch(`/api/notifications/read-all?role=${encodeURIComponent(role)}`, { method: 'PUT' });
+    if (res.ok) {
+      window.location.reload();
+    }
+  } catch (err) {
+    console.error('Error marking all read:', err);
+  }
+}
+
+async function submitNotification(event) {
+  event.preventDefault();
+  const btn = document.getElementById('btn-submit-notification');
+  btn.disabled = true;
+  btn.innerText = 'Broadcasting...';
+
+  const payload = {
+    title: document.getElementById('notif-title').value,
+    category: document.getElementById('notif-category').value,
+    priority: document.getElementById('notif-priority').value,
+    recipient_role: document.getElementById('notif-role').value,
+    action_url: document.getElementById('notif-action-url').value || null,
+    message: document.getElementById('notif-message').value
+  };
+
+  try {
+    const res = await fetch('/api/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      window.location.reload();
+    } else {
+      const err = await res.json();
+      alert('Error broadcasting notice: ' + (err.detail || 'Server error'));
+      btn.disabled = false;
+      btn.innerText = 'Broadcast Notice';
+    }
+  } catch (err) {
+    alert('Network error broadcasting notice.');
+    btn.disabled = false;
+    btn.innerText = 'Broadcast Notice';
+  }
+}
+</script>
+{% endblock %}

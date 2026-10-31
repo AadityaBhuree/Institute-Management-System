@@ -105,6 +105,10 @@
         </a>
 
         <div class="nav-label">Administration & Governance</div>
+        <a href="/notifications" class="nav-item {% if active_page == 'notifications' %}active{% endif %}" id="nav-notifications" {% if active_page == 'notifications' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">🔔</span>
+          <span>Alerts & Notifications</span>
+        </a>
         <a href="/leaves" class="nav-item {% if active_page == 'leaves' %}active{% endif %}" id="nav-leaves" {% if active_page == 'leaves' %}aria-current="page"{% endif %}>
           <span class="nav-icon" aria-hidden="true">📋</span>
           <span>Leave Management</span>
@@ -126,7 +130,7 @@
       <div class="sidebar-footer">
         <div class="system-status">
           <span class="status-dot" aria-hidden="true"></span>
-          <span>System Healthy • v1.0</span>
+          <span>System Healthy • v1.1</span>
         </div>
       </div>
     </aside>
@@ -147,6 +151,9 @@
         </div>
         <div class="header-right">
           <span class="badge-tag badge-success">● Term: 2026-27</span>
+          <a href="/notifications" class="badge-tag badge-secondary" style="text-decoration: none; color: inherit; display: inline-flex; align-items: center; gap: 4px;" aria-label="Notifications">
+            <span aria-hidden="true">🔔</span> Alerts
+          </a>
           {% if current_user %}
             <span class="user-badge">
               <span aria-hidden="true">👤</span> {{ current_user.username }} ({{ current_user.role|capitalize }})
@@ -174,4 +181,3 @@
   {% block scripts %}{% endblock %}
 </body>
 </html>
-

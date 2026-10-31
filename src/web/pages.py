@@ -32,6 +32,7 @@ from src.services.health_service import HealthService
 from src.services.hostel_service import HostelService
 from src.services.leave_service import LeaveService
 from src.services.library_service import LibraryService
+from src.services.notification_service import NotificationService
 from src.services.placement_service import PlacementService
 from src.services.reports_service import ReportsService
 from src.services.scholarship_service import ScholarshipService
@@ -926,5 +927,34 @@ def view_health_center_page(
             "selected_triage": triage,
             "selected_type": patient_type,
             "search": search or "",
+        },
+    )
+
+
+
+@router.get("/notifications", response_class=HTMLResponse)
+def view_notifications_page(
+    request: Request,
+    role: Optional[str] = None,
+    unread_only: bool = False,
+    conn: sqlite3.Connection = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+):
+    """Render institutional notifications and alert broadcast center."""
+    user_role = role or (current_user.get("role", "ALL").upper() if current_user else "ALL")
+    notifications = NotificationService.list_notifications(
+        conn, recipient_role=user_role, unread_only=unread_only, limit=100
+    )
+    unread_count = NotificationService.get_unread_count(conn, recipient_role=user_role)
+    return templates.TemplateResponse(
+        request=request,
+        name="notifications.html",
+        context={
+            "active_page": "notifications",
+            "current_user": current_user,
+            "notifications": notifications,
+            "unread_count": unread_count,
+            "selected_role": user_role,
+            "unread_only": unread_only,
         },
     )

@@ -1,20 +1,18 @@
 """Institute Management System - FastAPI Core Application.
-Orchestrates static assets, Jinja2 template rendering, REST API routes, and database lifespan.
+Orchestrates static assets, Jinja2 template rendering, REST API routers, and database lifespan.
 """
 
 import logging
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
-from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from src.api.academics import router as academics_router
 from src.api.alumni import router as alumni_router
@@ -31,6 +29,7 @@ from src.api.hostel import router as hostel_router
 from src.api.inventory import router as inventory_router
 from src.api.leaves import router as leaves_router
 from src.api.library import router as library_router
+from src.api.notifications import router as notifications_router
 from src.api.placements import router as placements_router
 from src.api.reports import router as reports_router
 from src.api.scholarships import router as scholarships_router
@@ -49,8 +48,9 @@ from src.core.config import (
     RATE_LIMIT_ENABLED,
     STATIC_DIR,
 )
+from src.core.exceptions import register_exception_handlers
 from src.core.logging_config import setup_logging
-from src.core.security import SESSION_COOKIE_NAME, verify_session_token
+from src.core.openapi import OPENAPI_TAGS
 from src.core.security_hardening import (
     RequestBodySizeLimitMiddleware,
     SecurityHeadersMiddleware,
@@ -91,98 +91,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     close_pool()
 
 
-OPENAPI_TAGS = [
-    {
-        "name": "Authentication & Identity",
-        "description": "User login, session token issuance, RBAC permissions, and compliance audit trail.",
-    },
-    {
-        "name": "Students & Admissions",
-        "description": "Admissions registry, student demographics, enrollment ID generation, and dossier profiles.",
-    },
-    {
-        "name": "Courses & Curriculum",
-        "description": "Department course catalog, credit tracking, and capacity-enforced student course enrollments.",
-    },
-    {
-        "name": "Faculty Directory",
-        "description": "Academic instructors, designation hierarchy, course assignments, and faculty portal.",
-    },
-    {
-        "name": "Academics & Attendance",
-        "description": "Daily session registers, examination scheduling, letter grading evaluation, and performance.",
-    },
-    {
-        "name": "Finance & Bursar",
-        "description": "Fee schedules, student invoicing, payment receipts, overdue balances, and fiscal audit ledger.",
-    },
-    {
-        "name": "Notice Board",
-        "description": "Campus announcements, priority broadcast levels, and audience-targeted institutional bulletins.",
-    },
-    {
-        "name": "Lecture Timetable",
-        "description": "Weekly academic schedule matrix with classroom collision prevention and instructor conflict guards.",
-    },
-    {
-        "name": "Leave Management",
-        "description": "Absence petitions, medical leaves, duty slips, and Dean review decision workflows.",
-    },
-    {
-        "name": "Library Circulation",
-        "description": "Campus library monograph catalog, ISBN inventory tracking, and scholar book loan checkouts.",
-    },
-    {
-        "name": "Hostel & Housing",
-        "description": "Residential hall blocks, room capacities, and student bed allocations.",
-    },
-    {
-        "name": "Placements & Recruitment",
-        "description": "Corporate recruitment drives, GPA eligibility gating, interview pipeline, and CTC telemetry.",
-    },
-    {
-        "name": "Transport Fleet & Logistics",
-        "description": "Multi-stop bus transit routes, vehicle fleet directory, and sequential transit passes.",
-    },
-    {
-        "name": "Scholarships & Financial Aid",
-        "description": "Institutional fellowships, government grants, and bursar review disbursement cycles.",
-    },
-    {
-        "name": "Alumni Network & Mentorship",
-        "description": "Graduate network directory, industry matchmaking, and career guidance sessions.",
-    },
-    {
-        "name": "Campus Events & Symposiums",
-        "description": "Institutional seminars, workshops, hackathons, symposiums, registrations, and certificate issuance.",
-    },
-    {
-        "name": "Campus Assets & Lab Inventory",
-        "description": "Scientific lab instruments, computing clusters, circulation checkouts, and maintenance work orders.",
-    },
-    {
-        "name": "Campus Health & Infirmary",
-        "description": "Electronic health profiles, clinical consultation encounters, dispensary medicine stock, and medical leave certificates.",
-    },
-    {
-        "name": "Reports & Analytics",
-        "description": "Institutional intelligence, low-attendance risk sentinel (<75%), and automated CSV export engine.",
-    },
-    {
-        "name": "Departments",
-        "description": "Academic departments directory and administrative department management.",
-    },
-    {
-        "name": "Dashboard",
-        "description": "Executive KPI telemetry, real-time metrics aggregation, and administrative summaries.",
-    },
-    {
-        "name": "System",
-        "description": "Health checks, database diagnostics, telemetry, and hot point-in-time online backups.",
-    },
-]
-
-
 app = FastAPI(
     title=APP_NAME,
     description=APP_DESCRIPTION,
@@ -204,67 +112,8 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
-
-def _extract_user_from_request(request: Request) -> Optional[dict]:
-    """Gracefully extract basic user details for template headers during exception handling."""
-    try:
-        token = request.cookies.get(SESSION_COOKIE_NAME)
-        if token:
-            payload = verify_session_token(token)
-            if payload:
-                return {"username": payload.get("sub"), "role": payload.get("role")}
-    except Exception:
-        pass
-    return None
-
-
-@app.exception_handler(StarletteHTTPException)
-async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
-    """Handle HTTP exceptions: render glassmorphism error templates for web requests, JSON for API."""
-    accept = request.headers.get("accept", "")
-    is_api = request.url.path.startswith("/api/")
-    if exc.status_code == 404 and "text/html" in accept and not is_api:
-        user = _extract_user_from_request(request)
-        return templates.TemplateResponse(
-            request=request,
-            name="404.html",
-            context={"active_page": None, "current_user": user},
-            status_code=404,
-        )
-    if exc.status_code == 500 and "text/html" in accept and not is_api:
-        user = _extract_user_from_request(request)
-        return templates.TemplateResponse(
-            request=request,
-            name="500.html",
-            context={"active_page": None, "current_user": user},
-            status_code=500,
-        )
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": exc.detail},
-        headers=exc.headers,
-    )
-
-
-@app.exception_handler(Exception)
-async def custom_500_exception_handler(request: Request, exc: Exception):
-    """Catch-all unhandled server error handler: log error and render 500 error template for HTML."""
-    logging.getLogger("ims").exception("Unhandled server exception: %s", exc)
-    accept = request.headers.get("accept", "")
-    is_api = request.url.path.startswith("/api/")
-    if "text/html" in accept and not is_api:
-        user = _extract_user_from_request(request)
-        return templates.TemplateResponse(
-            request=request,
-            name="500.html",
-            context={"active_page": None, "current_user": user},
-            status_code=500,
-        )
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Internal server error"},
-    )
-
+# Register Glassmorphic HTML and Structured JSON Error Handlers
+register_exception_handlers(app, templates)
 
 # Security Hardening & Cross-Origin Resource Sharing (CORS) Middlewares
 app.add_middleware(SecurityHeadersMiddleware)
@@ -281,28 +130,33 @@ app.add_middleware(
 )
 
 # Mount REST API Routers
-app.include_router(auth_router)
-app.include_router(students_router)
-app.include_router(courses_router)
-app.include_router(faculty_router)
-app.include_router(academics_router)
-app.include_router(finance_router)
-app.include_router(reports_router)
-app.include_router(announcements_router)
-app.include_router(leaves_router)
-app.include_router(timetable_router)
-app.include_router(library_router)
-app.include_router(hostel_router)
-app.include_router(placements_router)
-app.include_router(transport_router)
-app.include_router(scholarships_router)
-app.include_router(alumni_router)
-app.include_router(events_router)
-app.include_router(inventory_router)
-app.include_router(health_center_router)
-app.include_router(departments_router)
-app.include_router(dashboard_router)
-app.include_router(system_router)
+api_routers = [
+    auth_router,
+    students_router,
+    courses_router,
+    faculty_router,
+    academics_router,
+    finance_router,
+    reports_router,
+    announcements_router,
+    leaves_router,
+    timetable_router,
+    library_router,
+    hostel_router,
+    placements_router,
+    transport_router,
+    scholarships_router,
+    alumni_router,
+    events_router,
+    inventory_router,
+    health_center_router,
+    departments_router,
+    dashboard_router,
+    notifications_router,
+    system_router,
+]
+for r in api_routers:
+    app.include_router(r)
 
 # Mount Web Page Routers
 app.include_router(pages_router)

@@ -88,3 +88,35 @@ def restore_system_backup(
         details=f"Database state restored from snapshot: {filename}",
     )
     return result
+
+
+@router.get("/api/system/migrations")
+def get_migration_status(
+    conn: sqlite3.Connection = Depends(get_db),
+    admin_user: dict = Depends(require_role("admin")),
+):
+    """Retrieve schema migration history and pending migrations (Admin only)."""
+    from src.database.migration_manager import MigrationManager
+
+    return MigrationManager.get_status(conn)
+
+
+@router.post("/api/system/migrate")
+def run_migrations(
+    conn: sqlite3.Connection = Depends(get_db),
+    admin_user: dict = Depends(require_role("admin")),
+):
+    """Execute all pending schema migrations (Admin only)."""
+    from src.database.migration_manager import MigrationManager
+
+    results = MigrationManager.run_pending_migrations(conn)
+    AuthService.log_audit(
+        conn,
+        action="SCHEMA_MIGRATION",
+        resource="database",
+        resource_id=str(len(results)),
+        user_id=admin_user.get("id"),
+        username=admin_user.get("username"),
+        details=f"Executed {len(results)} pending schema migrations.",
+    )
+    return {"applied": results, "total_applied": len(results)}

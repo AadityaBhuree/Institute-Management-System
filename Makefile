@@ -5,7 +5,7 @@
 # seeding demo records, generating hot database backups, and building containers.
 # ==============================================================================
 
-.PHONY: help install run dev test test-cov lint format check seed backup restore load-test clean docker-build docker-run
+.PHONY: help install run dev test test-cov lint format check seed backup restore migrate migration-status load-test clean docker-build docker-run
 
 # Determine python command
 PYTHON ?= python
@@ -14,21 +14,23 @@ RUFF ?= $(PYTHON) -m ruff
 
 help:
 	@echo "Institute Management System (IMS Enterprise) — Available Targets:"
-	@echo "  make install      - Install Python dependencies from requirements.txt"
-	@echo "  make run          - Start production ASGI server with Uvicorn"
-	@echo "  make dev          - Start development server with hot reload on port 8000"
-	@echo "  make test         - Run full Pytest test suite (238+ tests)"
-	@echo "  make test-cov     - Run Pytest with test coverage reporting"
-	@echo "  make lint         - Check codebase with Ruff linter"
-	@echo "  make format       - Format codebase with Ruff"
-	@echo "  make check        - Run linter, format check, and test suite in sequence"
-	@echo "  make seed         - Seed SQLite database with realistic demonstration data"
-	@echo "  make backup       - Create an atomic hot point-in-time database backup"
-	@echo "  make restore      - Restore database from snapshot (FILE=ims_backup_YYYYMMDD_HHMMSS.db)"
-	@echo "  make load-test    - Run concurrent load and benchmark test (15 workers, 150 requests)"
-	@echo "  make clean        - Clean cache directories (.pytest_cache, .ruff_cache, __pycache__)"
-	@echo "  make docker-build - Build production multi-stage Docker container"
-	@echo "  make docker-run   - Run application via Docker Compose"
+	@echo "  make install         - Install Python dependencies from requirements.txt"
+	@echo "  make run             - Start production ASGI server with Uvicorn"
+	@echo "  make dev             - Start development server with hot reload on port 8000"
+	@echo "  make test            - Run full Pytest test suite (244+ tests)"
+	@echo "  make test-cov        - Run Pytest with test coverage reporting"
+	@echo "  make lint            - Check codebase with Ruff linter"
+	@echo "  make format          - Format codebase with Ruff"
+	@echo "  make check           - Run linter, format check, and test suite in sequence"
+	@echo "  make seed            - Seed SQLite database with realistic demonstration data"
+	@echo "  make backup          - Create an atomic hot point-in-time database backup"
+	@echo "  make restore         - Restore database from snapshot (FILE=ims_backup_YYYYMMDD_HHMMSS.db)"
+	@echo "  make migrate         - Execute pending SQLite schema migrations"
+	@echo "  make migration-status- Inspect applied and pending database schema migrations"
+	@echo "  make load-test       - Run concurrent load and benchmark test (15 workers, 150 requests)"
+	@echo "  make clean           - Clean cache directories (.pytest_cache, .ruff_cache, __pycache__)"
+	@echo "  make docker-build    - Build production multi-stage Docker container"
+	@echo "  make docker-run      - Run application via Docker Compose"
 
 install:
 	$(PYTHON) -m pip install --upgrade pip
@@ -65,6 +67,12 @@ backup:
 restore:
 	@echo "Restoring database from: $(FILE)"
 	$(PYTHON) -c "import sys; from src.database.connection import get_connection, release_connection; from src.services.system_service import SystemService; file = sys.argv[1]; conn = get_connection(); res = SystemService.restore_backup(conn, file); release_connection(conn); print('Restore successful:', res['filename'])" "$(FILE)"
+
+migrate:
+	$(PYTHON) -c "from src.database.connection import get_connection, release_connection; from src.database.migration_manager import MigrationManager; conn = get_connection(); res = MigrationManager.run_pending_migrations(conn); release_connection(conn); print('Applied', len(res), 'migrations:', res)"
+
+migration-status:
+	$(PYTHON) -c "from src.database.connection import get_connection, release_connection; from src.database.migration_manager import MigrationManager; conn = get_connection(); res = MigrationManager.get_status(conn); release_connection(conn); print('Migration Status - Current Version:', res['current_version'], '| Applied:', res['applied_count'], '| Pending:', res['pending_count'])"
 
 load-test:
 	$(PYTHON) scripts/load_test.py --concurrency 15 --requests 10

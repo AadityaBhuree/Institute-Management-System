@@ -79,9 +79,7 @@ def mark_notification_read(
     """Mark a notification as read."""
     success = NotificationService.mark_as_read(conn, notification_id)
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
     return {"status": "SUCCESS", "notification_id": notification_id, "is_read": True}
 
 

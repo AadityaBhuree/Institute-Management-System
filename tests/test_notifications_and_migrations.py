@@ -1,6 +1,5 @@
 """Test suite for Phase 10: Database Schema Migrations and Institutional Notifications Engine."""
 
-import sqlite3
 from fastapi.testclient import TestClient
 
 from src.database.connection import get_connection, release_connection
@@ -79,7 +78,9 @@ def test_notification_service_crud_and_lifecycle(setup_test_db):
         assert marked is True
 
         # Verify read state
-        notifs_after = NotificationService.list_notifications(conn, recipient_role="ALL", unread_only=True)
+        notifs_after = NotificationService.list_notifications(
+            conn, recipient_role="ALL", unread_only=True
+        )
         assert not any(n["id"] == created["id"] for n in notifs_after)
     finally:
         release_connection(conn, setup_test_db)

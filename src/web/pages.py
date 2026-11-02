@@ -931,7 +931,6 @@ def view_health_center_page(
     )
 
 
-
 @router.get("/notifications", response_class=HTMLResponse)
 def view_notifications_page(
     request: Request,

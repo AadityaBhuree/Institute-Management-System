@@ -475,7 +475,7 @@ For developer convenience, standard tasks can be executed via `make`:
 | Command | Purpose |
 | :--- | :--- |
 | `make dev` | Launch FastAPI development server with hot reload on port 8000 |
-| `make test` | Run complete Pytest test suite (238 tests) |
+| `make test` | Run complete Pytest test suite (244 tests) |
 | `make test-cov` | Run test suite with coverage report |
 | `make lint` | Run Ruff linter checks across all source directories |
 | `make format` | Automatically format all Python code with Ruff |
@@ -483,6 +483,8 @@ For developer convenience, standard tasks can be executed via `make`:
 | `make seed` | Populate database with realistic institutional demo datasets |
 | `make backup` | Trigger an atomic hot point-in-time SQLite database backup |
 | `make restore` | Restore database state from snapshot (`FILE=ims_backup_YYYYMMDD_HHMMSS.db`) |
+| `make migrate` | Execute pending numerical SQLite schema migrations |
+| `make migration-status` | Inspect applied and pending database schema migrations |
 | `make load-test` | Run concurrent load and benchmark test (15 workers, 150 requests) |
 | `make docker-build` | Build the production multi-stage Docker container |
 

@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-11-02
+
+### Added
+- **Architectural Refactoring & Core App Decoupling**:
+  - Decoupled `src/app.py` from 312 lines down to 146 lines (< 150 lines target achieved).
+  - Extracted OpenAPI tag documentation definitions into dedicated module `src/core/openapi.py`.
+  - Extracted glassmorphic HTML error page renderers and structured JSON exception handlers into `src/core/exceptions.py`.
+- **Database Schema Migration & Version Tracking Engine**:
+  - Implemented `MigrationManager` (`src/database/migration_manager.py`) tracking versions, checksums, and execution latencies in `schema_migrations`.
+  - Added initial migrations `001_initial_schema.sql` and `002_notifications.sql`.
+  - Added REST API endpoints `GET /api/system/migrations` and `POST /api/system/migrate` with audit logging.
+  - Added `make migrate` and `make migration-status` developer targets.
+- **Institutional Notifications & Alert Dispatch Engine**:
+  - Built real-time notification subsystem (`src/models/notification.py`, `src/services/notification_service.py`, `src/api/notifications.py`).
+  - Added target audience filtering (`ALL`, `STUDENT`, `FACULTY`, `ADMIN`), priority levels (`LOW`, `NORMAL`, `HIGH`, `URGENT`), and unread indicator counters.
+  - Added automated sentinel dispatch triggers for low attendance warnings (< 75%) and bursar fee overdue notices.
+  - Designed responsive glassmorphic alert feed page (`templates/notifications.html`) with 1-click "Mark All as Read" and broadcast modal.
+  - Added real-time notification alert link to top navigation bar and global sidebar in `templates/base.html`.
+- **Executive Dashboard Visual Analytics**:
+  - Enhanced overview dashboard (`templates/dashboard.html`) with zero-dependency responsive SVG visual analytics cards:
+    - Fiscal Recovery & Cash Flow Progress Donut Chart.
+    - Institutional Attendance Health Gauge Sentinel.
+    - Quick-access Alerts Feed button.
+- **Automated Testing Suite Expansion**:
+  - **244 automated unit and integration tests** passing cleanly across 23 domain test suites (100% pass rate in 7.9s).
+  - Expanded test suite with comprehensive migration execution, notification lifecycle, and alert trigger test cases.
+
+---
+
 ## [1.1.0] - 2026-10-30
 
 ### Added

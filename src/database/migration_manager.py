@@ -9,8 +9,6 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List
 
-from src.database.connection import transaction
-
 MIGRATIONS_DIR = Path(__file__).resolve().parent / "migrations"
 
 
@@ -20,18 +18,19 @@ class MigrationManager:
     @staticmethod
     def init_migration_table(conn: sqlite3.Connection) -> None:
         """Ensure schema_migrations metadata table exists."""
-        with transaction(conn) as cur:
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS schema_migrations (
-                    version INTEGER PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    checksum TEXT,
-                    execution_ms REAL DEFAULT 0.0
-                );
-                """
-            )
+        cur = conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+                version INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                checksum TEXT,
+                execution_ms REAL DEFAULT 0.0
+            );
+            """
+        )
+        cur.close()
 
     @staticmethod
     def get_applied_migrations(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
@@ -82,16 +81,18 @@ class MigrationManager:
         checksum = hashlib.sha256(content.encode("utf-8")).hexdigest()[:16]
 
         t0 = time.perf_counter()
-        with transaction(conn) as cur:
-            cur.executescript(content)
-            execution_ms = round((time.perf_counter() - t0) * 1000, 2)
-            cur.execute(
-                """
-                INSERT INTO schema_migrations (version, name, checksum, execution_ms)
-                VALUES (?, ?, ?, ?);
-                """,
-                (version, name, checksum, execution_ms),
-            )
+        conn.executescript(content)
+        execution_ms = round((time.perf_counter() - t0) * 1000, 2)
+
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO schema_migrations (version, name, checksum, execution_ms)
+            VALUES (?, ?, ?, ?);
+            """,
+            (version, name, checksum, execution_ms),
+        )
+        cur.close()
 
         logging.getLogger("ims").info(
             "Applied migration %03d_%s in %.2f ms", version, name, execution_ms

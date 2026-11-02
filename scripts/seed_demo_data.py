@@ -52,6 +52,7 @@ from src.models.health import (
 from src.models.hostel import HostelBlockCreate, HostelRoomCreate, RoomAllocationCreate
 from src.models.leave import LeaveRequestCreate, LeaveStatusUpdate
 from src.models.library import BookIssueRequest, LibraryBookCreate
+from src.models.notification import NotificationCreate
 from src.models.placement import (
     PlacementApplicationCreate,
     PlacementDriveCreate,
@@ -82,6 +83,7 @@ from src.services.health_service import HealthService
 from src.services.hostel_service import HostelService
 from src.services.leave_service import LeaveService
 from src.services.library_service import LibraryService
+from src.services.notification_service import NotificationService
 from src.services.placement_service import PlacementService
 from src.services.scholarship_service import ScholarshipService
 from src.services.student_service import StudentService
@@ -1784,6 +1786,59 @@ def seed():
         print(
             "   * Dispensary pharmacy stock, health profiles, clinical encounters, and medical certificates seeded."
         )
+        # 20. Seed Institutional Notifications and Alerts
+        notif_cur = conn.cursor()
+        notif_cur.execute("SELECT COUNT(*) AS total FROM notifications;")
+        if notif_cur.fetchone()["total"] == 0:
+            print("\n--> [20/20] Seeding Institutional Notifications and Alerts...")
+            NotificationService.create(
+                conn,
+                NotificationCreate(
+                    recipient_role="ALL",
+                    title="Campus IT Infrastructure Maintenance",
+                    message="Core fiber routers and campus WiFi will undergo routine maintenance tonight from 11:00 PM to 2:00 AM.",
+                    category="SYSTEM",
+                    priority="NORMAL",
+                    action_url=None,
+                ),
+            )
+            NotificationService.create(
+                conn,
+                NotificationCreate(
+                    recipient_role="ALL",
+                    title="Midterm Examination Timetable Finalized",
+                    message="The official Autumn semester midterm schedule matrix is now published on the portal.",
+                    category="ACADEMIC",
+                    priority="HIGH",
+                    action_url="/timetable",
+                ),
+            )
+            NotificationService.create(
+                conn,
+                NotificationCreate(
+                    recipient_role="STUDENT",
+                    recipient_id=s0_id,
+                    title="Attendance Sentinel Alert: Drop Notice",
+                    message="Your lecture attendance in Database Systems has dropped below the 75% required threshold.",
+                    category="ACADEMIC",
+                    priority="HIGH",
+                    action_url="/portal",
+                ),
+            )
+            NotificationService.create(
+                conn,
+                NotificationCreate(
+                    recipient_role="STUDENT",
+                    recipient_id=s1_id,
+                    title="Bursar Fee Notice: Semester Invoice Due",
+                    message="Your invoice balance has an outstanding amount of $1,250.00. Please clear dues to avoid registration hold.",
+                    category="FINANCE",
+                    priority="NORMAL",
+                    action_url="/finance",
+                ),
+            )
+            print("   * 4 institutional broadcast and targeted alert notices seeded.")
+        notif_cur.close()
 
     conn.close()
     print("\n" + "=" * 60)

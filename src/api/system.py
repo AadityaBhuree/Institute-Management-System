@@ -120,3 +120,22 @@ def run_migrations(
         details=f"Executed {len(results)} pending schema migrations.",
     )
     return {"applied": results, "total_applied": len(results)}
+
+
+@router.post("/api/system/optimize")
+def optimize_database(
+    conn: sqlite3.Connection = Depends(get_db),
+    admin_user: dict = Depends(require_role("admin")),
+):
+    """Execute SQLite WAL truncation checkpoint and query optimization (Admin only)."""
+    result = SystemService.optimize_database(conn)
+    AuthService.log_audit(
+        conn,
+        action="SYSTEM_OPTIMIZE",
+        resource="database",
+        resource_id=None,
+        user_id=admin_user.get("id"),
+        username=admin_user.get("username"),
+        details="Executed PRAGMA wal_checkpoint(TRUNCATE) and PRAGMA optimize.",
+    )
+    return result

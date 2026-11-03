@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added initial migrations `001_initial_schema.sql` and `002_notifications.sql`.
   - Added REST API endpoints `GET /api/system/migrations` and `POST /api/system/migrate` with audit logging.
   - Added `make migrate` and `make migration-status` developer targets.
+- **SQLite WAL Optimization & Administrative Settings Diagnostics**:
+  - Added `POST /api/system/optimize` endpoint performing `PRAGMA wal_checkpoint(TRUNCATE)` and query planner optimization.
+  - Enhanced settings UI (`templates/settings.html`) with interactive Schema Migration status panel and 30-event Institutional Audit Trail tab.
 - **Institutional Notifications & Alert Dispatch Engine**:
   - Built real-time notification subsystem (`src/models/notification.py`, `src/services/notification_service.py`, `src/api/notifications.py`).
   - Added target audience filtering (`ALL`, `STUDENT`, `FACULTY`, `ADMIN`), priority levels (`LOW`, `NORMAL`, `HIGH`, `URGENT`), and unread indicator counters.
@@ -31,8 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Institutional Attendance Health Gauge Sentinel.
     - Quick-access Alerts Feed button.
 - **Automated Testing Suite Expansion**:
-  - **244 automated unit and integration tests** passing cleanly across 23 domain test suites (100% pass rate in 7.9s).
-  - Expanded test suite with comprehensive migration execution, notification lifecycle, and alert trigger test cases.
+  - **246 automated unit and integration tests** passing cleanly across 23 domain test suites (100% pass rate).
+  - Expanded test suite with comprehensive migration execution, notification lifecycle, WAL checkpoint optimization, and settings diagnostic tabs.
 
 ---
 

@@ -287,3 +287,31 @@ def test_system_database_restore_validation(client):
         "/api/system/restore", json={"filename": "ims_backup_nonexistent_9999.db"}
     )
     assert res_404.status_code == 404
+
+
+def test_system_optimize_api(client, student_client):
+    """Verify database optimization endpoint enforces admin role and triggers checkpoint."""
+    # Student should be forbidden
+    res_forbidden = student_client.post("/api/system/optimize")
+    assert res_forbidden.status_code == 403
+
+    # Admin should succeed
+    res = client.post("/api/system/optimize")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "OPTIMIZED"
+    assert "db_size_kb" in data
+    assert "checkpoint" in data
+    assert "optimized_at" in data
+
+
+def test_settings_html_view_with_migrations_and_audit(client):
+    """Verify settings HTML view contains schema migration status and institutional audit trail."""
+    response = client.get("/settings")
+    assert response.status_code == 200
+    html = response.text
+    assert 'id="tab-migrations"' in html
+    assert 'id="tab-audit"' in html
+    assert 'id="btn-optimize-db"' in html
+    assert "Database Schema Migration Engine" in html
+    assert "Institutional Audit Trail" in html

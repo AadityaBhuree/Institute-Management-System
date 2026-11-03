@@ -198,8 +198,9 @@ Institute Management System/
 ## 🔌 Complete RESTful API Reference
 
 ### 🎓 Admissions & Students
+
 | Method | Endpoint | Description |
-|---|---|---|
+| --- | --- | --- |
 | `POST` | `/api/students` | Enroll a new student and issue sequential enrollment ID |
 | `GET` | `/api/students` | List students with department, semester, and text filters |
 | `GET` | `/api/students/{id}` | Retrieve individual student demographic profile |
@@ -208,19 +209,21 @@ Institute Management System/
 | `GET` | `/api/students/stats/summary` | Academic enrollment metrics and semester breakdown |
 
 ### 📚 Faculty & Course Catalog
+
 | Method | Endpoint | Description |
-|---|---|---|
+| --- | --- | --- |
 | `POST` | `/api/faculty` | Add faculty member with unique institutional faculty ID |
 | `GET` | `/api/faculty` | List faculty roster filtered by department or status |
 | `GET` | `/api/faculty/{id}` | Retrieve faculty instructor dossier |
 | `POST` | `/api/courses` | Create an academic course with credits and seat capacity |
 | `GET` | `/api/courses` | List course catalog with active enrollment counts |
 | `POST` | `/api/courses/enroll` | Enroll student into course with capacity checking |
-| `GET` | `/api/courses/{id}/students`| List all enrolled students for a specific course |
+| `GET` | `/api/courses/{id}/students` | List all enrolled students for a specific course |
 
 ### 📝 Attendance & Examinations
+
 | Method | Endpoint | Description |
-|---|---|---|
+| --- | --- | --- |
 | `POST` | `/api/academics/attendance/mark` | Batch mark daily session attendance (PRESENT/ABSENT/LATE) |
 | `GET` | `/api/academics/attendance` | Retrieve session attendance roster for a course & date |
 | `GET` | `/api/academics/attendance/student/{id}/summary` | Scholar attendance percentage and low-attendance alert |
@@ -230,20 +233,22 @@ Institute Management System/
 | `GET` | `/api/academics/exams/{id}/results` | Retrieve graded evaluation dossier and statistics |
 
 ### 💳 Fee Invoicing & Financial Audit
+
 | Method | Endpoint | Description |
-|---|---|---|
+| --- | --- | --- |
 | `POST` | `/api/finance/fee-structures` | Configure standardized departmental semester fee schedule |
 | `GET` | `/api/finance/fee-structures` | List departmental fee schedules |
 | `POST` | `/api/finance/invoices` | Issue student fee invoice with unique number (`INV-2026-XXXX`) |
 | `GET` | `/api/finance/invoices` | List fee invoices filtered by status, department, and search |
 | `GET` | `/api/finance/invoices/{id}` | Get detailed invoice with historical payment receipts |
-| `POST` | `/api/finance/payments` | Record fee payment, update balance, and issue receipt (`REC-XXXX`)|
+| `POST` | `/api/finance/payments` | Record fee payment, update balance, and issue receipt (`REC-XXXX`) |
 | `GET` | `/api/finance/payments` | Query the real-time bursar payment audit ledger |
 | `GET` | `/api/finance/summary` | Executive financial summary (billed, collected, collection rate) |
 
 ### 📢 Campus Notice Board & Announcements
+
 | Method | Endpoint | Description |
-|---|---|---|
+| --- | --- | --- |
 | `POST` | `/api/announcements` | Post institutional notice with priority tags & audience |
 | `GET` | `/api/announcements` | Query campus notices filtered by audience, category, status |
 | `GET` | `/api/announcements/{id}` | Retrieve individual announcement notice |
@@ -251,8 +256,9 @@ Institute Management System/
 | `DELETE` | `/api/announcements/{id}` | Remove announcement from bulletin board |
 
 ### 🗓️ Lecture Timetable & Scheduling
+
 | Method | Endpoint | Description |
-|---|---|---|
+| --- | --- | --- |
 | `POST` | `/api/timetable` | Schedule lecture slot with room & instructor collision avoidance |
 | `GET` | `/api/timetable` | Query scheduled lecture slots with room & course metadata |
 | `GET` | `/api/timetable/matrix` | Weekly schedule matrix organized Monday through Saturday |
@@ -260,8 +266,9 @@ Institute Management System/
 | `DELETE` | `/api/timetable/{id}` | Remove lecture slot from timetable |
 
 ### 📋 Leave Management & Absence Petitions
+
 | Method | Endpoint | Description |
-|---|---|---|
+| --- | --- | --- |
 | `POST` | `/api/leaves` | Submit student or faculty absence/leave petition |
 | `GET` | `/api/leaves` | List leave requests filtered by role, status, applicant ID |
 | `GET` | `/api/leaves/stats/summary` | Aggregate leave metrics (Pending, Approved, Rejected) |
@@ -269,8 +276,9 @@ Institute Management System/
 | `PUT` | `/api/leaves/{id}/status` | Review and approve/reject leave petition with remarks |
 
 ### 📖 Campus Library & Digital Monograph Circulation
+
 | Method | Endpoint | Description |
-|---|---|---|
+| --- | --- | --- |
 | `POST` | `/api/library/books` | Catalog a new monograph volume with ISBN, shelf, and copies |
 | `GET` | `/api/library/books` | List books filtered by category, shelf, or title/author search |
 | `GET` | `/api/library/loans` | Query scholar book loan circulation registers |
@@ -279,8 +287,9 @@ Institute Management System/
 | `GET` | `/api/library/stats` | Circulation telemetry (copies, active loans, overdue fines) |
 
 ### 🏠 Residential Halls & Bed Allocations
+
 | Method | Endpoint | Description |
-|---|---|---|
+| --- | --- | --- |
 | `POST` | `/api/hostel/blocks` | Register residential hall block with warden contact |
 | `GET` | `/api/hostel/blocks` | List hostel hall blocks and residential directories |
 | `POST` | `/api/hostel/rooms` | Configure residential rooms with capacity, floor, and fee |
@@ -290,8 +299,9 @@ Institute Management System/
 | `GET` | `/api/hostel/stats` | Residential telemetry (occupancy rate, capacity, bed count) |
 
 ### 💼 Campus Placements & Corporate Recruitment
+
 | Method | Endpoint | Description |
-|---|---|---|
+| --- | --- | --- |
 | `POST` | `/api/placements/drives` | Host corporate recruitment drive with CTC package & min GPA |
 | `GET` | `/api/placements/drives` | List recruitment drives with applicant counts and filters |
 | `POST` | `/api/placements/apply` | Submit student application with automated GPA gating |
@@ -300,8 +310,9 @@ Institute Management System/
 | `GET` | `/api/placements/stats` | Placement telemetry (hiring partners, offers, avg/highest CTC) |
 
 ### 🚌 Campus Transport Fleet & Transit Logistics
+
 | Method | Endpoint | Description |
-|---|---|---|
+| --- | --- | --- |
 | `POST` | `/api/transport/routes` | Define bus transit route with stops and semester fare |
 | `GET` | `/api/transport/routes` | List transport routes with vehicle and pass counts |
 | `POST` | `/api/transport/vehicles` | Register fleet vehicle and assign driver & route |
@@ -312,40 +323,44 @@ Institute Management System/
 | `GET` | `/api/transport/stats` | Fleet telemetry (vehicles, routes, active passes, capacity) |
 
 ### 🎓 Scholarships, Grants & Financial Aid
+
 | Method | Endpoint | Description |
-|---|---|---|
+| --- | --- | --- |
 | `POST` | `/api/scholarships/schemes` | Create scholarship scheme with award amount & criteria |
 | `GET` | `/api/scholarships/schemes` | List scholarship schemes and applicant counts |
 | `POST` | `/api/scholarships/apply` | Submit student grant application with GPA & income gating |
 | `GET` | `/api/scholarships/applications` | Query applications filtered by scheme and review status |
-| `PUT` | `/api/scholarships/applications/{id}/review`| Bursar decision workflow (Approved, Disbursed, Rejected) |
-| `GET` | `/api/scholarships/stats` | Financial aid telemetry (funds disbursed, scholars assisted)|
+| `PUT` | `/api/scholarships/applications/{id}/review` | Bursar decision workflow (Approved, Disbursed, Rejected) |
+| `GET` | `/api/scholarships/stats` | Financial aid telemetry (funds disbursed, scholars assisted) |
 
 ### 🤝 Alumni Network & Career Mentorship Hub
+
 | Method | Endpoint | Description |
-|---|---|---|
+| --- | --- | --- |
 | `POST` | `/api/alumni/members` | Register graduate alumnus in network directory |
 | `GET` | `/api/alumni/members` | List alumni filtered by batch, department, or company |
-| `POST` | `/api/alumni/mentorship/request`| Scholar submits mentorship request to alumnus |
-| `GET` | `/api/alumni/mentorship/requests`| Query mentorship sessions and guidance requests |
-| `PUT` | `/api/alumni/mentorship/requests/{id}/status`| Update request status (Accepted, Completed, Declined) |
+| `POST` | `/api/alumni/mentorship/request` | Scholar submits mentorship request to alumnus |
+| `GET` | `/api/alumni/mentorship/requests` | Query mentorship sessions and guidance requests |
+| `PUT` | `/api/alumni/mentorship/requests/{id}/status` | Update request status (Accepted, Completed, Declined) |
 | `GET` | `/api/alumni/stats` | Network telemetry (active alumni, mentors, batches) |
 
 ### 🎪 Campus Events & Symposiums
+
 | Method | Endpoint | Description |
-|---|---|---|
+| --- | --- | --- |
 | `POST` | `/api/events` | Schedule a new institutional event, conference, or symposium |
 | `GET` | `/api/events` | List events with category, status, and department filtering |
 | `GET` | `/api/events/{id}` | Retrieve individual event details and capacity telemetry |
 | `PUT` | `/api/events/{id}/status` | Transition event status (UPCOMING, ACTIVE, COMPLETED, CANCELLED) |
 | `POST` | `/api/events/register` | Register student attendee with capacity validation |
 | `GET` | `/api/events/{id}/registrations` | List attendee registrations for a specific event |
-| `PUT` | `/api/events/registrations/{id}/status`| Update attendance status and issue verifiable certificate |
+| `PUT` | `/api/events/registrations/{id}/status` | Update attendance status and issue verifiable certificate |
 | `GET` | `/api/events/stats` | Event telemetry (total, upcoming, registrations, certs) |
 
 ### 🔬 Campus Assets, Lab Equipment & Inventory Hub
+
 | Method | Endpoint | Description |
-|---|---|---|
+| --- | --- | --- |
 | `POST` | `/api/inventory/assets` | Register lab instrument or equipment with sequential tag (`AST-DEPT-YYYY-XXXX`) |
 | `GET` | `/api/inventory/assets` | List campus equipment with category, room, and status filters |
 | `GET` | `/api/inventory/assets/{id}` | Retrieve individual asset equipment dossier |
@@ -353,12 +368,13 @@ Institute Management System/
 | `POST` | `/api/inventory/checkouts` | Issue equipment loan checkout to scholar or faculty |
 | `PUT` | `/api/inventory/checkouts/{id}/return` | Check in returned equipment with condition grading (Auto-triggers repair if damaged) |
 | `POST` | `/api/inventory/maintenance` | Issue scheduled maintenance or calibration work order (`MNT-YYYY-XXXX`) |
-| `PUT` | `/api/inventory/maintenance/{id}/status`| Update maintenance stage (IN_PROGRESS, COMPLETED) |
+| `PUT` | `/api/inventory/maintenance/{id}/status` | Update maintenance stage (IN_PROGRESS, COMPLETED) |
 | `GET` | `/api/inventory/assets/stats` | Inventory telemetry (total assets, checked out, maintenance, valuation) |
 
 ### 🏥 Campus Health, Student Clinic & Infirmary Hub
+
 | Method | Endpoint | Description |
-|---|---|---|
+| --- | --- | --- |
 | `POST` | `/api/health-center/profiles` | Register or update student/faculty health profile with blood group & allergies |
 | `GET` | `/api/health-center/profiles` | List health profiles with blood group, allergy, and search filters |
 | `GET` | `/api/health-center/profiles/{type}/{id}` | Retrieve individual medical profile by student or faculty ID |
@@ -370,12 +386,13 @@ Institute Management System/
 | `GET` | `/api/health-center/encounters/{id}` | Retrieve encounter dossier with vital signs and prescription items |
 | `POST` | `/api/health-center/certificates` | Issue verifiable medical sick leave certificate (`MED-YYYY-XXXX`) |
 | `GET` | `/api/health-center/certificates` | Query issued medical sick leave certificates |
-| `PUT` | `/api/health-center/certificates/{id}/revoke`| Revoke active medical certificate |
+| `PUT` | `/api/health-center/certificates/{id}/revoke` | Revoke active medical certificate |
 | `GET` | `/api/health-center/stats` | Clinic health telemetry (encounters, sick leaves, low stock alerts) |
 
 ### 📊 Institutional Reports & CSV Exports
+
 | Method | Endpoint | Description |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/api/reports/analytics-summary` | Institutional telemetry, attendance risk sentinel, and recovery metrics |
 | `GET` | `/api/reports/export/students/csv` | Download complete registered student directory as CSV |
 | `GET` | `/api/reports/export/attendance-risk/csv` | Download at-risk (< 75%) scholar attendance report as CSV |
@@ -386,9 +403,11 @@ Institute Management System/
 ## 🚀 Quickstart & Installation
 
 ### 1. Prerequisites
+
 * Python 3.10+ installed
 
 ### 2. Setup Virtual Environment
+
 ```bash
 python -m venv .venv
 
@@ -400,21 +419,25 @@ source .venv/bin/activate
 ```
 
 ### 3. Install Dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
 ### 4. Seed Realistic Demonstration Data
+
 ```bash
 python scripts/seed_demo_data.py
 ```
 
 ### 5. Launch Application Server (Local)
+
 ```bash
 python -m uvicorn src.app:app --reload --port 8000
 ```
 
 ### 6. Run with Docker / Container (Production)
+
 ```bash
 # 1-Click Launch with Docker Compose (mounts ./data with persistent SQLite WAL storage)
 docker compose up -d
@@ -425,6 +448,7 @@ docker run -d -p 8000:8000 -v $(pwd)/data:/app/data --name ims_app ims-enterpris
 ```
 
 Open **[http://localhost:8000](http://localhost:8000)** in your browser:
+
 * **Overview Dashboard:** `http://localhost:8000/`
 * **Student Registry:** `http://localhost:8000/students`
 * **Scholar Self-Service Portal:** `http://localhost:8000/portal`
@@ -499,13 +523,17 @@ See **[CHANGELOG.md](CHANGELOG.md)** for detailed version history.
 <summary><b>1. "CRITICAL SECURITY CONFIGURATION ERROR: 'SECRET_KEY' environment variable is not set"</b></summary>
 
 Ensure you have a `.env` file copied from `.env.example`:
+
 ```bash
 cp .env.example .env
 ```
+
 Generate a secure random key using Python:
+
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
+
 Place that key in `.env` as `SECRET_KEY=<your_generated_key>`. In development/testing environments, setting `DEBUG=true` or running under `pytest` automatically provides a fallback dev key.
 </details>
 
@@ -513,18 +541,21 @@ Place that key in `.env` as `SECRET_KEY=<your_generated_key>`. In development/te
 <summary><b>2. How do I reset or re-seed the SQLite database?</b></summary>
 
 Delete the local SQLite database file in `data/` and run the seeder:
+
 ```bash
 rm data/institute.db
 python scripts/seed_demo_data.py
 ```
+
 </details>
 
 <details>
 <summary><b>3. Why is rate limiting or login lockout triggering during local tests?</b></summary>
 
 Rate limiting and login lockout can be configured or bypassed in `.env`:
-- `RATE_LIMIT_ENABLED=false` to disable global IP rate limiting during load tests.
-- `LOGIN_MAX_ATTEMPTS=20` to increase failed login thresholds.
+* `RATE_LIMIT_ENABLED=false` to disable global IP rate limiting during load tests.
+* `LOGIN_MAX_ATTEMPTS=20` to increase failed login thresholds.
+
 </details>
 
 ---
@@ -536,6 +567,7 @@ For the comprehensive 20-section architectural review, security scorecard, vulne
 👉 **[IMPROVEMENT_PLAN.md](IMPROVEMENT_PLAN.md)**
 
 Key phases outlined in the plan:
+
 * **Phase 0:** Baseline & Safety Checkpoint
 * **Phase 1:** Critical Fixes (Secrets, SQL Injection, Soft-Delete, CORS, Rate Limiting)
 * **Phase 2:** Architecture & Code Quality (Extract monolithic `app.py`, Structured Logging)
@@ -550,4 +582,5 @@ Key phases outlined in the plan:
 ---
 
 ## 📄 License
+
 This project is licensed under the [MIT License](LICENSE).

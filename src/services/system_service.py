@@ -166,3 +166,25 @@ class SystemService:
             "restored_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "status": "RESTORED",
         }
+
+    @staticmethod
+    def optimize_database(conn: sqlite3.Connection) -> Dict[str, Any]:
+        """Perform SQLite WAL truncate checkpoint and schema query optimization."""
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA wal_checkpoint(TRUNCATE);")
+        checkpoint_result = cursor.fetchone()
+        cursor.execute("PRAGMA optimize;")
+        cursor.close()
+
+        # Invalidate TTL cache to refresh telemetry
+        from src.core.cache import cache
+
+        cache.clear()
+
+        db_size_bytes = DB_PATH.stat().st_size if DB_PATH.exists() else 0
+        return {
+            "status": "OPTIMIZED",
+            "checkpoint": dict(checkpoint_result) if checkpoint_result else {},
+            "db_size_kb": round(db_size_bytes / 1024, 2),
+            "optimized_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }

@@ -480,17 +480,25 @@ def view_reports_page(
 def view_settings_page(
     request: Request,
     conn: sqlite3.Connection = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
 ):
     """Render administrative settings, department configuration, and database backup engine."""
+    from src.database.migration_manager import MigrationManager
+
     telemetry = SystemService.get_system_telemetry(conn)
     departments = DepartmentService.list_all(conn)
+    migrations = MigrationManager.get_status(conn)
+    audit_logs = AuthService.list_audit_logs(conn, limit=30)
     return templates.TemplateResponse(
         request=request,
         name="settings.html",
         context={
             "active_page": "settings",
+            "current_user": current_user,
             "telemetry": telemetry,
             "departments": departments,
+            "migrations": migrations,
+            "audit_logs": audit_logs,
         },
     )
 

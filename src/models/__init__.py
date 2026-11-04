@@ -104,6 +104,11 @@ from src.models.scholarship import (
     ScholarshipSchemeOut,
     ScholarshipStatsOut,
 )
+from src.models.storage import (
+    DocumentListResponse,
+    DocumentMetadata,
+    DocumentUploadResponse,
+)
 from src.models.student import StudentCreate, StudentOut, StudentUpdate
 from src.models.timetable import TimetableSlotCreate, TimetableSlotOut
 from src.models.transport import (
@@ -241,4 +246,8 @@ __all__ = [
     "MedicalCertificateCreate",
     "MedicalCertificateOut",
     "HealthStatsOut",
+    # Document Storage
+    "DocumentMetadata",
+    "DocumentUploadResponse",
+    "DocumentListResponse",
 ]

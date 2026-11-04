@@ -93,4 +93,8 @@ OPENAPI_TAGS = [
         "name": "Notifications",
         "description": "Institutional notification broadcast, real-time student alerts, and unread indicator counters.",
     },
+    {
+        "name": "Document Storage",
+        "description": "Secure multi-part file uploads, magic-byte validation, and authenticated document streaming.",
+    },
 ]

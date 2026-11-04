@@ -133,3 +133,4 @@ def test_list_and_delete_documents_workflow(client, student_client):
 
     # 5. Subsequent download returns 404
     assert client.get(f"/api/storage/files/{file_id}").status_code == 404
+

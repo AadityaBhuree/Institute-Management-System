@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.0] - 2026-11-04
+
+### Added
+- **Secure Document & Media Storage Subsystem (Phase 11)**:
+  - Engineered `StorageManager` (`src/core/storage.py`) providing binary magic-byte inspection (PNG, JPEG, GIF, WebP, PDF, DOCX), fail-closed forbidden extension gating, and path traversal guards.
+  - Added isolated file persistence under `data/uploads/` using randomized opaque UUID filenames (`doc_<uuid>.<ext>`).
+  - Added schema migration `src/database/migrations/003_document_storage.sql` establishing `uploaded_documents` table with indexes on `file_id`, `category`, and `created_at`.
+  - Built domain service `StorageService` (`src/services/storage_service.py`) and Pydantic schemas (`src/models/storage.py`) managing document lifecycle.
+  - Mounted REST API router `src/api/storage.py` providing `POST /api/storage/upload`, `GET /api/storage/files/{file_id}`, `GET /api/storage/documents`, and `DELETE /api/storage/files/{file_id}` with role-aware privacy boundaries and audit logging.
+  - Consolidated router registration in `src/api/__init__.py:ALL_API_ROUTERS`, streamlining `src/app.py` from 146 to **119 lines** (< 150 lines target strictly preserved).
+- **Automated Testing Suite Expansion**:
+  - Added `tests/test_storage_api.py` with 10 comprehensive tests covering binary magic bytes, disguised executables, forbidden extensions, 413 payload limits, path traversal rejection, and RBAC document deletion.
+  - Expanded test suite to **256 automated unit and integration tests** passing cleanly across 24 domain test suites (100% pass rate in 9.05s).
+
+---
+
 ## [1.2.0] - 2026-11-02
 
 ### Added

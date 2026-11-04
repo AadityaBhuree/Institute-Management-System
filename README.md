@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-WAL%20Mode-003B57.svg?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
-[![Tests](https://img.shields.io/badge/Pytest-246%2F246%20Passing-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Pytest-256%2F256%20Passing-success.svg)](tests/)
 [![CI](https://github.com/AadityaBhuree/Institute-Management-System/actions/workflows/ci.yml/badge.svg)](https://github.com/AadityaBhuree/Institute-Management-System/actions/workflows/ci.yml)
 [![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED.svg?logo=docker&logoColor=white)](Dockerfile)
 [![Code Style](https://img.shields.io/badge/Linter-Ruff%20Clean-black.svg)](pyproject.toml)
@@ -480,7 +480,7 @@ Open **[http://localhost:8000](http://localhost:8000)** in your browser:
 The test suite runs with isolated SQLite databases in temporary environments via pytest fixtures:
 
 ```bash
-# Run all 246 automated unit, integration, concurrency, and load-readiness tests
+# Run all 256 automated unit, integration, concurrency, and load-readiness tests
 pytest tests/ -v
 
 # Run Ruff linter to confirm clean code hygiene
@@ -499,7 +499,7 @@ For developer convenience, standard tasks can be executed via `make`:
 | Command | Purpose |
 | :--- | :--- |
 | `make dev` | Launch FastAPI development server with hot reload on port 8000 |
-| `make test` | Run complete Pytest test suite (246 tests) |
+| `make test` | Run complete Pytest test suite (256 tests) |
 | `make test-cov` | Run test suite with coverage report |
 | `make lint` | Run Ruff linter checks across all source directories |
 | `make format` | Automatically format all Python code with Ruff |

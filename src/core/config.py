@@ -83,5 +83,11 @@ MAX_REQUEST_SIZE_BYTES = int(
 LOGIN_MAX_ATTEMPTS = int(os.getenv("LOGIN_MAX_ATTEMPTS", "5"))
 LOGIN_LOCKOUT_SECONDS = int(os.getenv("LOGIN_LOCKOUT_SECONDS", "300"))  # 5 minutes
 
+UPLOAD_DIR = Path(os.getenv("IMS_UPLOAD_DIR", str(DATA_DIR / "uploads")))
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+MAX_UPLOAD_SIZE_BYTES = int(
+    os.getenv("MAX_UPLOAD_SIZE_BYTES", str(5 * 1024 * 1024))
+)  # 5 MB default
+
 STATIC_DIR = BASE_DIR / "static"
 TEMPLATES_DIR = BASE_DIR / "templates"

@@ -15,3 +15,4 @@ CREATE TABLE IF NOT EXISTS uploaded_documents (
 CREATE INDEX IF NOT EXISTS idx_uploaded_docs_file_id ON uploaded_documents(file_id);
 CREATE INDEX IF NOT EXISTS idx_uploaded_docs_category ON uploaded_documents(category);
 CREATE INDEX IF NOT EXISTS idx_uploaded_docs_created ON uploaded_documents(created_at DESC);
+

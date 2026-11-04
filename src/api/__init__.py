@@ -15,15 +15,45 @@ from src.api.hostel import router as hostel_router
 from src.api.inventory import router as inventory_router
 from src.api.leaves import router as leaves_router
 from src.api.library import router as library_router
+from src.api.notifications import router as notifications_router
 from src.api.placements import router as placements_router
 from src.api.reports import router as reports_router
 from src.api.scholarships import router as scholarships_router
+from src.api.storage import router as storage_router
 from src.api.students import router as students_router
 from src.api.system import router as system_router
 from src.api.timetable import router as timetable_router
 from src.api.transport import router as transport_router
 
+ALL_API_ROUTERS = [
+    auth_router,
+    students_router,
+    courses_router,
+    faculty_router,
+    academics_router,
+    finance_router,
+    reports_router,
+    announcements_router,
+    leaves_router,
+    timetable_router,
+    library_router,
+    hostel_router,
+    placements_router,
+    transport_router,
+    scholarships_router,
+    alumni_router,
+    events_router,
+    inventory_router,
+    health_center_router,
+    departments_router,
+    dashboard_router,
+    notifications_router,
+    storage_router,
+    system_router,
+]
+
 __all__ = [
+    "ALL_API_ROUTERS",
     "academics_router",
     "alumni_router",
     "announcements_router",
@@ -39,9 +69,11 @@ __all__ = [
     "inventory_router",
     "leaves_router",
     "library_router",
+    "notifications_router",
     "placements_router",
     "reports_router",
     "scholarships_router",
+    "storage_router",
     "students_router",
     "system_router",
     "timetable_router",

@@ -97,4 +97,8 @@ OPENAPI_TAGS = [
         "name": "Document Storage",
         "description": "Secure multi-part file uploads, magic-byte validation, and authenticated document streaming.",
     },
+    {
+        "name": "Email & Tasks",
+        "description": "Institutional email dispatching, Jinja2 notification templates, and async background task telemetry.",
+    },
 ]

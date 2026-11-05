@@ -7,6 +7,7 @@ from src.api.auth import router as auth_router
 from src.api.courses import router as courses_router
 from src.api.dashboard import router as dashboard_router
 from src.api.departments import router as departments_router
+from src.api.email import router as email_router
 from src.api.events import router as events_router
 from src.api.faculty import router as faculty_router
 from src.api.finance import router as finance_router
@@ -49,6 +50,7 @@ ALL_API_ROUTERS = [
     dashboard_router,
     notifications_router,
     storage_router,
+    email_router,
     system_router,
 ]
 
@@ -61,6 +63,7 @@ __all__ = [
     "courses_router",
     "dashboard_router",
     "departments_router",
+    "email_router",
     "events_router",
     "faculty_router",
     "finance_router",

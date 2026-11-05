@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.4.0] - 2026-11-05
+
+### Added
+- **Institutional Email Dispatcher & Background Job Worker (Phase 12)**:
+  - Engineered thread-safe in-process asynchronous task scheduler and worker pool `BackgroundTaskWorker` (`src/core/tasks.py`) supporting non-blocking background task enqueueing, exception isolation, and queue telemetry.
+  - Implemented multi-backend email subsystem (`src/services/email_service.py`):
+    - `MockEmailBackend`: In-memory thread-safe outbox buffer for unit tests and local sandboxes.
+    - `ConsoleEmailBackend`: Formatted terminal stdout logger for local development.
+    - `SMTPEmailBackend`: Production-grade SMTP client with STARTTLS, configurable credentials, and timeout protections.
+  - Added schema migration `src/database/migrations/004_email_logs.sql` and updated `src/database/schema.sql` introducing `email_logs` table with indexes on `recipient`, `status`, and `sent_at DESC`.
+  - Created responsive Jinja2 transactional HTML email templates under `templates/emails/`:
+    - `fee_receipt.html`: Official electronic bursar fee receipt with itemized breakdown.
+    - `leave_decision.html`: Academic leave absence petition determination notice.
+    - `attendance_alert.html`: Low attendance warning sentinel (< 75% threshold).
+  - Wired automated async domain event email triggers:
+    - `FinanceService.record_payment`: Automatically queues electronic fee receipt to the student upon successful bursar payment recording.
+    - `LeaveService.update_status`: Automatically queues decision notice to applicant upon approval or rejection.
+  - Exposed REST API endpoints via `src/api/email.py`:
+    - `POST /api/email/test`: Diagnostics dispatch verification (Admin-only).
+    - `GET /api/email/logs`: Paginated institutional delivery audit logs with recipient filtering (Admin-only).
+    - `GET /api/system/tasks`: Live background worker pool queue telemetry and load metrics.
+  - Registered worker pool graceful shutdown in `src/app.py:lifespan` (`shutdown_task_worker_pool(wait=False)`), maintaining `src/app.py` at **121 lines** (well below 150 lines limit).
+- **Automated Testing Suite Expansion**:
+  - Added `tests/test_background_tasks_and_email.py` containing 15 comprehensive unit and integration tests.
+  - Expanded test suite to **271 automated tests** across 25 domain suites (100% pass rate in 8.68s).
+
+---
+
 ## [1.3.0] - 2026-11-04
 
 ### Added

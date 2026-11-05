@@ -40,6 +40,12 @@ from src.models.auth import (
 from src.models.common import ErrorResponse, MessageResponse
 from src.models.course import CourseCreate, CourseOut, CourseUpdate, EnrollmentCreate
 from src.models.department import DepartmentCreate, DepartmentOut
+from src.models.email import (
+    EmailDeliveryResult,
+    EmailLogListResponse,
+    EmailLogOut,
+    EmailSendRequest,
+)
 from src.models.event import (
     EventCreate,
     EventOut,
@@ -250,4 +256,9 @@ __all__ = [
     "DocumentMetadata",
     "DocumentUploadResponse",
     "DocumentListResponse",
+    # Email & Tasks
+    "EmailSendRequest",
+    "EmailDeliveryResult",
+    "EmailLogOut",
+    "EmailLogListResponse",
 ]

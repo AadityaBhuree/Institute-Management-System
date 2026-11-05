@@ -63,9 +63,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     yield
 
-    # Shutdown: Close database connection pool
+    # Shutdown: Terminate background task worker pool and close database pool
+    from src.core.tasks import shutdown_task_worker_pool
     from src.database.connection import close_pool
 
+    shutdown_task_worker_pool(wait=False)
     close_pool()
 
 

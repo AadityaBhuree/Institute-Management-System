@@ -1,5 +1,6 @@
 """Institutional Leave Management Service."""
 
+import logging
 import sqlite3
 from typing import Dict, List, Optional
 
@@ -116,7 +117,42 @@ class LeaveService:
                     leave_id,
                 ),
             )
-        return LeaveService.get_by_id(conn, leave_id)
+        updated_leave = LeaveService.get_by_id(conn, leave_id)
+        if updated_leave:
+            try:
+                from src.services.email_service import EmailService
+
+                applicant_type = updated_leave.get("applicant_type", "STUDENT")
+                applicant_id = updated_leave.get("applicant_id")
+                recipient_email = None
+
+                cur = conn.cursor()
+                if applicant_type == "STUDENT":
+                    cur.execute("SELECT email FROM students WHERE id = ?;", (applicant_id,))
+                    row = cur.fetchone()
+                    if row:
+                        recipient_email = row["email"]
+                elif applicant_type == "FACULTY":
+                    cur.execute("SELECT email FROM faculty WHERE id = ?;", (applicant_id,))
+                    row = cur.fetchone()
+                    if row:
+                        recipient_email = row["email"]
+                cur.close()
+
+                if not recipient_email:
+                    clean_name = updated_leave["applicant_name"].lower().replace(" ", ".")
+                    recipient_email = f"{clean_name}@institute.edu"
+
+                EmailService.send_leave_decision_email(
+                    recipient=recipient_email,
+                    applicant_name=updated_leave["applicant_name"],
+                    leave_dict=updated_leave,
+                    async_send=True,
+                )
+            except Exception as e:
+                logging.getLogger("ims").warning("Failed to queue leave decision email: %s", e)
+
+        return updated_leave
 
     @staticmethod
     def get_leave_stats(conn: sqlite3.Connection) -> Dict[str, int]:

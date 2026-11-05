@@ -1,6 +1,7 @@
 """Financial database service for fee structures, invoices, payments, and audit ledgers."""
 
 import datetime
+import logging
 import sqlite3
 import time
 import uuid
@@ -309,7 +310,7 @@ class FinanceService:
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT fi.*, s.first_name || ' ' || s.last_name AS student_name
+            SELECT fi.*, s.first_name || ' ' || s.last_name AS student_name, s.email AS student_email
             FROM fee_invoices fi
             JOIN students s ON fi.student_id = s.id
             WHERE fi.id = ?;
@@ -369,6 +370,30 @@ class FinanceService:
             )
 
         cursor.close()
+
+        # Trigger background email dispatch
+        try:
+            from src.services.email_service import EmailService
+
+            receipt_payload = {
+                "receipt_number": payment_no,
+                "invoice_id": payment_in.invoice_id,
+                "invoice_number": invoice["invoice_no"],
+                "amount_paid": payment_in.amount,
+                "balance_after": new_balance,
+                "payment_method": payment_in.payment_method.upper(),
+                "payment_date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            recipient_email = invoice.get("student_email") or "student@institute.edu"
+            EmailService.send_fee_receipt_email(
+                recipient=recipient_email,
+                student_name=invoice["student_name"],
+                payment_dict=receipt_payload,
+                async_send=True,
+            )
+        except Exception as e:
+            logging.getLogger("ims").warning("Failed to queue fee receipt email: %s", e)
+
         return {
             "id": pay_id,
             "payment_no": payment_no,

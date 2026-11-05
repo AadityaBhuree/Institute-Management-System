@@ -91,3 +91,13 @@ MAX_UPLOAD_SIZE_BYTES = int(
 
 STATIC_DIR = BASE_DIR / "static"
 TEMPLATES_DIR = BASE_DIR / "templates"
+
+# Institutional Email & Background Task Queue Configuration
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "mock").lower()  # mock | console | smtp
+EMAIL_FROM = os.getenv("EMAIL_FROM", "noreply@institute.edu")
+SMTP_HOST = os.getenv("SMTP_HOST", "localhost")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_TLS = os.getenv("SMTP_TLS", "true").lower() in ("true", "1", "yes")
+TASK_WORKERS = int(os.getenv("TASK_WORKERS", "4"))

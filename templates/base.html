@@ -150,6 +150,9 @@
           </div>
         </div>
         <div class="header-right">
+          <button id="omnisearch-trigger" class="badge-tag" style="background: rgba(255,255,255,0.06); border: 1px solid var(--border-subtle); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; color: inherit;" onclick="openOmnisearch()" aria-label="Open Omnisearch (Ctrl+K)" type="button">
+            <span aria-hidden="true">🔍</span> Omnisearch <kbd style="background: rgba(255,255,255,0.12); padding: 1px 5px; border-radius: 4px; font-size: 0.7rem;">Ctrl K</kbd>
+          </button>
           <span class="badge-tag badge-success">● Term: 2026-27</span>
           <a href="/notifications" class="badge-tag badge-secondary" style="text-decoration: none; color: inherit; display: inline-flex; align-items: center; gap: 4px;" aria-label="Notifications">
             <span aria-hidden="true">🔔</span> Alerts
@@ -173,6 +176,43 @@
       <main class="content-wrapper" id="main-content" role="main" tabindex="-1">
         {% block content %}{% endblock %}
       </main>
+    </div>
+  </div>
+
+  <!-- Global Omnisearch Dialog -->
+  <div class="modal-overlay" id="omnisearch-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="omnisearch-title">
+    <div class="modal-card" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 id="omnisearch-title">🔍 Institutional Omnisearch</h3>
+        <button class="modal-close" onclick="closeOmnisearch()" aria-label="Close search dialog" type="button">✕</button>
+      </div>
+      <div style="padding: 16px 24px;">
+        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+          <input
+            type="search"
+            id="omnisearch-input"
+            class="form-control"
+            placeholder="Search students, faculty, courses, books, bulletins..."
+            style="flex: 1;"
+            autocomplete="off"
+            aria-label="Search across institutional records"
+          />
+          <select id="omnisearch-category" class="form-control" style="width: 140px;" aria-label="Filter category">
+            <option value="ALL">All Domains</option>
+            <option value="STUDENT">Students</option>
+            <option value="FACULTY">Faculty</option>
+            <option value="COURSE">Courses</option>
+            <option value="BOOK">Library</option>
+            <option value="ANNOUNCEMENT">Notices</option>
+          </select>
+        </div>
+        <div id="omnisearch-status" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;" aria-live="polite"></div>
+        <div id="omnisearch-results" style="max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;"></div>
+      </div>
+      <div class="modal-footer" style="padding: 10px 24px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; color: var(--text-muted);">
+        <span>Tip: Press <kbd style="background: rgba(255,255,255,0.08); padding: 1px 4px; border-radius: 3px;">Esc</kbd> to close</span>
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeOmnisearch()">Done</button>
+      </div>
     </div>
   </div>
 

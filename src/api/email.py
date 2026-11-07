@@ -85,4 +85,3 @@ def get_background_task_telemetry(
 ):
     """Inspect background worker queue execution telemetry and thread metrics (Admin only)."""
     return get_task_telemetry()
-

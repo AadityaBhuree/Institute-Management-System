@@ -110,6 +110,7 @@ from src.models.scholarship import (
     ScholarshipSchemeOut,
     ScholarshipStatsOut,
 )
+from src.models.search import SearchResponse, SearchResultItem
 from src.models.storage import (
     DocumentListResponse,
     DocumentMetadata,
@@ -261,4 +262,7 @@ __all__ = [
     "EmailDeliveryResult",
     "EmailLogOut",
     "EmailLogListResponse",
+    # Omnisearch
+    "SearchResultItem",
+    "SearchResponse",
 ]

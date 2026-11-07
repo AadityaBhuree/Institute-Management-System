@@ -310,5 +310,98 @@ function clearFieldError(input) {
 document.addEventListener('DOMContentLoaded', () => {
   initMobileSidebar();
   initFormValidationAndLoading();
+  initOmnisearch();
 });
+
+// Omnisearch Runtime
+function openOmnisearch() {
+  openModal('omnisearch-modal');
+  const input = document.getElementById('omnisearch-input');
+  if (input) {
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 50);
+  }
+}
+
+function closeOmnisearch() {
+  closeModal('omnisearch-modal');
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>"']/g, (m) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[m]));
+}
+
+function initOmnisearch() {
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      openOmnisearch();
+    } else if (e.key === 'Escape') {
+      closeOmnisearch();
+    }
+  });
+
+  const omnisearchInput = document.getElementById('omnisearch-input');
+  const omnisearchCategory = document.getElementById('omnisearch-category');
+  let searchDebounceTimer = null;
+
+  function performOmnisearch() {
+    const query = omnisearchInput ? omnisearchInput.value.trim() : '';
+    const category = omnisearchCategory ? omnisearchCategory.value : 'ALL';
+    const resultsContainer = document.getElementById('omnisearch-results');
+    const statusContainer = document.getElementById('omnisearch-status');
+    if (!resultsContainer || !query) {
+      if (resultsContainer) resultsContainer.innerHTML = '';
+      if (statusContainer) statusContainer.textContent = '';
+      return;
+    }
+
+    statusContainer.textContent = 'Searching...';
+    fetch(`/api/search?q=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}&limit=15`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Search failed');
+        return res.json();
+      })
+      .then((data) => {
+        statusContainer.textContent = `Found ${data.total} result${data.total === 1 ? '' : 's'}`;
+        if (!data.results || data.results.length === 0) {
+          resultsContainer.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--text-muted);">No records found matching your query.</div>';
+          return;
+        }
+        resultsContainer.innerHTML = data.results.map((item) => `
+          <a href="${item.url}" style="text-decoration: none; color: inherit; display: block; padding: 10px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); transition: background 0.15s ease;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+              <strong style="font-size: 0.92rem; color: var(--primary);">${escapeHtml(item.title)}</strong>
+              <span class="badge-tag" style="font-size: 0.68rem; padding: 2px 6px;">${escapeHtml(item.category)}</span>
+            </div>
+            ${item.subtitle ? `<div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 4px;">${escapeHtml(item.subtitle)}</div>` : ''}
+            ${item.snippet ? `<div style="font-size: 0.8rem; color: var(--text-secondary);">${item.snippet}</div>` : ''}
+          </a>
+        `).join('');
+      })
+      .catch(() => {
+        statusContainer.textContent = 'Search unavailable.';
+      });
+  }
+
+  if (omnisearchInput) {
+    omnisearchInput.addEventListener('input', () => {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(performOmnisearch, 200);
+    });
+  }
+  if (omnisearchCategory) {
+    omnisearchCategory.addEventListener('change', performOmnisearch);
+  }
+}
+
 

@@ -101,4 +101,8 @@ OPENAPI_TAGS = [
         "name": "Email & Tasks",
         "description": "Institutional email dispatching, Jinja2 notification templates, and async background task telemetry.",
     },
+    {
+        "name": "Omnisearch",
+        "description": "Sub-millisecond global full-text search across scholars, faculty, courses, library, and bulletins with BM25 ranking.",
+    },
 ]

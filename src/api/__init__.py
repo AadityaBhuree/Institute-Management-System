@@ -20,6 +20,7 @@ from src.api.notifications import router as notifications_router
 from src.api.placements import router as placements_router
 from src.api.reports import router as reports_router
 from src.api.scholarships import router as scholarships_router
+from src.api.search import router as search_router
 from src.api.storage import router as storage_router
 from src.api.students import router as students_router
 from src.api.system import router as system_router
@@ -51,6 +52,7 @@ ALL_API_ROUTERS = [
     notifications_router,
     storage_router,
     email_router,
+    search_router,
     system_router,
 ]
 
@@ -76,6 +78,7 @@ __all__ = [
     "placements_router",
     "reports_router",
     "scholarships_router",
+    "search_router",
     "storage_router",
     "students_router",
     "system_router",

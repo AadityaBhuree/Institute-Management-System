@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.5.0] - 2026-11-07
+
+### Added
+- **High-Performance SQLite FTS5 Full-Text Omnisearch (Phase 13)**:
+  - Engineered virtual FTS5 indices (`fts_students`, `fts_faculty`, `fts_courses`, `fts_library_books`, `fts_announcements`) with the Porter stemmer tokenizer and Unicode 6.1 collation.
+  - Added schema migration `src/database/migrations/005_fts5_search.sql` and updated `src/database/schema.sql` incorporating automatic SQLite triggers on `INSERT`, `UPDATE`, and `DELETE` for synchronous zero-latency FTS index updates.
+  - Developed `SearchService` (`src/services/search_service.py`) featuring syntax-resilient query sanitization, BM25 rank scoring, highlight/snippet extraction, and role-aware visibility filters (e.g. students restricted from browsing student directories or internal circulars).
+  - Mounted REST API router `src/api/search.py` providing `GET /api/search` with keyword queries (`q`), category filters (`category`), and limit controls.
+  - Integrated accessible glassmorphic global Omnisearch modal in `templates/base.html` and `static/js/app.js` with `Ctrl+K` and `/` keyboard shortcuts, debounced live fetching, and instant click routing.
+  - Maintained `src/app.py` at **121 lines** (< 150 lines target strictly preserved).
+- **Automated Testing Suite Expansion**:
+  - Added `tests/test_fts5_omnisearch.py` covering virtual table indexing, query sanitization, BM25 ranking, real-time trigger synchronization, category filters, and RBAC authentication boundaries.
+  - Expanded test suite to **283 automated tests** passing across 26 domain test suites (100% pass rate in 12.44s).
+
+---
+
 ## [1.4.0] - 2026-11-05
 
 ### Added

@@ -17,7 +17,7 @@ Through rigorous execution of **Phases 0 through 10**, all historical architectu
 - **Database Scalability & Schema Evolution**: Thread-safe `SQLiteConnectionPool` with automatic transaction rollbacks, composite index coverage, WAL mode truncate optimization (`POST /api/system/optimize`), and a numerical schema migration engine (`src/database/migration_manager.py`).
 - **Telemetry & Visual Analytics**: In-app institutional notification dispatch engine (`/notifications`), responsive zero-dependency SVG donut and health gauge cards on the executive dashboard, and hot point-in-time database snapshot/restore.
 
-With the core production criteria fulfilled (Score: **9.5 / 10**), the roadmap continues institutional evolution across **Phases 11 through 15**: Phase 11 (Secure Document Storage) and Phase 12 (Institutional Email & Background Tasks) are **COMPLETED ✅** (271/271 tests passing). Phases 13 through 15 are mapped for upcoming implementation: SQLite FTS5 full-text omnisearch, identity lifecycle self-service with TOTP 2FA, and binary PDF/Excel reporting engines.
+With the core production criteria fulfilled (Score: **9.6 / 10**), the roadmap continues institutional evolution across **Phases 11 through 15**: Phase 11 (Secure Storage), Phase 12 (Email & Background Tasks), and Phase 13 (SQLite FTS5 Omnisearch) are **COMPLETED ✅** (283/283 tests passing). Phases 14 and 15 are mapped for upcoming implementation: identity lifecycle self-service with TOTP 2FA, and binary PDF/Excel reporting engines.
 
 ---
 
@@ -694,24 +694,24 @@ Browser → FastAPI Routes → Service Layer → SQLite (parameterized queries)
 
 ---
 
-### Phase 13 — High-Performance SQLite FTS5 Full-Text Omnisearch (READY TO START 🚀)
+### Phase 13 — High-Performance SQLite FTS5 Full-Text Omnisearch (COMPLETED ✅)
 **Goal:** Sub-millisecond global institutional search across scholars, courses, monographs, faculty, and circulars with BM25 ranking and search highlight snippets.
 
 **Tasks:**
-1. **SQLite FTS5 Virtual Tables (`src/database/migrations/005_fts5_search.sql`)**: Create virtual FTS5 tables `fts_students`, `fts_courses`, `fts_library_books`, and `fts_announcements` with Porter stemming tokenizer.
-2. **Automated SQLite Sync Triggers**: Create SQLite database triggers on INSERT, UPDATE, and DELETE across relational tables to keep FTS5 indices synchronized with zero application latency.
-3. **Search Service Layer (`src/services/search_service.py`)**: Multi-entity search dispatcher executing BM25 ranked match queries with `highlight()` and `snippet()` extraction.
+1. **SQLite FTS5 Virtual Tables (`src/database/migrations/005_fts5_search.sql`)**: Created virtual FTS5 tables `fts_students`, `fts_faculty`, `fts_courses`, `fts_library_books`, and `fts_announcements` with Porter stemming tokenizer and unicode61 collation.
+2. **Automated SQLite Sync Triggers**: Added SQLite database triggers on INSERT, UPDATE, and DELETE across relational tables maintaining synchronous FTS indices with zero application latency.
+3. **Search Service Layer (`src/services/search_service.py`)**: Multi-entity search dispatcher executing BM25 ranked match queries with syntax error protection, `snippet()` extraction, and role-based audience filtering.
 4. **Global Omnisearch REST Endpoint (`GET /api/search`)**: Unified query endpoint returning grouped, categorized results with permission filtering.
 5. **Glassmorphic Omnisearch Modal (`Ctrl+K` / `/`)**: Global floating search palette in `templates/base.html` with instant keyboard navigation, live autocomplete debounce, and direct routing.
-6. **Automated FTS5 Test Suite**: Pytest suite `tests/test_fts5_omnisearch.py` verifying stemming, phrase queries, snippet generation, and trigger synchronization.
+6. **Automated FTS5 Test Suite**: Pytest suite `tests/test_fts5_omnisearch.py` with 12 comprehensive tests validating indexing, query sanitization, BM25 ranking, and real-time trigger synchronization.
 
 ---
 
-### Phase 14 — Identity Lifecycle, Password Self-Service & Two-Factor Authentication (PLANNED)
+### Phase 14 — Identity Lifecycle, Password Self-Service & Two-Factor Authentication (READY TO START 🚀)
 **Goal:** End-to-end self-service account recovery, cryptographic password reset tokens, remote session management, and RFC 6238 TOTP two-factor authentication for administrative users.
 
 **Tasks:**
-1. **Password Reset Token Subsystem (`src/services/auth_service.py`)**: Migration `005_auth_lifecycle.sql` for `password_resets` table with SHA-256 hashed 30-minute expiry tokens and single-use revocation.
+1. **Password Reset Token Subsystem (`src/services/auth_service.py`)**: Migration `006_auth_lifecycle.sql` for `password_resets` table with SHA-256 hashed 30-minute expiry tokens and single-use revocation.
 2. **Password Recovery Web & API Flows**: `POST /api/auth/forgot-password`, `POST /api/auth/reset-password`, and glassmorphic recovery template `templates/reset_password.html`.
 3. **Two-Factor Authentication Engine (TOTP)**: RFC 6238 standard TOTP generation and verification for administrative accounts using `pyotp` or native HMAC-SHA1 with QR code data URI export.
 4. **Remote Session Invalidation**: User ability to view active signed sessions and revoke all other sessions from account settings.
@@ -1030,8 +1030,8 @@ data/
 | Phase 10 — Decoupling, Migrations & Visual Analytics | Moderate | **COMPLETED ✅** |
 | Phase 11 — Secure Document & Media Storage | Moderate | **COMPLETED ✅** |
 | Phase 12 — Institutional Email & Background Worker | Moderate | **COMPLETED ✅** |
-| Phase 13 — SQLite FTS5 Full-Text Omnisearch | Moderate | **READY TO START 🚀** |
-| Phase 14 — Identity Lifecycle & 2FA (TOTP) | Moderate | **PLANNED** |
+| Phase 13 — SQLite FTS5 Full-Text Omnisearch | Moderate | **COMPLETED ✅** |
+| Phase 14 — Identity Lifecycle & 2FA (TOTP) | Moderate | **READY TO START 🚀** |
 | Phase 15 — Multi-Format PDF & Excel Exporters | Moderate | **PLANNED** |
 
 ---
@@ -1042,11 +1042,11 @@ The project has achieved **production-ready status** and continues evolution und
 
 - [x] **Stable:** All 18 modules function correctly with zero data corruption or loss.
 - [x] **Secure:** PBKDF2 authentication, RBAC, CORS, rate limiting, CSRF protection, and security headers active.
-- [x] **Tested:** 271/271 automated tests passing across 25 test suites in <10s with ~89% coverage.
+- [x] **Tested:** 283/283 automated tests passing across 26 test suites in <13s with ~89% coverage.
 - [x] **Performant:** Sub-second page loads, `SQLiteConnectionPool`, WAL checkpoint optimization, and pagination.
 - [x] **Accessible:** WCAG 2.1 AA compliance — ARIA labels, keyboard focus rings, skip-to-content links.
 - [x] **Responsive:** Fully functional across desktop, tablet, and mobile drawer viewports.
-- [x] **Documented:** README, .env.example, CONTRIBUTING.md, CHANGELOG.md (v1.4.0), and Makefile targets.
+- [x] **Documented:** README, .env.example, CONTRIBUTING.md, CHANGELOG.md (v1.5.0), and Makefile targets.
 - [x] **Auditable:** Structured logging, chronological audit trail, and atomic point-in-time backup/restore verified.
 - [x] **Deployable:** Multi-stage non-root Dockerfile, GitHub Actions CI green, environment configuration strictly validated.
 - [x] **Maintainable:** `src/app.py` trimmed to 121 lines (<150 target), modular architecture with clean layer separation.

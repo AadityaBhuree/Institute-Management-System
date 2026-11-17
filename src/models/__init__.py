@@ -37,6 +37,17 @@ from src.models.auth import (
     UserRole,
     UserStatus,
 )
+from src.models.auth_lifecycle import (
+    ActiveSessionsResponse,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    ResetPasswordRequest,
+    RevokeSessionRequest,
+    SessionInfo,
+    TOTPSetupResponse,
+    TOTPStatusResponse,
+    TOTPVerifyRequest,
+)
 from src.models.common import ErrorResponse, MessageResponse
 from src.models.course import CourseCreate, CourseOut, CourseUpdate, EnrollmentCreate
 from src.models.department import DepartmentCreate, DepartmentOut
@@ -265,4 +276,14 @@ __all__ = [
     # Omnisearch
     "SearchResultItem",
     "SearchResponse",
+    # Identity Lifecycle & 2FA
+    "ForgotPasswordRequest",
+    "ForgotPasswordResponse",
+    "ResetPasswordRequest",
+    "TOTPSetupResponse",
+    "TOTPVerifyRequest",
+    "TOTPStatusResponse",
+    "SessionInfo",
+    "ActiveSessionsResponse",
+    "RevokeSessionRequest",
 ]

@@ -31,7 +31,10 @@ class AuthLifecycleService:
     ) -> Optional[str]:
         """Generate a single-use 30-minute password reset token and queue email notice."""
         cur = conn.cursor()
-        cur.execute("SELECT id, username, email FROM users WHERE email = ? AND is_active = 1;", (email.strip(),))
+        cur.execute(
+            "SELECT id, username, email FROM users WHERE email = ? AND is_active = 1;",
+            (email.strip(),),
+        )
         user = cur.fetchone()
         cur.close()
 
@@ -42,7 +45,9 @@ class AuthLifecycleService:
         user_id = user["id"]
         raw_token = secrets.token_urlsafe(32)
         token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
-        expires_at = (datetime.datetime.now() + datetime.timedelta(minutes=30)).strftime("%Y-%m-%d %H:%M:%S")
+        expires_at = (datetime.datetime.now() + datetime.timedelta(minutes=30)).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
 
         with transaction(conn) as cursor:
             cursor.execute(
@@ -160,7 +165,10 @@ class AuthLifecycleService:
         """Generate new TOTP secret and backup recovery codes."""
         secret = TOTPManager.generate_secret()
         backup_codes = TOTPManager.generate_backup_codes(8)
-        hashed_codes = [hashlib.sha256(c.replace("-", "").upper().encode("utf-8")).hexdigest() for c in backup_codes]
+        hashed_codes = [
+            hashlib.sha256(c.replace("-", "").upper().encode("utf-8")).hexdigest()
+            for c in backup_codes
+        ]
         codes_json = json.dumps(hashed_codes)
 
         with transaction(conn) as cursor:
@@ -363,7 +371,9 @@ class AuthLifecycleService:
                     "ip_address": r["ip_address"] or "Unknown",
                     "user_agent": r["user_agent"] or "Unknown Device",
                     "last_active": str(r["last_active"]),
-                    "is_current": (r["session_id"] == current_session_id) if current_session_id else False,
+                    "is_current": (r["session_id"] == current_session_id)
+                    if current_session_id
+                    else False,
                 }
             )
         return results

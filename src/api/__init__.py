@@ -4,6 +4,7 @@ from src.api.academics import router as academics_router
 from src.api.alumni import router as alumni_router
 from src.api.announcements import router as announcements_router
 from src.api.auth import router as auth_router
+from src.api.auth_lifecycle import router as auth_lifecycle_router
 from src.api.courses import router as courses_router
 from src.api.dashboard import router as dashboard_router
 from src.api.departments import router as departments_router
@@ -29,6 +30,7 @@ from src.api.transport import router as transport_router
 
 ALL_API_ROUTERS = [
     auth_router,
+    auth_lifecycle_router,
     students_router,
     courses_router,
     faculty_router,
@@ -62,6 +64,7 @@ __all__ = [
     "alumni_router",
     "announcements_router",
     "auth_router",
+    "auth_lifecycle_router",
     "courses_router",
     "dashboard_router",
     "departments_router",

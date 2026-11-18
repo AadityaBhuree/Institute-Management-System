@@ -70,6 +70,26 @@ def view_login_page(
     )
 
 
+@router.get("/reset-password", response_class=HTMLResponse)
+def view_reset_password_page(
+    request: Request,
+    token: Optional[str] = None,
+    error: Optional[str] = None,
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+):
+    """Render password recovery and credential update interface."""
+    return templates.TemplateResponse(
+        request=request,
+        name="reset_password.html",
+        context={
+            "active_page": "reset_password",
+            "token": token or "",
+            "error": error,
+            "current_user": current_user,
+        },
+    )
+
+
 @router.post("/login", response_class=HTMLResponse)
 async def handle_login_form(
     request: Request,

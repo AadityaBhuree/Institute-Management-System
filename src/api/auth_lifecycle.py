@@ -51,7 +51,9 @@ def reset_password(
     """Confirm password change using a cryptographic reset token."""
     try:
         AuthLifecycleService.reset_password(conn, payload.token, payload.new_password)
-        return MessageResponse(message="Password successfully updated. You may now sign in with your new credentials.")
+        return MessageResponse(
+            message="Password successfully updated. You may now sign in with your new credentials."
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -89,7 +91,9 @@ def verify_two_factor(
 ):
     """Verify initial TOTP token to activate two-factor authentication."""
     try:
-        success = AuthLifecycleService.verify_and_enable_totp(conn, current_user["id"], payload.code)
+        success = AuthLifecycleService.verify_and_enable_totp(
+            conn, current_user["id"], payload.code
+        )
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

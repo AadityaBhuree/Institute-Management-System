@@ -105,4 +105,8 @@ OPENAPI_TAGS = [
         "name": "Omnisearch",
         "description": "Sub-millisecond global full-text search across scholars, faculty, courses, library, and bulletins with BM25 ranking.",
     },
+    {
+        "name": "Identity Lifecycle & 2FA",
+        "description": "Self-service password recovery, cryptographic reset tokens, RFC 6238 TOTP two-factor authentication, and remote session termination.",
+    },
 ]

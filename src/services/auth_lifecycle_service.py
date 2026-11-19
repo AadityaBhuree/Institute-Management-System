@@ -32,7 +32,7 @@ class AuthLifecycleService:
         """Generate a single-use 30-minute password reset token and queue email notice."""
         cur = conn.cursor()
         cur.execute(
-            "SELECT id, username, email FROM users WHERE email = ? AND is_active = 1;",
+            "SELECT id, username, email FROM users WHERE email = ? AND status = 'active';",
             (email.strip(),),
         )
         user = cur.fetchone()

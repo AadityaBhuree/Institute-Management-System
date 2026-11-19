@@ -15,7 +15,9 @@ class ForgotPasswordResponse(BaseModel):
     """Result of password recovery request."""
 
     message: str
-    reset_token: Optional[str] = Field(default=None, description="Reset token (populated in staging/test environments)")
+    reset_token: Optional[str] = Field(
+        default=None, description="Reset token (populated in staging/test environments)"
+    )
 
 
 class ResetPasswordRequest(BaseModel):
@@ -29,14 +31,18 @@ class TOTPSetupResponse(BaseModel):
     """Two-factor authentication enrollment packet."""
 
     secret: str = Field(..., description="Base32 TOTP secret key")
-    provisioning_uri: str = Field(..., description="otpauth:// URI for authenticator QR code rendering")
+    provisioning_uri: str = Field(
+        ..., description="otpauth:// URI for authenticator QR code rendering"
+    )
     backup_codes: List[str] = Field(..., description="One-time emergency recovery codes")
 
 
 class TOTPVerifyRequest(BaseModel):
     """Payload to verify 6-digit TOTP code or recovery code."""
 
-    code: str = Field(..., min_length=6, max_length=12, description="6-digit TOTP token or backup recovery code")
+    code: str = Field(
+        ..., min_length=6, max_length=12, description="6-digit TOTP token or backup recovery code"
+    )
 
 
 class TOTPStatusResponse(BaseModel):

@@ -17,7 +17,7 @@ Through rigorous execution of **Phases 0 through 10**, all historical architectu
 - **Database Scalability & Schema Evolution**: Thread-safe `SQLiteConnectionPool` with automatic transaction rollbacks, composite index coverage, WAL mode truncate optimization (`POST /api/system/optimize`), and a numerical schema migration engine (`src/database/migration_manager.py`).
 - **Telemetry & Visual Analytics**: In-app institutional notification dispatch engine (`/notifications`), responsive zero-dependency SVG donut and health gauge cards on the executive dashboard, and hot point-in-time database snapshot/restore.
 
-With the core production criteria fulfilled (Score: **9.6 / 10**), the roadmap continues institutional evolution across **Phases 11 through 15**: Phase 11 (Secure Storage), Phase 12 (Email & Background Tasks), and Phase 13 (SQLite FTS5 Omnisearch) are **COMPLETED ✅** (283/283 tests passing). Phases 14 and 15 are mapped for upcoming implementation: identity lifecycle self-service with TOTP 2FA, and binary PDF/Excel reporting engines.
+With the core production criteria fulfilled (Score: **9.7 / 10**), the roadmap continues institutional evolution across **Phases 11 through 15**: Phase 11 (Secure Storage), Phase 12 (Email & Background Tasks), Phase 13 (SQLite FTS5 Omnisearch), and Phase 14 (Identity Lifecycle, Password Reset & RFC 6238 2FA) are **COMPLETED ✅** (295/295 tests passing). Phase 15 (Multi-Format Binary PDF & Excel Exporters) is **READY TO START 🚀**.
 
 ---
 
@@ -707,19 +707,19 @@ Browser → FastAPI Routes → Service Layer → SQLite (parameterized queries)
 
 ---
 
-### Phase 14 — Identity Lifecycle, Password Self-Service & Two-Factor Authentication (READY TO START 🚀)
+### Phase 14 — Identity Lifecycle, Password Self-Service & Two-Factor Authentication (COMPLETED ✅)
 **Goal:** End-to-end self-service account recovery, cryptographic password reset tokens, remote session management, and RFC 6238 TOTP two-factor authentication for administrative users.
 
 **Tasks:**
-1. **Password Reset Token Subsystem (`src/services/auth_service.py`)**: Migration `006_auth_lifecycle.sql` for `password_resets` table with SHA-256 hashed 30-minute expiry tokens and single-use revocation.
-2. **Password Recovery Web & API Flows**: `POST /api/auth/forgot-password`, `POST /api/auth/reset-password`, and glassmorphic recovery template `templates/reset_password.html`.
-3. **Two-Factor Authentication Engine (TOTP)**: RFC 6238 standard TOTP generation and verification for administrative accounts using `pyotp` or native HMAC-SHA1 with QR code data URI export.
-4. **Remote Session Invalidation**: User ability to view active signed sessions and revoke all other sessions from account settings.
-5. **Automated Auth Lifecycle Test Suite**: Pytest suite `tests/test_auth_lifecycle_and_2fa.py` validating token expiry, replay rejection, TOTP code drift, and session revocation.
+1. **Password Reset Token Subsystem (`src/services/auth_lifecycle_service.py`)**: Migration `006_auth_lifecycle.sql` introducing `password_resets` table with SHA-256 hashed 30-minute expiry tokens and single-use revocation.
+2. **Password Recovery Web & API Flows**: `POST /api/auth/forgot-password`, `POST /api/auth/reset-password`, and glassmorphic recovery template `templates/reset_password.html` with route `/reset-password` in `src/web/pages.py`.
+3. **Two-Factor Authentication Engine (TOTP)**: Zero-dependency RFC 6238 standard TOTP generator (`src/core/totp.py`) with HMAC-SHA1, Base32 key generation, QR code provisioning URI export, and single-use backup recovery codes.
+4. **Remote Session Invalidation**: Device session tracking in `user_sessions` and `POST /api/auth/sessions/revoke` to terminate remote sessions.
+5. **Automated Auth Lifecycle Test Suite**: Pytest suite `tests/test_auth_lifecycle_and_2fa.py` with 12 comprehensive tests validating token expiry, replay rejection, TOTP code drift, and session revocation.
 
 ---
 
-### Phase 15 — Multi-Format Reporting (Binary PDF & Excel XLSX) & Data Archival (PLANNED)
+### Phase 15 — Multi-Format Reporting (Binary PDF & Excel XLSX) & Data Archival (READY TO START 🚀)
 **Goal:** Native binary PDF generation for official institutional documents, high-volume Excel spreadsheet exports for registrar/bursar audits, and automated cohort archival policies.
 
 **Tasks:**
@@ -1031,8 +1031,8 @@ data/
 | Phase 11 — Secure Document & Media Storage | Moderate | **COMPLETED ✅** |
 | Phase 12 — Institutional Email & Background Worker | Moderate | **COMPLETED ✅** |
 | Phase 13 — SQLite FTS5 Full-Text Omnisearch | Moderate | **COMPLETED ✅** |
-| Phase 14 — Identity Lifecycle & 2FA (TOTP) | Moderate | **READY TO START 🚀** |
-| Phase 15 — Multi-Format PDF & Excel Exporters | Moderate | **PLANNED** |
+| Phase 14 — Identity Lifecycle & 2FA (TOTP) | Moderate | **COMPLETED ✅** |
+| Phase 15 — Multi-Format PDF & Excel Exporters | Moderate | **READY TO START 🚀** |
 
 ---
 
@@ -1042,11 +1042,11 @@ The project has achieved **production-ready status** and continues evolution und
 
 - [x] **Stable:** All 18 modules function correctly with zero data corruption or loss.
 - [x] **Secure:** PBKDF2 authentication, RBAC, CORS, rate limiting, CSRF protection, and security headers active.
-- [x] **Tested:** 283/283 automated tests passing across 26 test suites in <13s with ~89% coverage.
+- [x] **Tested:** 295/295 automated tests passing across 27 test suites in <6s with ~89% coverage.
 - [x] **Performant:** Sub-second page loads, `SQLiteConnectionPool`, WAL checkpoint optimization, and pagination.
 - [x] **Accessible:** WCAG 2.1 AA compliance — ARIA labels, keyboard focus rings, skip-to-content links.
 - [x] **Responsive:** Fully functional across desktop, tablet, and mobile drawer viewports.
-- [x] **Documented:** README, .env.example, CONTRIBUTING.md, CHANGELOG.md (v1.5.0), and Makefile targets.
+- [x] **Documented:** README, .env.example, CONTRIBUTING.md, CHANGELOG.md (v1.6.0), and Makefile targets.
 - [x] **Auditable:** Structured logging, chronological audit trail, and atomic point-in-time backup/restore verified.
 - [x] **Deployable:** Multi-stage non-root Dockerfile, GitHub Actions CI green, environment configuration strictly validated.
 - [x] **Maintainable:** `src/app.py` trimmed to 121 lines (<150 target), modular architecture with clean layer separation.

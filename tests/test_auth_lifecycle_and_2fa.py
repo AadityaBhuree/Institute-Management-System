@@ -238,6 +238,15 @@ def test_api_forgot_password_and_reset_endpoints(client):
     )
     assert bad_res.status_code == 400
 
+    # 4. Restore admin password to "admin123" for subsequent test suites
+    restore_res = client.post("/api/auth/forgot-password", json={"email": "admin@institute.edu"})
+    restore_token = restore_res.json().get("reset_token")
+    assert restore_token is not None
+    client.post(
+        "/api/auth/reset-password",
+        json={"token": restore_token, "new_password": "admin123"},
+    )
+
 
 def test_api_2fa_setup_verify_and_status_endpoints(client):
     """Verify REST API /api/auth/2fa/ endpoints with authenticated user."""

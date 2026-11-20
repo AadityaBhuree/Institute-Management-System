@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.6.0] - 2026-11-20
+
+### Added
+- **Identity Lifecycle, Password Self-Service & Two-Factor Authentication (Phase 14)**:
+  - Engineered zero-dependency RFC 6238 Time-Based One-Time Password (`TOTPManager`, `src/core/totp.py`) engine with HMAC-SHA1 algorithm, Base32 key generation, `otpauth://` provisioning URI generation for authenticator apps, ±1 window clock-drift tolerance, and emergency single-use backup recovery codes.
+  - Added schema migration `src/database/migrations/006_auth_lifecycle.sql` and updated `src/database/schema.sql` introducing `password_resets`, `user_totp`, and `user_sessions` tables with indexing and cascade constraints.
+  - Implemented domain service `AuthLifecycleService` (`src/services/auth_lifecycle_service.py`):
+    - Secure password reset token issuance with SHA-256 token hashing, 30-minute expiry window, silent rejection on non-existent emails (preventing user enumeration), and replay attack rejection.
+    - TOTP enrollment, verification, and emergency backup recovery code consumption.
+    - Active session tracking and remote device session revocation.
+  - Mounted REST API router `src/api/auth_lifecycle.py` exposing:
+    - `POST /api/auth/forgot-password`: Rate-limited self-service recovery request.
+    - `POST /api/auth/reset-password`: Cryptographic token-authenticated password update.
+    - `GET /api/auth/2fa/setup`: Generates key, QR provisioning URI, and 8 emergency backup codes.
+    - `POST /api/auth/2fa/verify`: Validates 6-digit TOTP code to activate 2FA.
+    - `POST /api/auth/2fa/disable`: Deactivates two-factor protection.
+    - `GET /api/auth/2fa/status`: Checks active 2FA state.
+    - `GET /api/auth/sessions`: Lists active device sessions.
+    - `POST /api/auth/sessions/revoke`: Terminates remote device sessions.
+  - Designed responsive glassmorphic recovery template `templates/reset_password.html` and added "Forgot password?" navigation flow in `templates/login.html`.
+  - Added route `GET /reset-password` in `src/web/pages.py`.
+  - Maintained `src/app.py` at **121 lines** (< 150 lines target strictly preserved).
+- **Automated Testing Suite Expansion**:
+  - Added `tests/test_auth_lifecycle_and_2fa.py` with 12 comprehensive unit and integration tests covering TOTP generation, clock drift, provisioning URIs, backup codes, token expiration, replay prevention, and remote session revocation.
+  - Updated `tests/test_finance_api.py` with dynamic invoice due dates to guarantee clock-agnostic determinism.
+  - Expanded test suite to **295 automated tests** passing across 27 domain test suites (100% pass rate in 4.97s).
+
+---
+
 ## [1.5.0] - 2026-11-07
 
 ### Added

@@ -1,5 +1,7 @@
 """Tests for Fee Invoicing, Payment Processing, Receipts, and Financial Audit APIs."""
 
+import datetime
+
 
 def test_create_fee_structure(client):
     """Verify standard fee schedule creation for department."""
@@ -73,7 +75,7 @@ def test_create_invoice_success(client):
             "title": "Fall Semester Tuition",
             "term_name": "Fall 2026",
             "total_amount": 2000.0,
-            "due_date": "2026-11-15",
+            "due_date": (datetime.date.today() + datetime.timedelta(days=30)).isoformat(),
         },
     )
     assert inv_res.status_code == 201

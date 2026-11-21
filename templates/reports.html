@@ -6,13 +6,21 @@
 
 {% block header_actions %}
 <div class="dropdown" style="display: inline-block;">
+  <a href="/api/reports/export/students/excel" class="btn btn-secondary btn-sm" id="btn-export-students-excel" title="Download registered students Excel spreadsheet">
+    <span>📊 Students Excel</span>
+  </a>
+</div>
+<a href="/api/reports/export/finances/excel" class="btn btn-secondary btn-sm" id="btn-export-finance-excel" title="Download bursar invoice ledger Excel workbook">
+  <span>💰 Finance Excel</span>
+</a>
+<a href="/api/reports/export/attendance/excel" class="btn btn-secondary btn-sm" id="btn-export-attendance-excel" title="Download attendance risk sentinel Excel workbook">
+  <span>⚠️ Attendance Excel</span>
+</a>
+<div class="dropdown" style="display: inline-block;">
   <a href="/api/reports/export/students/csv" class="btn btn-secondary btn-sm" id="btn-export-students-csv" title="Download registered students CSV">
     <span>📥 Students CSV</span>
   </a>
 </div>
-<a href="/api/reports/export/attendance-risk/csv" class="btn btn-secondary btn-sm" id="btn-export-risk-csv" title="Download low-attendance risk sentinel CSV">
-  <span>⚠️ Risk Sentinel CSV</span>
-</a>
 <a href="/api/reports/export/finances/csv" class="btn btn-secondary btn-sm" id="btn-export-finance-csv" title="Download bursar invoice ledger CSV">
   <span>💰 Finance CSV</span>
 </a>

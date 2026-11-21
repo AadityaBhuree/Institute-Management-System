@@ -75,7 +75,7 @@ OPENAPI_TAGS = [
     },
     {
         "name": "Reports & Analytics",
-        "description": "Institutional intelligence, low-attendance risk sentinel (<75%), and automated CSV export engine.",
+        "description": "Institutional intelligence, vector PDF transcripts & receipts, streaming Excel XLSX workbooks, and cohort archival.",
     },
     {
         "name": "Departments",

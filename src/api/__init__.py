@@ -19,6 +19,7 @@ from src.api.leaves import router as leaves_router
 from src.api.library import router as library_router
 from src.api.notifications import router as notifications_router
 from src.api.placements import router as placements_router
+from src.api.reports import portal_router
 from src.api.reports import router as reports_router
 from src.api.scholarships import router as scholarships_router
 from src.api.search import router as search_router
@@ -37,6 +38,7 @@ ALL_API_ROUTERS = [
     academics_router,
     finance_router,
     reports_router,
+    portal_router,
     announcements_router,
     leaves_router,
     timetable_router,

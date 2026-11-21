@@ -187,7 +187,10 @@
     <!-- Non-printing toolbar -->
     <div class="no-print">
       <a href="/finance" class="btn btn-secondary">← Back to Finance</a>
-      <button onclick="window.print()" class="btn btn-primary">🖨️ Print Official Receipt</button>
+      <div style="display: flex; gap: 10px;">
+        <a href="/api/reports/export/receipt/{{ invoice.id }}/pdf" class="btn btn-secondary" id="btn-download-receipt-pdf">📥 Download Vector PDF</a>
+        <button onclick="window.print()" class="btn btn-primary">🖨️ Print Official Receipt</button>
+      </div>
     </div>
 
     <!-- Official Header -->

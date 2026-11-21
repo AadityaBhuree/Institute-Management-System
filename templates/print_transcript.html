@@ -183,7 +183,10 @@
     <!-- Non-printing toolbar -->
     <div class="no-print">
       <a href="/portal?student_id={{ dossier.student.id }}" class="btn btn-secondary">← Back to Portal</a>
-      <button onclick="window.print()" class="btn btn-primary">🖨️ Print Official Transcript</button>
+      <div style="display: flex; gap: 10px;">
+        <a href="/api/reports/export/transcript/{{ dossier.student.id }}/pdf" class="btn btn-secondary" id="btn-download-pdf">📥 Download Vector PDF</a>
+        <button onclick="window.print()" class="btn btn-primary">🖨️ Print Official Transcript</button>
+      </div>
     </div>
 
     <!-- Official Header -->

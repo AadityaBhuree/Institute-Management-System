@@ -9,6 +9,9 @@
 <a href="/portal/transcript/{{ dossier.student.id }}/print" target="_blank" class="btn btn-secondary btn-sm" id="btn-print-transcript">
   <span>📜 Official Transcript</span>
 </a>
+<a href="/api/portal/transcript/{{ dossier.student.id }}/pdf" class="btn btn-secondary btn-sm" id="btn-download-portal-pdf">
+  <span>📥 Download PDF</span>
+</a>
 {% endif %}
 <button class="btn btn-outline btn-sm" onclick="window.print()" id="btn-print-dossier">
   <span>🖨️ Quick Print</span>

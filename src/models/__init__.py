@@ -18,6 +18,12 @@ from src.models.alumni import (
     AlumniMentorshipStatusUpdate,
 )
 from src.models.announcement import AnnouncementCreate, AnnouncementOut
+from src.models.archival import (
+    ArchivalIntegrityResponse,
+    ArchivedStudentItem,
+    CohortArchivalRequest,
+    CohortArchivalResponse,
+)
 from src.models.asset import (
     AssetCheckoutCreate,
     AssetCheckoutOut,
@@ -286,4 +292,9 @@ __all__ = [
     "SessionInfo",
     "ActiveSessionsResponse",
     "RevokeSessionRequest",
+    # Cohort Archival
+    "CohortArchivalRequest",
+    "ArchivedStudentItem",
+    "CohortArchivalResponse",
+    "ArchivalIntegrityResponse",
 ]

@@ -5,6 +5,12 @@
 {% block header_subtitle %}Manage student enrollments, academic records, and demographic profiles{% endblock %}
 
 {% block header_actions %}
+<a href="/api/reports/export/students/excel" class="btn btn-secondary btn-sm" id="btn-export-students-excel" title="Download Excel Spreadsheet">
+  <span>📊 Export Excel</span>
+</a>
+<a href="/api/reports/export/students/csv" class="btn btn-secondary btn-sm" id="btn-export-students-csv" title="Download CSV">
+  <span>📥 Export CSV</span>
+</a>
 <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-student')">
   <span>+ Register Admission</span>
 </button>

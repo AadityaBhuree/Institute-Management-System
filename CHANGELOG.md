@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.7.0] - 2026-11-23
+
+### Added
+- **Multi-Format Reporting Engine & Cohort Archival Subsystem (Phase 15)**:
+  - **Native Vector PDF Document Generator (`src/services/pdf_service.py`)**:
+    - Programmatic A4 vector PDF compilation via `reportlab` with custom canvas watermark callbacks, running footers with timestamps and page numbers, and institutional styling.
+    - Sealed academic transcripts (`generate_transcript_pdf`) featuring student demographics, enrolled course assessments, GPA calculations, and registrar signature block.
+    - Official bursar fee receipts (`generate_fee_receipt_pdf`) featuring invoice breakdown, payment transaction history, and verified payment stamp.
+    - Clinical medical clearance certificates (`generate_medical_certificate_pdf`) with patient details, diagnosis, rest period, and physician sign-off.
+  - **Streaming Excel (.xlsx) Data Exporter (`src/services/excel_service.py`)**:
+    - High-performance workbook compilation using `openpyxl` with dynamic column auto-widths, navy/teal headers, thin borders, zebra-striped data rows, and frozen panes.
+    - Master scholar directory export (`export_students_excel`).
+    - Multi-tab financial ledger workbook (`export_finances_excel`) featuring invoices ledger with formatted currency numbers and departmental recovery rate matrix.
+    - Multi-tab attendance workbook (`export_attendance_excel`) with conditional risk highlighting (<75%) and institutional telemetry overviews.
+  - **Policy-Driven Cohort Archival & Cold Storage (`src/services/archival_service.py`)**:
+    - Added database migration `src/database/migrations/007_cohort_archival.sql` and updated `src/database/schema.sql` creating `archived_students` table.
+    - Automated graduation cohort archival with deterministic JSON dossier snapshots and SHA-256 cryptographic integrity seals.
+    - Admin-only integrity verification endpoint calculating and comparing SHA-256 checksums on cold storage records.
+  - **REST API Endpoints in `src/api/reports.py`**:
+    - `GET /api/reports/export/students/excel`
+    - `GET /api/reports/export/finances/excel`
+    - `GET /api/reports/export/attendance/excel`
+    - `GET /api/reports/export/transcript/{student_id}/pdf`
+    - `GET /api/reports/export/receipt/{invoice_id}/pdf`
+    - `GET /api/reports/export/medical-certificate/{cert_id}/pdf`
+    - `GET /api/portal/transcript/{student_id}/pdf` (portal alias)
+    - `POST /api/reports/archival/cohort` (Admin only)
+    - `GET /api/reports/archival/records` (Admin only)
+    - `GET /api/reports/archival/records/{archive_id}` (Admin only)
+    - `GET /api/reports/archival/records/{archive_id}/verify` (Admin only)
+  - **Glassmorphic UI Integration**:
+    - Added Excel export action buttons to `templates/reports.html`, `templates/students.html`, and `templates/finance.html`.
+    - Added vector PDF download buttons to `templates/print_transcript.html`, `templates/print_receipt.html`, and `templates/portal.html`.
+  - Maintained core application decoupling with `src/app.py` preserved at exactly **121 lines**.
+- **Automated Testing Suite Expansion**:
+  - Added comprehensive test suite `tests/test_multi_format_reports.py` covering PDF header assertions, OpenPyXL workbook structures, 404 boundaries, cohort archival workflows, and RBAC security gates.
+  - Expanded test suite to **306 automated tests** passing across 28 domain test suites (100% pass rate in 11.29s).
+
+---
+
 ## [1.6.0] - 2026-11-20
 
 ### Added

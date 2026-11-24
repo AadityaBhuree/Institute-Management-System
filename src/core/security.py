@@ -115,6 +115,10 @@ def get_current_user_optional(
                 token = auth_header.strip()
 
     if not token:
+        # Also check query param 'token' for EventSource / WebSocket clients
+        token = request.query_params.get("token")
+
+    if not token:
         return None
 
     payload = verify_session_token(token)

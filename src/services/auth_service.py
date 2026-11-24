@@ -198,6 +198,18 @@ class AuthService:
         result = row_to_dict(row)
         if not result:
             raise RuntimeError("Failed to fetch recorded audit log entry.")
+
+        try:
+            from src.core.event_broker import event_broker
+
+            event_broker.publish(
+                channel="telemetry",
+                event_type="audit_log",
+                data=result,
+            )
+        except Exception:
+            pass
+
         return result
 
     @staticmethod

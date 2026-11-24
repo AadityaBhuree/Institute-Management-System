@@ -1,10 +1,13 @@
 """Notification and Institutional Alert Broadcasts API Router."""
 
+import asyncio
 import sqlite3
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import StreamingResponse
 
+from src.core.event_broker import event_broker
 from src.core.security import get_current_user, require_role
 from src.database.connection import get_db
 from src.models.notification import NotificationCreate, NotificationOut
@@ -48,6 +51,56 @@ def get_unread_count(
         conn, recipient_role=target_role, recipient_id=recipient_id
     )
     return {"unread_count": count}
+
+
+@router.get("/stream")
+async def stream_notifications(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    """Real-time Server-Sent Events (SSE) notification stream for active scholars, faculty & admins."""
+    sub = event_broker.subscribe(
+        channel="notifications",
+        role=current_user.get("role"),
+        user_id=current_user.get("id"),
+    )
+
+    async def event_generator():
+        try:
+            # Yield initial connection handshake event
+            handshake = event_broker.format_sse_message(
+                event="connected",
+                data={
+                    "status": "connected",
+                    "user_id": current_user.get("id"),
+                    "username": current_user.get("username"),
+                    "role": current_user.get("role"),
+                },
+            )
+            yield handshake
+
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    message = await asyncio.wait_for(sub.queue.get(), timeout=15.0)
+                    yield message
+                except asyncio.TimeoutError:
+                    yield ": ping\n\n"
+        except asyncio.CancelledError:
+            pass
+        finally:
+            event_broker.unsubscribe(sub.id)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.post("", response_model=NotificationOut, status_code=status.HTTP_201_CREATED)

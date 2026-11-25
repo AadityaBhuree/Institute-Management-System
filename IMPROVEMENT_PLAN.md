@@ -17,7 +17,7 @@ Through rigorous execution of **Phases 0 through 10**, all historical architectu
 - **Database Scalability & Schema Evolution**: Thread-safe `SQLiteConnectionPool` with automatic transaction rollbacks, composite index coverage, WAL mode truncate optimization (`POST /api/system/optimize`), and a numerical schema migration engine (`src/database/migration_manager.py`).
 - **Telemetry & Visual Analytics**: In-app institutional notification dispatch engine (`/notifications`), responsive zero-dependency SVG donut and health gauge cards on the executive dashboard, and hot point-in-time database snapshot/restore.
 
-With the core production criteria fulfilled (Score: **9.8 / 10**), the roadmap continues institutional evolution across **Phases 11 through 15**: Phase 11 (Secure Storage), Phase 12 (Email & Background Tasks), Phase 13 (SQLite FTS5 Omnisearch), Phase 14 (Identity Lifecycle, Password Reset & RFC 6238 2FA), and Phase 15 (Multi-Format Binary PDF & Excel Exporters & Cohort Archival) are **COMPLETED ✅** (306/306 tests passing across 28 test suites).
+With the core production criteria fulfilled (Score: **9.9 / 10**), the roadmap continues institutional evolution across **Phases 11 through 16**: Phase 11 (Secure Storage), Phase 12 (Email & Background Tasks), Phase 13 (SQLite FTS5 Omnisearch), Phase 14 (Identity Lifecycle, Password Reset & RFC 6238 2FA), Phase 15 (Multi-Format Binary PDF & Excel Exporters & Cohort Archival), and Phase 16 (Real-Time Server-Sent Events Live Notification Feeds & Telemetry Streaming) are **COMPLETED ✅** (320/320 tests passing across 29 test suites).
 
 ---
 
@@ -728,6 +728,19 @@ Browser → FastAPI Routes → Service Layer → SQLite (parameterized queries)
 3. **REST Endpoints for PDF & XLSX (`src/api/reports.py`)**: Endpoints `GET /api/reports/export/students/excel`, `GET /api/reports/export/finances/excel`, `GET /api/reports/export/attendance/excel`, `GET /api/reports/export/transcript/{id}/pdf`, `GET /api/reports/export/receipt/{id}/pdf`, `GET /api/reports/export/medical-certificate/{id}/pdf`, and `GET /api/portal/transcript/{id}/pdf`. ✅ (Mounted streaming responses with proper MIME types and Content-Disposition headers)
 4. **Cohort Archival Lifecycle Manager (`src/services/archival_service.py`)**: Policy-driven archival workflow moving graduated scholar records to cold storage tables with integrity hashes. ✅ (Added migration `007_cohort_archival.sql`, `archived_students` cold storage table, deterministic JSON snapshot serialization, SHA-256 seal calculation, and admin verification API)
 5. **Automated Multi-Format Export Test Suite (`tests/test_multi_format_reports.py`)**: Pytest suite validating valid PDF and XLSX headers and byte streams. ✅ (Added 11 comprehensive automated tests covering binary PDF headers, OpenPyXL workbook structures, RBAC archival gating, and SHA-256 verification, bringing suite to **306/306 passing tests**)
+
+---
+
+### Phase 16 — Real-Time Server-Sent Events (SSE) Live Notification Feeds & Telemetry Streaming (COMPLETED ✅)
+**Goal:** In-process asynchronous Pub/Sub event broker and W3C Server-Sent Events (SSE) streaming infrastructure for live administrative telemetry, instant scholar notification popups, fee payment notices, and live Dean leave approval alerts.
+
+**Tasks:**
+1. **In-Process Pub/Sub Event Broker (`src/core/event_broker.py`)**: Thread-safe asynchronous event dispatcher with role/user channel audience targeting, cross-thread worker execution, bounded queue buffers (maxsize 100), and queue overflow protection. ✅ (Implemented `EventBroker` and global singleton `event_broker` with standard W3C SSE message formatting and telemetry reporting)
+2. **REST & Server-Sent Events Streaming Endpoints**: `GET /api/notifications/stream` for authenticated scholars/faculty/admins (with Bearer, cookie, or `?token=` query authentication), and `GET /api/system/telemetry/stream` for administrators with initial snapshot and heartbeat updates. ✅ (Mounted in `src/api/notifications.py` and `src/api/system.py` with `text/event-stream` and `no-cache` streaming response headers)
+3. **Automated Domain Service Dispatches**: Real-time event publishing integrated into `NotificationService.create`, `FinanceService.record_payment` (instant fee receipt alert), `LeaveService.update_status` (instant approval/rejection notice), and `AuthService.log_audit` (telemetry audit stream). ✅ (Domain services automatically emit real-time events without blocking caller transactions)
+4. **Pure ASGI Security Hardening Middlewares (`src/core/security_hardening.py`)**: Refactored `SecurityHeadersMiddleware` and `RequestBodySizeLimitMiddleware` from `BaseHTTPMiddleware` to pure ASGI middleware, eliminating task-group response buffering and enabling zero-latency chunk streaming. ✅ (Fully verified)
+5. **Client-Side Live Runtime & Glassmorphic UI Integration**: `static/js/app.js` and `templates/base.html` updated with native `EventSource` listener, automatic reconnection backoff, dynamic unread badge counter (`#alerts-unread-counter`), priority toast notifications, and live status dot (`#live-status-dot`). ✅ (Fully integrated)
+6. **Automated SSE Test Suite (`tests/test_live_events_and_sse.py`)**: 14 comprehensive unit and integration tests validating subscription lifecycles, role/user filtering, queue overflow protection, cross-thread dispatches, query token auth, RBAC boundaries, and domain triggers. ✅ (Elevated full test suite to **320/320 passing tests across 29 test suites**)
 
 ---
 

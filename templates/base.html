@@ -129,8 +129,8 @@
 
       <div class="sidebar-footer">
         <div class="system-status">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span>System Healthy • v1.1</span>
+          <span class="status-dot" id="live-status-dot" aria-hidden="true"></span>
+          <span id="live-status-text">System Live • v1.8</span>
         </div>
       </div>
     </aside>
@@ -154,8 +154,8 @@
             <span aria-hidden="true">🔍</span> Omnisearch <kbd style="background: rgba(255,255,255,0.12); padding: 1px 5px; border-radius: 4px; font-size: 0.7rem;">Ctrl K</kbd>
           </button>
           <span class="badge-tag badge-success">● Term: 2026-27</span>
-          <a href="/notifications" class="badge-tag badge-secondary" style="text-decoration: none; color: inherit; display: inline-flex; align-items: center; gap: 4px;" aria-label="Notifications">
-            <span aria-hidden="true">🔔</span> Alerts
+          <a href="/notifications" class="badge-tag badge-secondary" style="text-decoration: none; color: inherit; display: inline-flex; align-items: center; gap: 4px;" aria-label="Notifications" id="nav-alerts-badge">
+            <span aria-hidden="true">🔔</span> Alerts <span id="alerts-unread-counter" class="badge-count" style="display:none; background: #ef4444; color: white; border-radius: 9999px; padding: 1px 6px; font-size: 0.72rem; font-weight: bold;">0</span>
           </a>
           {% if current_user %}
             <span class="user-badge">

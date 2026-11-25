@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.8.0] - 2026-11-25
+
+### Added
+- **Real-Time Server-Sent Events (SSE) Live Notification Feeds & Telemetry Streaming (Phase 16)**:
+  - **In-Process Pub/Sub Event Broker (`src/core/event_broker.py`)**:
+    - Thread-safe, cross-thread publish/subscribe event routing with `Subscriber` dataclass, bounded `asyncio.Queue` channels (maxsize 100), and automated queue overflow eviction preventing memory leaks.
+    - Role-based audience filtering (`ALL`, `ADMIN`, `FACULTY`, `STUDENT`) and user-specific targeting (`target_user_id`).
+    - Standard W3C Server-Sent Events protocol serialization with event names, unique IDs, structured JSON payloads, and keepalive heartbeat comments (`: ping\n\n`).
+  - **Streaming REST & SSE API Endpoints**:
+    - `GET /api/notifications/stream`: Authenticated live SSE notification feed for scholars, faculty, and administrators yielding immediate connection handshakes (`event: connected`) and live targeted alerts. Supports both cookie/Bearer session tokens and native browser `?token=` query parameter authentication.
+    - `GET /api/system/telemetry/stream` (Admin only): Live real-time operational telemetry and audit stream yielding initial system diagnostics snapshots (`event: telemetry_snapshot`), periodic heartbeats with background task queue metrics and broker statistics, and immediate security audit events (`event: audit_log`).
+  - **Automated Domain Service Real-Time Event Dispatches**:
+    - `NotificationService.create`: Automatically publishes `notification` events over the `notifications` channel to all active subscribers matching the target role and user ID.
+    - `FinanceService.record_payment`: Automatically dispatches in-app notification and real-time SSE payment receipt notices to the scholar and bursar.
+    - `LeaveService.update_status`: Automatically dispatches in-app notification and real-time SSE decision notices upon approval or rejection of student/faculty leave petitions.
+    - `AuthService.log_audit`: Automatically streams security audit records to the `telemetry` channel for connected admin dashboards.
+  - **High-Performance Pure ASGI Middleware (`src/core/security_hardening.py`)**:
+    - Refactored `SecurityHeadersMiddleware` and `RequestBodySizeLimitMiddleware` from `BaseHTTPMiddleware` to pure ASGI middlewares (`__call__(scope, receive, send)`), eliminating Starlette response buffering and enabling zero-latency chunk streaming.
+  - **Frontend UI Real-Time EventSource Integration**:
+    - `static/js/app.js`: Added `initLiveSSEFeeds()` runtime subscribing to `/api/notifications/stream`, rendering toast notifications with priority-based styling (`URGENT`, `HIGH`, `NORMAL`), dynamically updating the unread notification badge counter, and automatically reconnecting with backoff.
+    - `templates/base.html`: Added real-time notification badge indicator (`#alerts-unread-counter`) to the header Alerts button and a live connection indicator dot (`#live-status-dot`) to the sidebar footer.
+  - Maintained core application decoupling with `src/app.py` preserved at exactly **121 lines** (<150 lines target).
+- **Automated Testing Suite Expansion**:
+  - Added comprehensive test suite `tests/test_live_events_and_sse.py` containing 14 unit and integration tests covering subscription lifecycles, role/user filtering, queue overflow protection, cross-thread dispatches, query token authentication, RBAC boundaries, and domain service event triggers.
+  - Expanded test suite from 306 to **320 automated tests** passing across 29 domain test suites (100% pass rate in 11.63s).
+
+---
+
 ## [1.7.0] - 2026-11-23
 
 ### Added

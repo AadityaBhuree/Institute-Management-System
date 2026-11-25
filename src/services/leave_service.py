@@ -152,6 +152,30 @@ class LeaveService:
             except Exception as e:
                 logging.getLogger("ims").warning("Failed to queue leave decision email: %s", e)
 
+        # Dispatch in-app notification & real-time SSE event for applicant
+        try:
+            from src.models.notification import NotificationCreate
+            from src.services.notification_service import NotificationService
+
+            applicant_type = updated_leave.get("applicant_type", "STUDENT")
+            applicant_id = updated_leave.get("applicant_id")
+            NotificationService.create(
+                conn,
+                NotificationCreate(
+                    recipient_role=applicant_type,
+                    recipient_id=applicant_id,
+                    title=f"Leave Request {data.status.capitalize()}",
+                    message=f"Your {updated_leave['leave_type']} leave application ({updated_leave['start_date']} to {updated_leave['end_date']}) was marked as {data.status} by {data.reviewed_by or 'Admin'}.",
+                    category="GENERAL",
+                    priority="HIGH" if data.status == "REJECTED" else "NORMAL",
+                    action_url="/leaves",
+                ),
+            )
+        except Exception as e:
+            logging.getLogger("ims").warning(
+                "Failed to dispatch leave decision notification: %s", e
+            )
+
         return updated_leave
 
     @staticmethod

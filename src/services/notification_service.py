@@ -33,7 +33,23 @@ class NotificationService:
             nid = cur.lastrowid
             cur.execute("SELECT * FROM notifications WHERE id = ?;", (nid,))
             row = cur.fetchone()
-        return dict(row)
+        result = dict(row)
+        try:
+            from src.core.event_broker import event_broker
+
+            event_broker.publish(
+                channel="notifications",
+                event_type="notification",
+                data=result,
+                target_role=data.recipient_role,
+                target_user_id=data.recipient_id,
+            )
+        except Exception as e:
+            import logging
+
+            logging.getLogger("ims").warning("Failed to publish SSE notification: %s", e)
+
+        return result
 
     @staticmethod
     def list_notifications(

@@ -394,6 +394,26 @@ class FinanceService:
         except Exception as e:
             logging.getLogger("ims").warning("Failed to queue fee receipt email: %s", e)
 
+        # Dispatch in-app notification & real-time SSE event for scholar
+        try:
+            from src.models.notification import NotificationCreate
+            from src.services.notification_service import NotificationService
+
+            NotificationService.create(
+                conn,
+                NotificationCreate(
+                    recipient_role="STUDENT",
+                    recipient_id=invoice["student_id"],
+                    title=f"Payment Confirmed: {payment_no}",
+                    message=f"Bursar received payment of ${payment_in.amount:,.2f} for {invoice['invoice_no']} via {payment_in.payment_method}.",
+                    category="FINANCE",
+                    priority="NORMAL",
+                    action_url="/finance",
+                ),
+            )
+        except Exception as e:
+            logging.getLogger("ims").warning("Failed to dispatch fee payment notification: %s", e)
+
         return {
             "id": pay_id,
             "payment_no": payment_no,

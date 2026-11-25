@@ -7,9 +7,8 @@ import time
 from typing import Dict, List, Optional
 
 from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.requests import Request
-from starlette.responses import Response
+from starlette.datastructures import Headers, MutableHeaders
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from src.core.config import (
     LOGIN_LOCKOUT_SECONDS,
@@ -91,48 +90,67 @@ class LoginRateLimiter:
 login_limiter = LoginRateLimiter()
 
 
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Enforces essential OWASP security headers across all incoming web & API responses."""
+class SecurityHeadersMiddleware:
+    """Enforces essential OWASP security headers across all incoming web & API responses via pure ASGI."""
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        response = await call_next(request)
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline'; "
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-            "font-src 'self' https://fonts.gstatic.com data:; "
-            "img-src 'self' data:; "
-            "connect-src 'self'; "
-            "frame-ancestors 'none';"
-        )
-        return response
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_wrapper(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                headers["X-Content-Type-Options"] = "nosniff"
+                headers["X-Frame-Options"] = "DENY"
+                headers["X-XSS-Protection"] = "1; mode=block"
+                headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+                headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+                headers["Content-Security-Policy"] = (
+                    "default-src 'self'; "
+                    "script-src 'self' 'unsafe-inline'; "
+                    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                    "font-src 'self' https://fonts.gstatic.com data:; "
+                    "img-src 'self' data:; "
+                    "connect-src 'self'; "
+                    "frame-ancestors 'none';"
+                )
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
 
 
-class RequestBodySizeLimitMiddleware(BaseHTTPMiddleware):
-    """Guards against memory exhaustion and payload flood by rejecting oversized HTTP request bodies."""
+class RequestBodySizeLimitMiddleware:
+    """Guards against memory exhaustion and payload flood by rejecting oversized HTTP request bodies via pure ASGI."""
 
-    def __init__(self, app, max_body_bytes: int = MAX_REQUEST_SIZE_BYTES):
-        super().__init__(app)
+    def __init__(self, app: ASGIApp, max_body_bytes: int = MAX_REQUEST_SIZE_BYTES):
+        self.app = app
         self.max_body_bytes = max_body_bytes
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        content_length = request.headers.get("content-length")
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        headers = Headers(scope=scope)
+        content_length = headers.get("content-length")
         if content_length:
             try:
                 length_int = int(content_length)
                 if length_int > self.max_body_bytes:
                     limit_mb = self.max_body_bytes // (1024 * 1024)
-                    return JSONResponse(
+                    response = JSONResponse(
                         status_code=413,
                         content={
                             "detail": f"Request body exceeds maximum allowed size of {limit_mb}MB."
                         },
                     )
+                    await response(scope, receive, send)
+                    return
             except ValueError:
                 pass
-        return await call_next(request)
+
+        await self.app(scope, receive, send)

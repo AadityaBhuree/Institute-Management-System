@@ -2,8 +2,9 @@
 
 import asyncio
 import sqlite3
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from src.core.config import APP_NAME, APP_VERSION
@@ -39,6 +40,9 @@ def get_system_telemetry(conn: sqlite3.Connection = Depends(get_db)):
 @router.get("/api/system/telemetry/stream")
 async def stream_system_telemetry(
     request: Request,
+    limit: Optional[int] = Query(
+        None, description="Max events to yield before closing stream (testing/finite poll)"
+    ),
     conn: sqlite3.Connection = Depends(get_db),
     admin_user: dict = Depends(require_role("admin")),
 ):
@@ -62,6 +66,9 @@ async def stream_system_telemetry(
                 event="telemetry_snapshot",
                 data=initial_stats,
             )
+            yielded_count = 1
+            if limit and yielded_count >= limit:
+                return
 
             while True:
                 if await request.is_disconnected():
@@ -69,6 +76,9 @@ async def stream_system_telemetry(
                 try:
                     message = await asyncio.wait_for(sub.queue.get(), timeout=5.0)
                     yield message
+                    yielded_count += 1
+                    if limit and yielded_count >= limit:
+                        break
                 except asyncio.TimeoutError:
                     yield event_broker.format_sse_message(
                         event="heartbeat",
@@ -77,6 +87,9 @@ async def stream_system_telemetry(
                             "broker": event_broker.get_telemetry(),
                         },
                     )
+                    yielded_count += 1
+                    if limit and yielded_count >= limit:
+                        break
         except asyncio.CancelledError:
             pass
         finally:

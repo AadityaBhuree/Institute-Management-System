@@ -311,6 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initMobileSidebar();
   initFormValidationAndLoading();
   initOmnisearch();
+  initLiveSSEFeeds();
 });
 
 // Omnisearch Runtime
@@ -403,5 +404,80 @@ function initOmnisearch() {
     omnisearchCategory.addEventListener('change', performOmnisearch);
   }
 }
+
+// Real-Time Server-Sent Events (SSE) Live Notification Feeds
+function initLiveSSEFeeds() {
+  const counterEl = document.getElementById('alerts-unread-counter');
+  const liveDot = document.getElementById('live-status-dot');
+  const liveText = document.getElementById('live-status-text');
+
+  function updateNotificationBadge(count) {
+    if (!counterEl) return;
+    if (count > 0) {
+      counterEl.textContent = count > 99 ? '99+' : count;
+      counterEl.style.display = 'inline-block';
+    } else {
+      counterEl.textContent = '0';
+      counterEl.style.display = 'none';
+    }
+  }
+
+  // Preload current unread count
+  if (counterEl) {
+    fetch('/api/notifications/unread-count')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && typeof data.unread_count === 'number') {
+          updateNotificationBadge(data.unread_count);
+        }
+      })
+      .catch(() => {});
+  }
+
+  // Connect to SSE stream if supported
+  if (typeof EventSource !== 'undefined') {
+    let evtSource = null;
+    let reconnectTimer = null;
+
+    function connect() {
+      try {
+        evtSource = new EventSource('/api/notifications/stream');
+
+        evtSource.addEventListener('connected', () => {
+          if (liveDot) liveDot.style.background = '#10b981';
+          if (liveText) liveText.textContent = 'System Live • SSE Active';
+        });
+
+        evtSource.addEventListener('notification', (e) => {
+          try {
+            const payload = JSON.parse(e.data);
+            const toastType = payload.priority === 'URGENT' ? 'error' : (payload.priority === 'HIGH' ? 'warning' : 'info');
+            showToast(`${payload.title}: ${payload.message}`, toastType);
+
+            if (counterEl) {
+              const cur = parseInt(counterEl.textContent, 10) || 0;
+              updateNotificationBadge(cur + 1);
+            }
+          } catch (err) {
+            console.warn('Failed to parse SSE notification payload', err);
+          }
+        });
+
+        evtSource.onerror = () => {
+          if (liveDot) liveDot.style.background = '#f59e0b';
+          if (liveText) liveText.textContent = 'System Reconnecting...';
+          evtSource.close();
+          clearTimeout(reconnectTimer);
+          reconnectTimer = setTimeout(connect, 6000);
+        };
+      } catch (err) {
+        console.warn('EventSource connection bypassed:', err);
+      }
+    }
+
+    connect();
+  }
+}
+
 
 

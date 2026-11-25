@@ -56,6 +56,9 @@ def get_unread_count(
 @router.get("/stream")
 async def stream_notifications(
     request: Request,
+    limit: Optional[int] = Query(
+        None, description="Max events to yield before closing stream (testing/finite poll)"
+    ),
     current_user: dict = Depends(get_current_user),
 ):
     """Real-time Server-Sent Events (SSE) notification stream for active scholars, faculty & admins."""
@@ -78,6 +81,9 @@ async def stream_notifications(
                 },
             )
             yield handshake
+            yielded_count = 1
+            if limit and yielded_count >= limit:
+                return
 
             while True:
                 if await request.is_disconnected():
@@ -85,6 +91,9 @@ async def stream_notifications(
                 try:
                     message = await asyncio.wait_for(sub.queue.get(), timeout=15.0)
                     yield message
+                    yielded_count += 1
+                    if limit and yielded_count >= limit:
+                        break
                 except asyncio.TimeoutError:
                     yield ": ping\n\n"
         except asyncio.CancelledError:

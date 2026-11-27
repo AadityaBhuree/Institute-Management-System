@@ -11,6 +11,9 @@
 <a href="/api/reports/export/students/csv" class="btn btn-secondary btn-sm" id="btn-export-students-csv" title="Download CSV">
   <span>📥 Export CSV</span>
 </a>
+<a href="/api/id-cards/batch/pdf" class="btn btn-secondary btn-sm" id="btn-batch-id-cards-pdf" title="Batch Print A4 Sheet of CR80 ID Cards">
+  <span>🪪 Batch ID Cards</span>
+</a>
 <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-student')">
   <span>+ Register Admission</span>
 </button>
@@ -93,6 +96,7 @@
               </span>
             </td>
             <td style="text-align: right;">
+              <a href="/api/id-cards/student/{{ s.id }}/pdf" target="_blank" class="btn btn-secondary btn-sm" title="Print CR80 ID Card">🪪</a>
               <button class="btn btn-secondary btn-sm" onclick="viewStudent({{ s.id }})" title="View Details">Profile</button>
               <button class="btn btn-secondary btn-sm" style="color: var(--color-danger);" onclick="deleteStudent({{ s.id }})" title="Delete Record">✕</button>
             </td>

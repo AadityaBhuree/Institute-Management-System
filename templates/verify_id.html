@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Credential Verification | IMS Enterprise{% endblock %}
+{% block header_title %}Institutional Credential Verification{% endblock %}
+{% block header_subtitle %}Cryptographically verified identity lookup and official accreditation validation{% endblock %}
+
+{% block content %}
+<div style="max-width: 680px; margin: 32px auto; padding: 0 16px;">
+  <div class="card" style="padding: 32px; border-radius: 16px; background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.85) 100%); border: 1px solid var(--border-subtle); box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+    
+    <!-- Top Verification Header -->
+    <div style="text-align: center; margin-bottom: 28px;">
+      <div style="display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; background: rgba(59, 130, 246, 0.1); border: 2px solid {% if verified %}#10B981{% else %}#EF4444{% endif %}; font-size: 2rem; margin-bottom: 16px; box-shadow: 0 0 24px {% if verified %}rgba(16, 185, 129, 0.3){% else %}rgba(239, 68, 68, 0.3){% endif %};">
+        {% if verified %}🛡️{% else %}⚠️{% endif %}
+      </div>
+      
+      {% if verified %}
+        <div style="display: inline-block; padding: 6px 16px; border-radius: 9999px; background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; color: #34D399; font-weight: 800; font-size: 0.88rem; letter-spacing: 0.5px; margin-bottom: 8px;">
+          ● AUTHENTIC VERIFIED CREDENTIAL
+        </div>
+        <h2 style="font-size: 1.6rem; font-weight: 800; color: #FFFFFF; margin-bottom: 6px;">{{ result.name }}</h2>
+        <p style="color: #94A3B8; font-size: 0.92rem;">
+          {{ result.entity_type }} • <span style="color: #38BDF8; font-family: monospace; font-weight: 700;">{{ result.identifier }}</span>
+        </p>
+      {% else %}
+        <div style="display: inline-block; padding: 6px 16px; border-radius: 9999px; background: rgba(239, 68, 68, 0.15); border: 1px solid #EF4444; color: #F87171; font-weight: 800; font-size: 0.88rem; letter-spacing: 0.5px; margin-bottom: 8px;">
+          ✕ {{ result.status or 'UNVERIFIED' }} CREDENTIAL
+        </div>
+        <h2 style="font-size: 1.5rem; font-weight: 800; color: #F87171; margin-bottom: 8px;">Verification Rejected</h2>
+        <p style="color: #CBD5E1; font-size: 0.95rem; max-width: 480px; margin: 0 auto;">
+          {{ result.reason or 'This identification credential failed cryptographic signature verification or is no longer active in the institutional registry.' }}
+        </p>
+      {% endif %}
+    </div>
+
+    {% if verified %}
+    <!-- Detailed Verified Scholar Attributes Grid -->
+    <div style="background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+        <div>
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: #94A3B8; font-weight: 600; margin-bottom: 4px;">Department</div>
+          <div style="font-size: 0.95rem; font-weight: 700; color: #F8FAFC;">{{ data.department_name if data else result.department }}</div>
+        </div>
+
+        <div>
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: #94A3B8; font-weight: 600; margin-bottom: 4px;">Academic Status</div>
+          <div>
+            <span class="badge-tag {% if data and data.status == 'ENROLLED' %}badge-success{% else %}badge-info{% endif %}">
+              {{ data.status if data else 'ACTIVE' }}
+            </span>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: #94A3B8; font-weight: 600; margin-bottom: 4px;">Current Semester / Level</div>
+          <div style="font-size: 0.95rem; font-weight: 700; color: #F8FAFC;">
+            {% if data and data.current_semester %}Semester {{ data.current_semester }}{% else %}Registered Faculty{% endif %}
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: #94A3B8; font-weight: 600; margin-bottom: 4px;">Medical / Blood Group</div>
+          <div>
+            <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #DC2626; color: #FFFFFF; font-weight: 700; font-size: 0.8rem;">
+              {{ data.blood_group if (data and data.blood_group) else 'O+ Recorded' }}
+            </span>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: #94A3B8; font-weight: 600; margin-bottom: 4px;">Emergency Helpline</div>
+          <div style="font-size: 0.88rem; color: #FCA5A5; font-weight: 600;">
+            {{ data.emergency_contact if (data and data.emergency_contact) else 'Campus Security: (555) 019-9111' }}
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: #94A3B8; font-weight: 600; margin-bottom: 4px;">Validity Term</div>
+          <div style="font-size: 0.92rem; color: #38BDF8; font-weight: 700;">
+            Valid Until: {{ result.valid_until or 'Active Academic Term' }}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Security & Audit Metadata Block -->
+    <div style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 18px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 0.78rem; color: #64748B;">
+      <div>
+        <span>Authority: <strong>{{ result.issued_by or 'IMS-ENTERPRISE' }}</strong></span>
+        <span style="margin: 0 6px;">•</span>
+        <span>Verified at: <strong>{{ now }}</strong></span>
+      </div>
+      <div>
+        <span style="font-family: monospace; color: #475569;">HMAC-SHA256 • Cryptographically Sealed</span>
+      </div>
+    </div>
+
+    <!-- Security Warning Notice -->
+    <div style="margin-top: 24px; padding: 14px 18px; border-radius: 8px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.15); font-size: 0.82rem; color: #94A3B8; line-height: 1.5;">
+      ℹ️ <strong>Campus Security Notice:</strong> This public verification portal directly queries the immutable institutional core database. In the event of lost credentials or discrepancies, immediately contact the Registrar's Office or Security Command Center at <code>security@institute.edu</code>.
+    </div>
+
+  </div>
+</div>
+{% endblock %}

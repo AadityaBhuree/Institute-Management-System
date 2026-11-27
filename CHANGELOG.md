@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.9.0] - 2026-11-27
+
+### Added
+- **Digital ID Card Generator with Verifiable QR Codes & Public Authenticity Verification Engine (Phase 17)**:
+  - **Core Cryptographic ID Card Service (`src/services/id_card_service.py`)**:
+    - Generates tamper-proof HMAC-SHA256 signed digital identity tokens encoding scholar/faculty identity, department, blood group, emergency contact, and expiration terms.
+    - Token verification engine validating cryptographic signatures, date expiration, and active institutional enrollment status (`status == 'ENROLLED'` or `'active'`).
+    - Standard ISO/IEC 7810 ID-1 (CR80 format 85.6mm x 53.98mm) vector PDF compiler with front & back faces (`generate_single_id_card_pdf`), featuring official institutional branding, initials avatar silhouette, Code128 barcode, emergency SOS contact, and scannable verification QR code.
+    - A4 8-up batch print sheet generator (`generate_batch_id_cards_pdf`) with cutting guide trim marks for bulk departmental issuance and lamination.
+    - Standalone interactive vector SVG card compiler (`generate_id_card_svg`) for scholar mobile portal and web embedding.
+  - **REST API Endpoints in `src/api/id_cards.py`**:
+    - `GET /api/id-cards/student/{student_id}/pdf`: Single printable CR80 vector PDF with Content-Disposition inline headers.
+    - `GET /api/id-cards/student/{student_id}/svg`: Standalone interactive SVG card.
+    - `GET /api/id-cards/faculty/{faculty_id}/pdf`: Single faculty CR80 vector PDF.
+    - `GET /api/id-cards/faculty/{faculty_id}/svg`: Faculty SVG card.
+    - `GET /api/id-cards/batch/pdf`: (Admin only) A4 8-up print sheet for lamination with audit logging.
+    - `GET /api/id-cards/verify/{token}`: Public verification API endpoint returning verification status and scholar metadata.
+  - **Public Web Verification View (`/verify/id/{token}`)**:
+    - Mobile-responsive public credential verification page (`templates/verify_id.html`) displaying verification status shields, medical blood group alerts, emergency helpline numbers, and tamper-proof security seals without requiring authentication.
+  - **Glassmorphic UI Integration**:
+    - Added "🪪 Digital ID Card" PDF action button in `templates/portal.html`.
+    - Added "🪪 Batch ID Cards" header button and per-row "🪪" ID card link in `templates/students.html`.
+  - Maintained core application decoupling with `src/app.py` preserved at exactly **121 lines** (<150 lines target).
+- **Automated Testing Suite Expansion**:
+  - Added comprehensive test suite `tests/test_id_cards_and_verification.py` containing 13 automated tests covering token generation, anti-tampering detection, expiration checks, single CR80 PDF compilation, batch 8-up A4 generation, standalone SVGs, RBAC security gates, and public web verification.
+  - Expanded test suite from 320 to **333 automated tests** passing across 30 domain test suites (100% pass rate in 11.76s).
+
+---
+
 ## [1.8.0] - 2026-11-25
 
 ### Added

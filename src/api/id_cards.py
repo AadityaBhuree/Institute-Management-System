@@ -3,7 +3,7 @@
 import sqlite3
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 
 from src.core.security import get_current_user, require_role
 from src.database.connection import get_db

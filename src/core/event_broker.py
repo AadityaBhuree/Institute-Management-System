@@ -162,14 +162,17 @@ class EventBroker:
 
         for sub in matched:
             try:
-                # Determine execution context (same event loop or worker thread)
+                # If no coroutine is actively awaiting queue.get() on an event loop,
+                # put directly into the queue so synchronous callers/tests observe it immediately.
+                has_active_getters = bool(getattr(sub.queue, "_getters", None))
+
                 try:
                     current_loop = asyncio.get_running_loop()
                 except RuntimeError:
                     current_loop = None
 
-                if current_loop is not None and current_loop == loop:
-                    # Same thread execution
+                if not has_active_getters or (current_loop is not None and current_loop == loop):
+                    # Same thread or no active async waiters
                     if sub.queue.full():
                         try:
                             sub.queue.get_nowait()
@@ -178,7 +181,7 @@ class EventBroker:
                     sub.queue.put_nowait(formatted_msg)
                     queued_count += 1
                 elif loop is not None and not loop.is_closed():
-                    # Cross-thread dispatch into loop thread
+                    # Cross-thread dispatch to active listener on loop
                     def _enqueue_safely(q=sub.queue, msg=formatted_msg) -> None:
                         if q.full():
                             try:
@@ -190,7 +193,6 @@ class EventBroker:
                     loop.call_soon_threadsafe(_enqueue_safely)
                     queued_count += 1
                 else:
-                    # Fallback if queue put can occur directly
                     if sub.queue.full():
                         try:
                             sub.queue.get_nowait()
@@ -221,6 +223,7 @@ class EventBroker:
         with self._lock:
             self._subscribers.clear()
             self._published_total = 0
+            self._loop = None
 
 
 # Singleton institutional event broker instance

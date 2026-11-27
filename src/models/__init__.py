@@ -102,6 +102,7 @@ from src.models.hostel import (
     RoomAllocationOut,
     RoomCheckoutRequest,
 )
+from src.models.id_card import IDCardVerificationOut
 from src.models.leave import LeaveRequestCreate, LeaveRequestOut, LeaveStatusUpdate
 from src.models.library import (
     BookIssueRequest,
@@ -297,4 +298,6 @@ __all__ = [
     "ArchivedStudentItem",
     "CohortArchivalResponse",
     "ArchivalIntegrityResponse",
+    # ID Cards
+    "IDCardVerificationOut",
 ]

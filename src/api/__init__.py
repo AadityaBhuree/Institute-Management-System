@@ -14,6 +14,7 @@ from src.api.faculty import router as faculty_router
 from src.api.finance import router as finance_router
 from src.api.health_center import router as health_center_router
 from src.api.hostel import router as hostel_router
+from src.api.id_cards import router as id_cards_router
 from src.api.inventory import router as inventory_router
 from src.api.leaves import router as leaves_router
 from src.api.library import router as library_router
@@ -44,6 +45,7 @@ ALL_API_ROUTERS = [
     timetable_router,
     library_router,
     hostel_router,
+    id_cards_router,
     placements_router,
     transport_router,
     scholarships_router,
@@ -76,6 +78,7 @@ __all__ = [
     "finance_router",
     "health_center_router",
     "hostel_router",
+    "id_cards_router",
     "inventory_router",
     "leaves_router",
     "library_router",

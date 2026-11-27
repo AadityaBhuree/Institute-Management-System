@@ -3,6 +3,7 @@ Renders all Jinja2 templates and user interfaces for institutional administratio
 """
 
 import sqlite3
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -30,6 +31,7 @@ from src.services.faculty_service import FacultyService
 from src.services.finance_service import FinanceService
 from src.services.health_service import HealthService
 from src.services.hostel_service import HostelService
+from src.services.id_card_service import IDCardService
 from src.services.leave_service import LeaveService
 from src.services.library_service import LibraryService
 from src.services.notification_service import NotificationService
@@ -983,5 +985,30 @@ def view_notifications_page(
             "unread_count": unread_count,
             "selected_role": user_role,
             "unread_only": unread_only,
+        },
+    )
+
+
+@router.get("/verify/id/{token}", response_class=HTMLResponse)
+def view_public_id_verification_page(
+    token: str,
+    request: Request,
+    conn: sqlite3.Connection = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+):
+    """Public verification page rendered when campus guard or portal scans ID QR code."""
+    result = IDCardService.verify_id_token(token, conn)
+    return templates.TemplateResponse(
+        request=request,
+        name="verify_id.html",
+        context={
+            "active_page": "verify_id",
+            "current_user": current_user,
+            "token": token,
+            "result": result,
+            "verified": result.get("valid", False),
+            "status": result.get("status", "UNKNOWN"),
+            "data": result.get("data"),
+            "now": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         },
     )

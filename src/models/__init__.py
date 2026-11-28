@@ -120,6 +120,16 @@ from src.models.placement import (
     PlacementStatsOut,
     PlacementStatusUpdate,
 )
+from src.models.rbac import (
+    PermissionEvaluationRequest,
+    PermissionEvaluationResult,
+    PermissionItem,
+    RBACMatrixOut,
+    RoleInfo,
+    UserPermissionsUpdate,
+    UserRoleUpdate,
+    UserStaffOut,
+)
 from src.models.scholarship import (
     ScholarshipApplicationCreate,
     ScholarshipApplicationOut,
@@ -300,4 +310,13 @@ __all__ = [
     "ArchivalIntegrityResponse",
     # ID Cards
     "IDCardVerificationOut",
+    # RBAC
+    "PermissionItem",
+    "RoleInfo",
+    "RBACMatrixOut",
+    "UserRoleUpdate",
+    "UserPermissionsUpdate",
+    "UserStaffOut",
+    "PermissionEvaluationRequest",
+    "PermissionEvaluationResult",
 ]

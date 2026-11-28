@@ -2,11 +2,20 @@
 Pydantic v2 schemas for authentication, role-based access control, and audit trail.
 """
 
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-UserRole = Literal["admin", "faculty", "student"]
+UserRole = Literal[
+    "admin",
+    "registrar",
+    "bursar",
+    "librarian",
+    "health_officer",
+    "placement_officer",
+    "faculty",
+    "student",
+]
 UserStatus = Literal["active", "inactive", "suspended"]
 
 
@@ -21,6 +30,7 @@ class UserCreate(BaseModel):
     role: UserRole = "student"
     faculty_id: Optional[int] = None
     student_id: Optional[int] = None
+    custom_permissions: Optional[str] = None
 
 
 class UserResponse(BaseModel):
@@ -35,6 +45,8 @@ class UserResponse(BaseModel):
     status: UserStatus
     faculty_id: Optional[int] = None
     student_id: Optional[int] = None
+    custom_permissions: Optional[str] = None
+    permissions: Optional[List[str]] = None
     last_login: Optional[str] = None
     created_at: str
 

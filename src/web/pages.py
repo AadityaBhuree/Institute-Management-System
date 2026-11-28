@@ -36,6 +36,7 @@ from src.services.leave_service import LeaveService
 from src.services.library_service import LibraryService
 from src.services.notification_service import NotificationService
 from src.services.placement_service import PlacementService
+from src.services.rbac_service import RBACService
 from src.services.reports_service import ReportsService
 from src.services.scholarship_service import ScholarshipService
 from src.services.student_service import StudentService
@@ -1010,5 +1011,43 @@ def view_public_id_verification_page(
             "status": result.get("status", "UNKNOWN"),
             "data": result.get("data"),
             "now": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        },
+    )
+
+
+@router.get("/rbac", response_class=HTMLResponse)
+def view_rbac_management_page(
+    request: Request,
+    conn: sqlite3.Connection = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+):
+    """Institutional Roles and Granular Permission Matrix management interface (Admin only)."""
+    if not current_user:
+        return RedirectResponse(url="/login?next=/rbac", status_code=status.HTTP_302_FOUND)
+
+    if current_user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: Only institutional administrators may manage roles and permissions.",
+        )
+
+    matrix = RBACService.get_matrix()
+    staff_users = RBACService.list_staff_users(conn, limit=200)
+
+    admin_count = sum(1 for u in staff_users if u.get("role") == "admin")
+    total_staff = sum(1 for u in staff_users if u.get("role") not in ("student", "faculty"))
+
+    return templates.TemplateResponse(
+        request=request,
+        name="rbac_matrix.html",
+        context={
+            "active_page": "rbac",
+            "current_user": current_user,
+            "matrix": matrix,
+            "staff_users": staff_users,
+            "total_roles": len(matrix.roles),
+            "total_permissions": matrix.total_permissions,
+            "admin_count": admin_count,
+            "total_staff": total_staff,
         },
     )

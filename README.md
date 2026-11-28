@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-WAL%20Mode-003B57.svg?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
-[![Tests](https://img.shields.io/badge/Pytest-333%2F333%20Passing-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Pytest-344%2F344%20Passing-success.svg)](tests/)
 [![CI](https://github.com/AadityaBhuree/Institute-Management-System/actions/workflows/ci.yml/badge.svg)](https://github.com/AadityaBhuree/Institute-Management-System/actions/workflows/ci.yml)
 [![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED.svg?logo=docker&logoColor=white)](Dockerfile)
 [![Code Style](https://img.shields.io/badge/Linter-Ruff%20Clean-black.svg)](pyproject.toml)
@@ -16,6 +16,7 @@ A modern, high-performance, and modular educational administration platform buil
 
 ## 📌 Executive Architecture & Highlights
 
+* **Granular Institutional RBAC & Functional Permission Matrix:** 8 dedicated departmental staff roles (`admin`, `registrar`, `bursar`, `librarian`, `health_officer`, `placement_officer`, `faculty`, `student`) with a 27-capability catalog across all campus domains. Features dynamic permission checking (`require_permission`, `require_any_permission`), custom user-level grant/revoke overrides (`+perm`, `-perm`), administrative lockout protection, and a glassmorphic administration workbench (`/rbac`) with a live capability matrix, staff directory, and access rights simulator.
 * **Digital ID Cards & Public QR Verification:** Official ISO/IEC 7810 ID-1 (CR80) vector PDF student/faculty identity cards with Code128 barcodes and tamper-proof HMAC-SHA256 signed QR codes. Includes A4 8-up batch print sheets for campus lamination, standalone interactive SVGs, and a public web verification page (`/verify/id/{token}`) for instant smartphone security checks.
 * **Real-Time Live SSE Notifications & Telemetry Stream:** In-process asynchronous pub/sub event broker, W3C Server-Sent Events (`GET /api/notifications/stream` & `GET /api/system/telemetry/stream`), instant bursar payment receipts, Dean leave approval toasts, and dynamic unread notification badge counters without page reloads.
 * **Admissions & Scholar Registry:** Sequential institutional enrollment code generation (`IMS-YYYY-DEPT-XXXX`), full scholar profile management, department filtering, and real-time status transitions.

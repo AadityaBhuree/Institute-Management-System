@@ -5,7 +5,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 
-from src.core.security import get_current_user, require_role
+from src.core.security import get_current_user, require_permission
 from src.database.connection import get_db
 from src.models.id_card import IDCardVerificationOut
 from src.services.auth_service import AuthService
@@ -136,7 +136,7 @@ def get_batch_id_cards_pdf(
     cohort_year: Optional[int] = Query(None, description="Filter cohort by admission year"),
     request: Request = None,
     conn: sqlite3.Connection = Depends(get_db),
-    admin_user: dict = Depends(require_role("admin")),
+    admin_user: dict = Depends(require_permission("id_cards:manage")),
 ):
     """Generate printable A4 8-up batch sheet of CR80 identity cards with cut guides (Admin only)."""
     base_url = str(request.base_url).rstrip("/") if request else "https://ims.edu"

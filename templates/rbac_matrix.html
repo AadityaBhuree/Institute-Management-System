@@ -1,0 +1,554 @@
+{% extends "base.html" %}
+
+{% block title %}Institutional RBAC & Permissions Matrix — IMS Enterprise{% endblock %}
+{% block header_title %}Institutional Roles & Permissions{% endblock %}
+{% block header_subtitle %}Granular capability matrix, departmental roles, staff authorization, and security access simulator{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-secondary btn-sm" onclick="switchRBACTab('tab-evaluator', document.getElementById('tab-btn-evaluator'))" id="btn-header-evaluator">
+  <span>🧪 Access Rights Evaluator</span>
+</button>
+<button class="btn btn-primary btn-sm" onclick="switchRBACTab('tab-staff', document.getElementById('tab-btn-staff'))" id="btn-header-staff">
+  <span>👥 Staff Accounts ({{ staff_users|length }})</span>
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- 4 Key Telemetry Metrics -->
+<div class="metrics-grid" style="margin-bottom: 24px;">
+  <!-- Total Institutional Roles -->
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Institutional Roles</span>
+      <span class="metric-icon">🛡️</span>
+    </div>
+    <div class="metric-value" style="color: var(--accent-primary);" id="stat-roles-count">
+      {{ total_roles }}
+    </div>
+    <div class="metric-footer">
+      <span>Departments: Registrar, Bursar, Librarian, etc.</span>
+      <span class="badge-tag badge-success">8 Dedicated</span>
+    </div>
+  </div>
+
+  <!-- Total System Capabilities -->
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">System Permissions</span>
+      <span class="metric-icon">🔑</span>
+    </div>
+    <div class="metric-value" style="color: var(--color-success);" id="stat-perms-count">
+      {{ total_permissions }}
+    </div>
+    <div class="metric-footer">
+      <span>Categorized by functional campus domain</span>
+      <span class="badge-tag badge-info">Granular</span>
+    </div>
+  </div>
+
+  <!-- Administrative Staff Users -->
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Departmental Staff</span>
+      <span class="metric-icon">👥</span>
+    </div>
+    <div class="metric-value" style="color: var(--accent-secondary);" id="stat-staff-count">
+      {{ total_staff }}
+    </div>
+    <div class="metric-footer">
+      <span>Active office personnel & administrators</span>
+      <span class="badge-tag badge-info">Authorized</span>
+    </div>
+  </div>
+
+  <!-- Super Administrators -->
+  <div class="metric-card">
+    <div class="metric-header">
+      <span class="metric-title">Super Admins</span>
+      <span class="metric-icon">👑</span>
+    </div>
+    <div class="metric-value" style="color: var(--color-warning);" id="stat-admins-count">
+      {{ admin_count }}
+    </div>
+    <div class="metric-footer">
+      <span>Wildcard (*) root system authority</span>
+      <span class="badge-tag badge-danger">Root</span>
+    </div>
+  </div>
+</div>
+
+<!-- Tab Navigation -->
+<div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; flex-wrap: wrap;">
+  <button class="btn btn-primary btn-sm tab-btn active" onclick="switchRBACTab('tab-matrix', this)" id="tab-btn-matrix">
+    🛡️ Capability Matrix
+  </button>
+  <button class="btn btn-secondary btn-sm tab-btn" onclick="switchRBACTab('tab-staff', this)" id="tab-btn-staff">
+    👥 Staff Directory ({{ staff_users|length }})
+  </button>
+  <button class="btn btn-secondary btn-sm tab-btn" onclick="switchRBACTab('tab-evaluator', this)" id="tab-btn-evaluator">
+    🧪 Access Rights Evaluator
+  </button>
+  <button class="btn btn-secondary btn-sm tab-btn" onclick="switchRBACTab('tab-catalog', this)" id="tab-btn-catalog">
+    📚 Permission Catalog ({{ matrix.permissions|length }})
+  </button>
+</div>
+
+<!-- Tab 1: Capability Matrix -->
+<div id="tab-matrix" class="rbac-tab-content">
+  <div class="card" style="padding: 20px; overflow-x: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <h3 style="margin: 0 0 4px 0;">🛡️ Institutional Roles × Capabilities Matrix</h3>
+        <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">
+          Cross-reference matrix showing baseline permissions granted to each functional role.
+        </p>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <span class="badge-tag badge-success">✅ Role Default</span>
+        <span class="badge-tag badge-secondary">❌ Denied</span>
+        <span class="badge-tag badge-warning">👑 Superuser Wildcard (*)</span>
+      </div>
+    </div>
+
+    <table class="table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;" id="matrix-table">
+      <thead>
+        <tr style="background: rgba(255, 255, 255, 0.04); border-bottom: 2px solid var(--border-color);">
+          <th style="padding: 12px 14px; text-align: left; min-width: 180px;">Capability / Permission</th>
+          <th style="padding: 12px 14px; text-align: left; min-width: 120px;">Domain</th>
+          {% for role in matrix.roles %}
+          <th style="padding: 12px 10px; text-align: center; min-width: 90px;" title="{{ role.description }}">
+            <div style="font-weight: 600;">{{ role.role|replace('_', ' ')|capitalize }}</div>
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for perm in matrix.permissions %}
+        <tr style="border-bottom: 1px solid var(--border-subtle); transition: background 0.2s;">
+          <td style="padding: 10px 14px;">
+            <div style="font-weight: 600; color: var(--text-primary);">{{ perm.name }}</div>
+            <code style="font-size: 0.75rem; color: var(--accent-primary);">{{ perm.code }}</code>
+          </td>
+          <td style="padding: 10px 14px;">
+            <span class="badge-tag badge-info" style="font-size: 0.7rem;">{{ perm.category }}</span>
+          </td>
+          {% for role in matrix.roles %}
+          <td style="padding: 10px 8px; text-align: center;">
+            {% if role.role == 'admin' %}
+              <span title="Super Administrator Wildcard (*)" style="color: #f59e0b; font-size: 1.1rem; cursor: help;">👑</span>
+            {% elif perm.code in role.permissions %}
+              <span title="Granted by default for {{ role.role }}" style="color: #10b981; font-size: 1.1rem; cursor: help;">✅</span>
+            {% else %}
+              <span title="Denied for {{ role.role }}" style="color: rgba(255,255,255,0.18); font-size: 1.1rem; cursor: help;">—</span>
+            {% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Tab 2: Staff Directory & Custom Overrides -->
+<div id="tab-staff" class="rbac-tab-content" style="display: none;">
+  <div class="card" style="padding: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <h3 style="margin: 0 0 4px 0;">👥 Registered Institutional Accounts</h3>
+        <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">
+          Manage institutional staff roles, view computed effective capabilities, and assign custom grant/revoke overrides.
+        </p>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <input
+          type="search"
+          id="staff-search-input"
+          class="form-control"
+          placeholder="Filter staff by name or email..."
+          style="width: 240px; font-size: 0.85rem;"
+          oninput="filterStaffTable()"
+        />
+      </div>
+    </div>
+
+    <div style="overflow-x: auto;">
+      <table class="table" style="width: 100%;" id="staff-table">
+        <thead>
+          <tr style="border-bottom: 2px solid var(--border-color);">
+            <th style="padding: 12px 14px; text-align: left;">Account</th>
+            <th style="padding: 12px 14px; text-align: left;">Role</th>
+            <th style="padding: 12px 14px; text-align: left;">Custom Overrides</th>
+            <th style="padding: 12px 14px; text-align: left;">Effective Capabilities</th>
+            <th style="padding: 12px 14px; text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in staff_users %}
+          <tr class="staff-row" data-username="{{ u.username|lower }}" data-email="{{ u.email|lower }}" data-role="{{ u.role|lower }}">
+            <td style="padding: 12px 14px;">
+              <div style="font-weight: 600; color: var(--text-primary);">{{ u.username }}</div>
+              <div style="font-size: 0.78rem; color: var(--text-muted);">{{ u.email }}</div>
+            </td>
+            <td style="padding: 12px 14px;">
+              {% if u.role == 'admin' %}
+                <span class="badge-tag badge-danger" style="font-weight: bold;">👑 Admin</span>
+              {% elif u.role == 'registrar' %}
+                <span class="badge-tag badge-success">🏛️ Registrar</span>
+              {% elif u.role == 'bursar' %}
+                <span class="badge-tag badge-warning">💳 Bursar</span>
+              {% elif u.role == 'librarian' %}
+                <span class="badge-tag badge-info">📚 Librarian</span>
+              {% elif u.role == 'health_officer' %}
+                <span class="badge-tag badge-danger">🏥 Health</span>
+              {% elif u.role == 'placement_officer' %}
+                <span class="badge-tag badge-info">🤝 Placements</span>
+              {% elif u.role == 'faculty' %}
+                <span class="badge-tag badge-secondary">👨‍🏫 Faculty</span>
+              {% else %}
+                <span class="badge-tag badge-secondary">🎓 Student</span>
+              {% endif %}
+            </td>
+            <td style="padding: 12px 14px;">
+              {% if u.custom_permissions %}
+                <code style="font-size: 0.72rem; color: #38bdf8;" title="{{ u.custom_permissions }}">{{ u.custom_permissions }}</code>
+              {% else %}
+                <span style="color: var(--text-muted); font-size: 0.8rem;">None (Standard)</span>
+              {% endif %}
+            </td>
+            <td style="padding: 12px 14px;">
+              {% if u.role == 'admin' %}
+                <span class="badge-tag badge-warning" style="font-size: 0.72rem;">* All Capabilities</span>
+              {% else %}
+                <span class="badge-tag badge-secondary" style="font-size: 0.72rem;">
+                  {{ u.effective_permissions|length }} capabilities
+                </span>
+              {% endif %}
+            </td>
+            <td style="padding: 12px 14px; text-align: right;">
+              <button
+                class="btn btn-secondary btn-sm"
+                style="padding: 4px 8px; font-size: 0.75rem;"
+                onclick="openRoleModal({{ u.id }}, '{{ u.username }}', '{{ u.role }}')"
+                title="Change Role"
+              >
+                🔄 Role
+              </button>
+              <button
+                class="btn btn-secondary btn-sm"
+                style="padding: 4px 8px; font-size: 0.75rem;"
+                onclick="openPermsModal({{ u.id }}, '{{ u.username }}', '{{ u.custom_permissions or '' }}')"
+                title="Customize Permissions"
+              >
+                ⚙️ Overrides
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 3: Access Rights Evaluator -->
+<div id="tab-evaluator" class="rbac-tab-content" style="display: none;">
+  <div class="card" style="padding: 24px; max-width: 800px; margin: 0 auto;">
+    <h3 style="margin: 0 0 8px 0;">🧪 Institutional Access Rights Simulator</h3>
+    <p style="margin: 0 0 20px 0; color: var(--text-muted); font-size: 0.9rem;">
+      Test and verify the exact authorization decision (Grant / Deny) the system makes for any user and permission.
+    </p>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+      <div>
+        <label for="eval-user-select" style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem;">
+          Select User Account:
+        </label>
+        <select id="eval-user-select" class="form-control" style="width: 100%;">
+          {% for u in staff_users %}
+          <option value="{{ u.id }}">{{ u.username }} ({{ u.role }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="eval-perm-select" style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem;">
+          Select System Permission:
+        </label>
+        <select id="eval-perm-select" class="form-control" style="width: 100%;">
+          {% for perm in matrix.permissions %}
+          <option value="{{ perm.code }}">{{ perm.name }} ({{ perm.code }})</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-sm" onclick="runAccessEvaluation()" id="btn-run-eval" style="padding: 8px 18px;">
+      <span>⚡ Evaluate Access Rights</span>
+    </button>
+
+    <!-- Evaluation Result Display -->
+    <div id="eval-result-card" style="display: none; margin-top: 24px; padding: 18px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.03);">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+        <span id="eval-icon" style="font-size: 1.8rem;">✅</span>
+        <div>
+          <div style="font-size: 1.1rem; font-weight: bold;" id="eval-decision">ACCESS GRANTED</div>
+          <div style="font-size: 0.82rem; color: var(--text-muted);" id="eval-summary">User is authorized for this operation.</div>
+        </div>
+      </div>
+      <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 6px; font-family: monospace; font-size: 0.85rem; color: var(--text-primary);" id="eval-reason">
+        Reason will appear here.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 4: Permissions Catalog -->
+<div id="tab-catalog" class="rbac-tab-content" style="display: none;">
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;">
+    {% for perm in matrix.permissions %}
+    <div class="card" style="padding: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+        <span class="badge-tag badge-info" style="font-size: 0.7rem;">{{ perm.category }}</span>
+        <code style="font-size: 0.72rem; color: var(--accent-primary);">{{ perm.code }}</code>
+      </div>
+      <h4 style="margin: 0 0 6px 0; font-size: 0.95rem;">{{ perm.name }}</h4>
+      <p style="margin: 0; font-size: 0.82rem; color: var(--text-muted); line-height: 1.4;">
+        {{ perm.description }}
+      </p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Modal 1: Change User Role -->
+<div class="modal-overlay" id="modal-role" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="modal-card" style="max-width: 440px;">
+    <div class="modal-header">
+      <h3>🔄 Reassign Institutional Role</h3>
+      <button class="modal-close" onclick="closeRoleModal()" type="button">✕</button>
+    </div>
+    <div style="padding: 20px;">
+      <p style="margin: 0 0 16px 0; font-size: 0.88rem; color: var(--text-muted);">
+        Select new functional role for account <strong id="modal-role-username" style="color: var(--text-primary);"></strong>:
+      </p>
+
+      <input type="hidden" id="modal-role-userid" />
+
+      <div style="margin-bottom: 20px;">
+        <label for="modal-role-select" style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem;">Role:</label>
+        <select id="modal-role-select" class="form-control" style="width: 100%;">
+          {% for role in matrix.roles %}
+          <option value="{{ role.role }}">{{ role.title }} ({{ role.role }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button class="btn btn-secondary btn-sm" onclick="closeRoleModal()" type="button">Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="submitRoleChange()" id="btn-save-role" type="button">Save Role</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal 2: Customize Permissions -->
+<div class="modal-overlay" id="modal-perms" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="modal-card" style="max-width: 520px;">
+    <div class="modal-header">
+      <h3>⚙️ Custom Permission Overrides</h3>
+      <button class="modal-close" onclick="closePermsModal()" type="button">✕</button>
+    </div>
+    <div style="padding: 20px;">
+      <p style="margin: 0 0 12px 0; font-size: 0.88rem; color: var(--text-muted);">
+        Specify custom capabilities for <strong id="modal-perms-username" style="color: var(--text-primary);"></strong>:
+      </p>
+
+      <input type="hidden" id="modal-perms-userid" />
+
+      <div style="margin-bottom: 14px;">
+        <label for="modal-perms-input" style="display: block; font-weight: 600; margin-bottom: 4px; font-size: 0.85rem;">
+          Permission Codes (comma-separated):
+        </label>
+        <input
+          type="text"
+          id="modal-perms-input"
+          class="form-control"
+          placeholder="e.g. reports:read, +id_cards:manage, -students:delete"
+          style="width: 100%; font-size: 0.85rem;"
+        />
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+          Prefix with <code>+</code> to grant an extra capability, or <code>-</code> to revoke a role baseline.
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button class="btn btn-secondary btn-sm" onclick="closePermsModal()" type="button">Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="submitPermissionsChange()" id="btn-save-perms" type="button">Save Overrides</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchRBACTab(tabId, btn) {
+  document.querySelectorAll('.rbac-tab-content').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.tab-btn').forEach(el => {
+    el.classList.remove('active');
+    el.classList.remove('btn-primary');
+    el.classList.add('btn-secondary');
+  });
+
+  const target = document.getElementById(tabId);
+  if (target) {
+    target.style.display = 'block';
+  }
+  if (btn) {
+    btn.classList.add('active');
+    btn.classList.remove('btn-secondary');
+    btn.classList.add('btn-primary');
+  }
+}
+
+function filterStaffTable() {
+  const query = (document.getElementById('staff-search-input').value || '').toLowerCase().trim();
+  const rows = document.querySelectorAll('.staff-row');
+  rows.forEach(r => {
+    const username = r.getAttribute('data-username') || '';
+    const email = r.getAttribute('data-email') || '';
+    const role = r.getAttribute('data-role') || '';
+    if (!query || username.includes(query) || email.includes(query) || role.includes(query)) {
+      r.style.display = '';
+    } else {
+      r.style.display = 'none';
+    }
+  });
+}
+
+function openRoleModal(userId, username, role) {
+  document.getElementById('modal-role-userid').value = userId;
+  document.getElementById('modal-role-username').textContent = username;
+  document.getElementById('modal-role-select').value = role;
+  document.getElementById('modal-role').classList.add('active');
+}
+
+function closeRoleModal() {
+  document.getElementById('modal-role').classList.remove('active');
+}
+
+async function submitRoleChange() {
+  const userId = document.getElementById('modal-role-userid').value;
+  const newRole = document.getElementById('modal-role-select').value;
+  const btn = document.getElementById('btn-save-role');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    const res = await fetch(`/api/rbac/users/${userId}/role`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: newRole })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.detail || 'Failed to update role');
+      return;
+    }
+    window.location.reload();
+  } catch (err) {
+    alert('Network error while saving role');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save Role';
+  }
+}
+
+function openPermsModal(userId, username, currentPerms) {
+  document.getElementById('modal-perms-userid').value = userId;
+  document.getElementById('modal-perms-username').textContent = username;
+  let formatted = '';
+  try {
+    if (currentPerms && currentPerms.startsWith('[')) {
+      formatted = JSON.parse(currentPerms).join(', ');
+    } else {
+      formatted = currentPerms || '';
+    }
+  } catch(e) {
+    formatted = currentPerms || '';
+  }
+  document.getElementById('modal-perms-input').value = formatted;
+  document.getElementById('modal-perms').classList.add('active');
+}
+
+function closePermsModal() {
+  document.getElementById('modal-perms').classList.remove('active');
+}
+
+async function submitPermissionsChange() {
+  const userId = document.getElementById('modal-perms-userid').value;
+  const rawInput = document.getElementById('modal-perms-input').value;
+  const list = rawInput.split(',').map(s => s.trim()).filter(Boolean);
+  const btn = document.getElementById('btn-save-perms');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    const res = await fetch(`/api/rbac/users/${userId}/permissions`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ custom_permissions: list })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.detail || 'Failed to update permissions');
+      return;
+    }
+    window.location.reload();
+  } catch (err) {
+    alert('Network error while saving permissions');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save Overrides';
+  }
+}
+
+async function runAccessEvaluation() {
+  const userId = parseInt(document.getElementById('eval-user-select').value, 10);
+  const permission = document.getElementById('eval-perm-select').value;
+  const card = document.getElementById('eval-result-card');
+  const icon = document.getElementById('eval-icon');
+  const decision = document.getElementById('eval-decision');
+  const summary = document.getElementById('eval-summary');
+  const reason = document.getElementById('eval-reason');
+
+  try {
+    const res = await fetch('/api/rbac/evaluate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, permission: permission })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.detail || 'Evaluation failed');
+      return;
+    }
+
+    card.style.display = 'block';
+    if (data.granted) {
+      icon.textContent = '✅';
+      decision.textContent = 'ACCESS GRANTED';
+      decision.style.color = '#10b981';
+      summary.textContent = `User '${data.username}' is authorized to execute '${data.permission}'.`;
+    } else {
+      icon.textContent = '⛔';
+      decision.textContent = 'ACCESS DENIED';
+      decision.style.color = '#ef4444';
+      summary.textContent = `User '${data.username}' is forbidden from executing '${data.permission}'.`;
+    }
+    reason.textContent = data.reason;
+  } catch(e) {
+    alert('Error evaluating access rights');
+  }
+}
+</script>
+{% endblock %}

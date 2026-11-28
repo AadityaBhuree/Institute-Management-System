@@ -45,6 +45,16 @@ DEFAULT_USERS = [
     ("admin", "admin@institute.edu", "admin123", "admin"),
     ("faculty", "faculty@institute.edu", "faculty123", "faculty"),
     ("student", "student@institute.edu", "student123", "student"),
+    ("registrar", "registrar@institute.edu", "registrar123", "registrar"),
+    ("bursar", "bursar@institute.edu", "bursar123", "bursar"),
+    ("librarian", "librarian@institute.edu", "librarian123", "librarian"),
+    ("health_officer", "health@institute.edu", "health123", "health_officer"),
+    (
+        "placement_officer",
+        "placement@institute.edu",
+        "placement123",
+        "placement_officer",
+    ),
 ]
 
 
@@ -55,12 +65,17 @@ def init_database(db_path: Path | str | None = None) -> None:
         with open(SCHEMA_FILE, "r", encoding="utf-8") as f:
             ddl_script = f.read()
 
-        # Migration check: Ensure students table has is_deleted column before creating index
+        # Migration check: Ensure backwards-compatible columns exist before creating index
         cursor = conn.cursor()
         cursor.execute("PRAGMA table_info(students);")
         cols = [col["name"] for col in cursor.fetchall()]
         if cols and "is_deleted" not in cols:
             cursor.execute("ALTER TABLE students ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT 0;")
+
+        cursor.execute("PRAGMA table_info(users);")
+        u_cols = [col["name"] for col in cursor.fetchall()]
+        if u_cols and "custom_permissions" not in u_cols:
+            cursor.execute("ALTER TABLE users ADD COLUMN custom_permissions TEXT;")
         cursor.close()
 
         # Execute DDL

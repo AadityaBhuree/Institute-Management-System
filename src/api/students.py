@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from src.core.security import require_role
+from src.core.security import require_permission
 from src.database.connection import get_db
 from src.models.student import StudentCreate, StudentOut, StudentUpdate
 from src.services.auth_service import AuthService
@@ -88,7 +88,7 @@ def update_student(
 def delete_student(
     student_id: int,
     conn: sqlite3.Connection = Depends(get_db),
-    current_user: dict = Depends(require_role("admin")),
+    current_user: dict = Depends(require_permission("students:delete")),
 ):
     """Remove a student registry record (Admin only)."""
     success = StudentService.delete(conn, student_id)

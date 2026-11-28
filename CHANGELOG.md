@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.10.0] - 2026-11-28
+
+### Added
+- **Granular Dynamic Institutional RBAC & Functional Permission Matrix with Staff Workbenches (Phase 18)**:
+  - **Dynamic Role-Based & Capability Architecture (`src/core/security.py`)**:
+    - Expanded from 3 basic roles to 8 dedicated institutional roles: `admin` (Super Administrator with `*` wildcard), `registrar` (Academic Registrar & Admissions Director), `bursar` (Finance Office & Bursar), `librarian` (Head of Library Circulation), `health_officer` (Campus Physician & Infirmary Officer), `placement_officer` (Dean of Corporate Relations & Career Services), `faculty` (Academic Faculty & Lecturer), and `student` (Undergraduate/Graduate Scholar).
+    - Standardized 27-permission institutional catalog spanning 8 functional domains: Scholar Registry (`students:*`), Academics (`academics:*`), Examinations (`grades:*`), Attendance (`attendance:*`), Bursar & Fees (`finance:*`), Library Circulation (`library:*`), Infirmary Healthcare (`health:*`), Placements (`placements:*`), Campus Services (`hostel`, `transport`, `scholarships`, `events`, `inventory`), Reporting & Archival (`reports:*`), Credentials (`id_cards:manage`), and System Governance (`system:admin`, `rbac:manage`).
+    - Granular capability verification engine: `has_permission`, `get_user_permissions`, and FastAPI route dependencies `require_permission(code)` and `require_any_permission(*codes)`.
+    - User-level custom capability grants (`+grant`) and baseline revocations (`-revoke`) serialized in database and evaluated at runtime.
+    - Accidental administrative lockout safeguard prohibiting demoting the sole active super administrator.
+  - **Database Migration & Schema Evolution**:
+    - Numerical schema migration `src/database/migrations/008_granular_rbac.sql` and updated `src/database/schema.sql` enhancing `users` table with `custom_permissions` JSON column and expanded `role` CHECK constraints.
+    - Relational catalog tables `system_permissions` and `role_default_permissions` recording standard institutional permissions and default role capabilities.
+    - Automatic baseline provisioning for departmental staff accounts (`registrar`, `bursar`, `librarian`, `health_officer`, `placement_officer`) in `src/database/init_db.py`.
+  - **REST API Endpoints in `src/api/rbac.py`**:
+    - `GET /api/rbac/matrix`: Comprehensive capability cross-reference matrix and system permission catalog.
+    - `GET /api/rbac/roles`: Institutional staff roles and default capabilities.
+    - `GET /api/rbac/permissions`: Complete catalog of system permissions grouped by domain.
+    - `GET /api/rbac/users`: Directory of staff accounts with real-time computed effective capabilities.
+    - `GET /api/rbac/users/{user_id}`: Detailed user permission profile.
+    - `PUT /api/rbac/users/{user_id}/role`: (Admin only) Institutional role reassignment with security audit logging (`ROLE_UPDATED`).
+    - `PUT /api/rbac/users/{user_id}/permissions`: (Admin only) Custom permission grants/revocations with security audit logging (`PERMISSIONS_UPDATED`).
+    - `POST /api/rbac/evaluate`: (Admin only) Live access evaluation simulator checking authorization outcomes with audit explanations.
+  - **Glassmorphic UI & Administrative Workbench (`/rbac` & `templates/rbac_matrix.html`)**:
+    - Interactive matrix table displaying Roles × System Capabilities with status pills.
+    - Staff Account Directory with real-time live search filter and quick role switcher and custom permissions override modal dialogs.
+    - Live Access Rights Simulator tool testing Grant/Deny decisions for any account and permission code.
+    - Searchable Permission Catalog cards organized by functional campus domain.
+    - Sidebar navigation integration in `templates/base.html` for Administrators and role-formatted user badges.
+  - Maintained core application decoupling with `src/app.py` preserved at exactly **121 lines** (<150 lines target).
+- **Automated Testing Suite Expansion**:
+  - Added comprehensive test suite `tests/test_granular_rbac.py` containing 11 automated tests covering matrix catalog endpoints, permission evaluation logic, 401/403 security gates, registrar & bursar boundaries, staff listing, role reassignment, custom permission overrides, access simulation, admin lockout safeguards, and SSR view access controls.
+  - Expanded test suite from 333 to **344 automated tests** passing across 31 domain test suites (100% pass rate in 6.96s).
+
 ## [1.9.0] - 2026-11-27
 
 ### Added

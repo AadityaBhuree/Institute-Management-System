@@ -125,12 +125,18 @@
           <span class="nav-icon" aria-hidden="true">⚙️</span>
           <span>System Settings</span>
         </a>
+        {% if current_user and current_user.role == 'admin' %}
+        <a href="/rbac" class="nav-item {% if active_page == 'rbac' %}active{% endif %}" id="nav-rbac" {% if active_page == 'rbac' %}aria-current="page"{% endif %}>
+          <span class="nav-icon" aria-hidden="true">🛡️</span>
+          <span>Roles & Permissions</span>
+        </a>
+        {% endif %}
       </nav>
 
       <div class="sidebar-footer">
         <div class="system-status">
           <span class="status-dot" id="live-status-dot" aria-hidden="true"></span>
-          <span id="live-status-text">System Live • v1.8</span>
+          <span id="live-status-text">System Live • v1.9</span>
         </div>
       </div>
     </aside>
@@ -159,7 +165,7 @@
           </a>
           {% if current_user %}
             <span class="user-badge">
-              <span aria-hidden="true">👤</span> {{ current_user.username }} ({{ current_user.role|capitalize }})
+              <span aria-hidden="true">👤</span> {{ current_user.username }} ({{ current_user.role|replace('_', ' ')|capitalize }})
             </span>
             <a href="/logout" class="btn-signout" aria-label="Sign Out">
               <span aria-hidden="true">🚪</span> Sign Out

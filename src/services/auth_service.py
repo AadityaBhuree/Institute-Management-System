@@ -34,8 +34,8 @@ class AuthService:
         with transaction(conn) as cur:
             cur.execute(
                 """
-                INSERT INTO users (username, email, password_hash, role, status, faculty_id, student_id)
-                VALUES (?, ?, ?, ?, 'active', ?, ?);
+                INSERT INTO users (username, email, password_hash, role, status, faculty_id, student_id, custom_permissions)
+                VALUES (?, ?, ?, ?, 'active', ?, ?, ?);
                 """,
                 (
                     data.username,
@@ -44,6 +44,7 @@ class AuthService:
                     data.role,
                     data.faculty_id,
                     data.student_id,
+                    data.custom_permissions,
                 ),
             )
             user_id = cur.lastrowid
@@ -112,7 +113,7 @@ class AuthService:
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT id, username, email, role, status, faculty_id, student_id, last_login, created_at
+            SELECT id, username, email, role, status, faculty_id, student_id, custom_permissions, last_login, created_at
             FROM users
             WHERE id = ?;
             """,
@@ -128,7 +129,7 @@ class AuthService:
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT id, username, email, role, status, faculty_id, student_id, last_login, created_at
+            SELECT id, username, email, role, status, faculty_id, student_id, custom_permissions, last_login, created_at
             FROM users
             WHERE username = ?;
             """,
@@ -148,7 +149,7 @@ class AuthService:
     ) -> List[Dict[str, Any]]:
         """List user accounts with optional role and status filters."""
         query = """
-            SELECT id, username, email, role, status, faculty_id, student_id, last_login, created_at
+            SELECT id, username, email, role, status, faculty_id, student_id, custom_permissions, last_login, created_at
             FROM users
             WHERE 1=1
         """

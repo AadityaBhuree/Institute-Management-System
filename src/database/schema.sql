@@ -690,10 +690,11 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT NOT NULL UNIQUE,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'student' CHECK(role IN ('admin', 'faculty', 'student')),
+    role TEXT NOT NULL DEFAULT 'student' CHECK(role IN ('admin', 'registrar', 'bursar', 'librarian', 'health_officer', 'placement_officer', 'faculty', 'student')),
     status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'inactive', 'suspended')),
     faculty_id INTEGER REFERENCES faculty(id) ON DELETE SET NULL,
     student_id INTEGER REFERENCES students(id) ON DELETE SET NULL,
+    custom_permissions TEXT,
     last_login TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -966,3 +967,23 @@ CREATE TABLE IF NOT EXISTS archived_students (
 CREATE INDEX IF NOT EXISTS idx_archived_students_year ON archived_students(graduation_year);
 CREATE INDEX IF NOT EXISTS idx_archived_students_dept ON archived_students(department_code);
 CREATE INDEX IF NOT EXISTS idx_archived_students_hash ON archived_students(integrity_hash);
+
+
+-- 28. Institutional Roles & Granular Permission Catalog
+CREATE TABLE IF NOT EXISTS system_permissions (
+    code TEXT PRIMARY KEY,
+    category TEXT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_permissions_cat ON system_permissions(category);
+
+CREATE TABLE IF NOT EXISTS role_default_permissions (
+    role TEXT NOT NULL,
+    permission_code TEXT NOT NULL REFERENCES system_permissions(code) ON DELETE CASCADE,
+    PRIMARY KEY (role, permission_code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_role_perms_role ON role_default_permissions(role);

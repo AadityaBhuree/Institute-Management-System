@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 
-from src.core.security import require_role
+from src.core.security import require_any_permission
 from src.database.connection import get_db
 from src.models.archival import (
     ArchivalIntegrityResponse,
@@ -206,7 +206,7 @@ def export_medical_certificate_pdf(
 def archive_graduated_cohort(
     payload: CohortArchivalRequest,
     conn: sqlite3.Connection = Depends(get_db),
-    admin_user: dict = Depends(require_role("admin")),
+    admin_user: dict = Depends(require_any_permission("reports:archive", "system:admin")),
 ) -> Dict[str, Any]:
     """Execute cold storage archival for a graduated student cohort with SHA-256 seals (Admin only)."""
     return ArchivalService.archive_cohort(
@@ -225,7 +225,7 @@ def archive_graduated_cohort(
 def list_archived_records(
     graduation_year: Optional[int] = Query(None, description="Filter by cohort graduation year"),
     conn: sqlite3.Connection = Depends(get_db),
-    admin_user: dict = Depends(require_role("admin")),
+    admin_user: dict = Depends(require_any_permission("reports:archive", "system:admin")),
 ) -> List[Dict[str, Any]]:
     """Retrieve index of all cold-storage archived scholar records (Admin only)."""
     return ArchivalService.list_archived_records(conn, graduation_year=graduation_year)
@@ -237,7 +237,7 @@ def list_archived_records(
 def get_archived_record(
     archive_id: int,
     conn: sqlite3.Connection = Depends(get_db),
-    admin_user: dict = Depends(require_role("admin")),
+    admin_user: dict = Depends(require_any_permission("reports:archive", "system:admin")),
 ) -> Dict[str, Any]:
     """Retrieve full archived record including decoded JSON dossier snapshot (Admin only)."""
     record = ArchivalService.get_archived_record(conn, archive_id)
@@ -256,7 +256,7 @@ def get_archived_record(
 def verify_archived_record_integrity(
     archive_id: int,
     conn: sqlite3.Connection = Depends(get_db),
-    admin_user: dict = Depends(require_role("admin")),
+    admin_user: dict = Depends(require_any_permission("reports:archive", "system:admin")),
 ) -> Dict[str, Any]:
     """Cryptographically verify the SHA-256 seal of an archived scholar snapshot (Admin only)."""
     try:
